@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "python"
 version = "0.1.0"
-description = "Python components for omnistore"
+description = "Python components for menmos"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 
 [tool.poetry.dependencies]

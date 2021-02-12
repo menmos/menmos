@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use client::Client;
 use futures::StreamExt;
+use menmos_client::Client;
 use rood::cli::OutputManager;
 
 pub async fn delete(

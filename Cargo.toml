@@ -2,14 +2,14 @@
 [workspace]
 members = [
     "bin/amphora",
-    "bin/cli",
+    "bin/menmos-cli",
     "bin/menmosd",
-    "bin/omnifuse",
+    "bin/menmos-fuse",
     "crates/apikit",
-    "crates/client",
     "crates/dns-server",
     "crates/interface",
     "crates/lfan",
+    "crates/menmos-client",
     "crates/rapidquery",
     "crates/repository",
     "crates/urlsign"

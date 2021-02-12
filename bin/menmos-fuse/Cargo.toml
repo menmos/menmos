@@ -20,7 +20,7 @@ async-fuse = {git = "https://github.com/menmos/async-fuse-rs"}
 async-trait = "0.1"
 bytes = "=0.5.6"
 clap = "3.0.0-beta.2"
-client = {path = "../../crates/client"}
+menmos-client = {path = "../../crates/menmos-client"}
 env_logger = "0.8"
 lfan = {path=  "../../crates/lfan"}
 libc = "0.2"

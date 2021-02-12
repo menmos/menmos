@@ -16,7 +16,7 @@ pub struct CLIMain {
 
 impl CLIMain {
     pub async fn run(self) -> Result<()> {
-        let options = ["-o", "fsname=omnifuse", "blksize=512"]
+        let options = ["-o", "fsname=menmos", "blksize=512"]
             .iter()
             .map(|s| OsString::from(&s))
             .collect::<Vec<OsString>>();

@@ -4,8 +4,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use anyhow::{anyhow, ensure, Result};
 
 use async_fuse::FileType;
-use client::{Client, Meta, Query, Type};
 use config::Contents;
+use menmos_client::{Client, Meta, Query, Type};
 
 use crate::config;
 use crate::{cached_client::CachedClient, concurrent_map::ConcurrentMap};
@@ -105,7 +105,7 @@ impl OmniFS {
 
         for hit in results.hits.into_iter() {
             let inode = self.get_inode(&hit.id).await;
-            let file_type = if hit.meta.blob_type == client::Type::Directory {
+            let file_type = if hit.meta.blob_type == menmos_client::Type::Directory {
                 FileType::Directory
             } else {
                 FileType::RegularFile

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use client::profile::{Config, Profile};
+use menmos_client::profile::{Config, Profile};
 use rood::cli::OutputManager;
 
 pub fn load_or_create(cli: OutputManager) -> Result<Config> {

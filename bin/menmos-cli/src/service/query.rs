@@ -1,5 +1,5 @@
 use anyhow::Result;
-use client::{Client, Query};
+use menmos_client::{Client, Query};
 use rood::cli::OutputManager;
 
 pub async fn execute(

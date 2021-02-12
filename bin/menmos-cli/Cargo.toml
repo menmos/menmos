@@ -1,5 +1,5 @@
 [package]
-name = "cli"
+name = "menmos-cli"
 version = "0.1.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
-name = "omni"
+name = "mmos"
 path = "src/main.rs"
 
 [lib]
@@ -18,7 +18,7 @@ path = "src/service/lib.rs"
 anyhow = "1"
 async-stream = "0.3"
 clap = "3.0.0-beta.2"
-client = {path = "../../crates/client"}
+menmos-client = {path = "../../crates/menmos-client"}
 dirs = "3"
 futures = "0.3"
 interface = {path = "../../crates/interface"}

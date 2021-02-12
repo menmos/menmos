@@ -31,7 +31,7 @@ def directory_and_storage() -> Iterator[Tuple[DirectoryNode, StorageNode]]:
     storage = None
     try:
         directory = DirectoryNode(find_bin_path() / "menmosd")
-        storage = StorageNode(find_bin_path() / "omnistore_storage")
+        storage = StorageNode(find_bin_path() / "amphora")
         yield (directory, storage)
     except:
         pass

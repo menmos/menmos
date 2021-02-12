@@ -5,8 +5,8 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use async_stream::try_stream;
-use client::{Client, Meta, Type};
 use futures::{Stream, StreamExt};
+use menmos_client::{Client, Meta, Type};
 use rood::cli::OutputManager;
 
 use crate::util;

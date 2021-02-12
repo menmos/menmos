@@ -2,7 +2,7 @@ use std::time;
 
 use snafu::{ensure, ResultExt, Snafu};
 
-use crate::omniclient::ClientError;
+use crate::client::ClientError;
 use crate::{Client, Parameters};
 
 #[derive(Debug, Snafu)]

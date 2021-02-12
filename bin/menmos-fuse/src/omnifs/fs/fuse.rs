@@ -8,8 +8,8 @@ use async_fuse::{
 
 use async_trait::async_trait;
 
-use client::{Meta, Query};
 use libc::{EACCES, ENOENT, O_CREAT, O_TRUNC};
+use menmos_client::{Meta, Query, Type};
 
 use crate::constants;
 
@@ -17,8 +17,8 @@ use super::OmniFS;
 
 fn build_attributes(inode: u64, meta: &Meta, perm: u16) -> FileAttr {
     let kind = match meta.blob_type {
-        client::Type::Directory => FileType::Directory,
-        client::Type::File => FileType::RegularFile,
+        Type::Directory => FileType::Directory,
+        Type::File => FileType::RegularFile,
     };
 
     FileAttr {
@@ -56,8 +56,7 @@ impl Filesystem for OmniFS {
                 .await
             {
                 log::info!("lookup on {:?} found vdir inode: {}", name, inode,);
-                let attrs =
-                    build_attributes(inode, &Meta::new(&str_name, client::Type::Directory), 0o444);
+                let attrs = build_attributes(inode, &Meta::new(&str_name, Type::Directory), 0o444);
                 reply.entry(&constants::TTL, &attrs, inode); // TODO: Replace the generation number by a nanosecond timestamp.
                 return;
             }
@@ -112,7 +111,7 @@ impl Filesystem for OmniFS {
         };
 
         let str_name = name.to_string_lossy().to_string();
-        let meta = Meta::new(str_name.clone(), client::Type::Directory).with_parent(parent_blobid);
+        let meta = Meta::new(str_name.clone(), Type::Directory).with_parent(parent_blobid);
         let blob_id = match self.client.create_empty(meta.clone()).await {
             Ok(b) => b,
             Err(e) => {
@@ -205,6 +204,7 @@ impl Filesystem for OmniFS {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn setattr(
         &self,
         _req: &Request,
@@ -238,7 +238,7 @@ impl Filesystem for OmniFS {
         // If virtual directory.
         if self.virtual_directories_inodes.get(&ino).await.is_some() {
             // TODO: Make a separate method to get attributes for virtual directories.
-            let attrs = build_attributes(ino, &Meta::new("", client::Type::Directory), 0o444);
+            let attrs = build_attributes(ino, &Meta::new("", Type::Directory), 0o444);
             reply.attr(&constants::TTL, &attrs);
             return;
         }
@@ -315,7 +315,7 @@ impl Filesystem for OmniFS {
 
         let str_name = name.to_string_lossy().to_string();
 
-        let meta = Meta::new(&str_name, client::Type::File).with_parent(parent_id);
+        let meta = Meta::new(&str_name, Type::File).with_parent(parent_id);
 
         let blob_id = match self.client.create_empty(meta.clone()).await {
             Ok(id) => id,
@@ -371,7 +371,7 @@ impl Filesystem for OmniFS {
 
         let str_name = name.to_string_lossy().to_string();
 
-        let meta = Meta::new(&str_name, client::Type::File).with_parent(parent_id);
+        let meta = Meta::new(&str_name, Type::File).with_parent(parent_id);
 
         let blob_id = match self.client.create_empty(meta.clone()).await {
             Ok(id) => id,
@@ -391,6 +391,7 @@ impl Filesystem for OmniFS {
         reply.entry(&constants::TTL, &build_attributes(ino, &meta, 0o764), 0)
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn write(
         &self,
         _req: &Request,

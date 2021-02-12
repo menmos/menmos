@@ -1,5 +1,5 @@
 mod builder;
-mod omniclient;
+mod client;
 mod parameters;
 pub mod profile;
 
@@ -10,5 +10,5 @@ pub use interface::message::directory_node::Query;
 pub use interface::BlobMeta as Meta;
 pub use interface::QueryResponse;
 pub use interface::Type;
-pub use omniclient::Client;
+pub use client::Client;
 pub use profile::Config;

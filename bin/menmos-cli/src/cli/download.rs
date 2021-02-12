@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use clap::Clap;
-use client::Client;
 use futures::StreamExt;
+use menmos_client::Client;
 use rood::cli::OutputManager;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;

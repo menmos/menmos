@@ -67,13 +67,13 @@ impl Config {
 
         let default_config_path = dirs::config_dir()
             .ok_or_else(|| anyhow!("cannot locate config directory"))?
-            .join("omnistore")
+            .join("menmos")
             .join("config_directory")
             .with_extension("toml");
 
         let data_dir = dirs::data_dir()
             .ok_or_else(|| anyhow!("cannot locate data directory"))?
-            .join("omnistore");
+            .join("menmos");
 
         fs::create_dir_all(&data_dir)?;
 

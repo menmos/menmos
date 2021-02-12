@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use clap::Clap;
-use client::Client;
+use menmos_client::Client;
 use rood::cli::OutputManager;
 
 mod delete;
@@ -53,17 +53,17 @@ impl Root {
 
 #[derive(Clap)]
 enum Command {
-    /// Delete a blob from an omnistore directory.
+    /// Delete a blob from a menmos cluster.
     Delete(delete::DeleteCommand),
 
     /// Download a blob to disk.
     Download(download::DownloadCommand),
 
-    /// Push a file or directory to an omnistore directory.
+    /// Push a file or directory to a menmos cluster.
     #[clap(name = "push")]
     Push(push::PushCommand),
 
-    /// Query an omnistore directory.
+    /// Query an menmos cluster.
     #[clap(name = "query")]
     Query(query::QueryCommand),
 }

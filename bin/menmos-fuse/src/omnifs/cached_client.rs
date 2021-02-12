@@ -1,7 +1,7 @@
 use anyhow::Result;
 use bytes::Buf;
-use client::{Client, Meta, Query, QueryResponse};
 use lfan::preconfig::LRUCache;
+use menmos_client::{Client, Meta, Query, QueryResponse};
 use tokio::sync::Mutex;
 
 pub struct CachedClient {

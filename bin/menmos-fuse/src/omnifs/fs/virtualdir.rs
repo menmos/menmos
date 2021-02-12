@@ -1,4 +1,4 @@
-use client::Query;
+use menmos_client::Query;
 
 use crate::config::Contents;
 #[derive(Clone, Debug)]

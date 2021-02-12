@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use anyhow::Result;
 use clap::Clap;
-use client::Client;
+use menmos_client::Client;
 use rood::cli::OutputManager;
 
 #[derive(Clap)]
