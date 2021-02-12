@@ -17,6 +17,7 @@ path = "src/menmosd/lib.rs"
 [dev-dependencies]
 amphora = {path = "../amphora"}
 menmos-client = {path = "../../crates/menmos-client"}
+portpicker = "0.1"
 tempfile = "3.2"
 
 [dependencies]
