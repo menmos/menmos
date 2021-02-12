@@ -11,10 +11,12 @@ name = "menmosd"
 path = "src/main.rs"
 
 [lib]
-name = "menmos"
-path = "src/menmos/lib.rs"
+name = "menmosd"
+path = "src/menmosd/lib.rs"
 
 [dev-dependencies]
+amphora = {path = "../amphora"}
+menmos-client = {path = "../../crates/menmos-client"}
 tempfile = "3.2"
 
 [dependencies]

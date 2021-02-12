@@ -62,7 +62,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(cfg_file: &Option<PathBuf>) -> Result<Config> {
+    fn default_loader() -> Result<ConfigLoader> {
         let mut loader = ConfigLoader::new();
 
         let default_config_path = dirs::config_dir()
@@ -107,12 +107,33 @@ impl Config {
                 .format(config::FileFormat::Toml),
         )?;
 
+        Ok(loader)
+    }
+
+    pub fn from_toml_string<S: AsRef<str>>(cfg_string: S) -> Result<Config> {
+        let mut loader = Config::default_loader()?;
+        loader
+            .merge(File::from_str(cfg_string.as_ref(), config::FileFormat::Toml).required(false))?;
+
+        let cfg: Config = loader.try_into()?;
+
+        println!(
+            "Loaded configuration: \n{}",
+            serde_json::to_string_pretty(&cfg)?
+        );
+
+        Ok(cfg)
+    }
+
+    pub fn from_file(cfg_file: &Option<PathBuf>) -> Result<Config> {
+        let mut loader = Config::default_loader()?;
+
         if let Some(cfg) = cfg_file {
             loader.merge(File::from(cfg.as_ref()).required(false))?;
         }
 
         loader.merge(
-            Environment::with_prefix("OMNIDIR")
+            Environment::with_prefix("MENMOS")
                 .separator("_")
                 .try_parsing(true),
         )?;

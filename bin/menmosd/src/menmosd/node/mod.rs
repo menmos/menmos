@@ -4,7 +4,7 @@ mod iface;
 mod index;
 mod node_impl;
 
-use index::Index;
+pub use index::Index;
 
 pub use node_impl::Directory;
 

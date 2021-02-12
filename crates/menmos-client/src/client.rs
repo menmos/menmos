@@ -8,7 +8,7 @@ use bytes::{Buf, Bytes};
 use futures::{Stream, TryStreamExt};
 
 use interface::{
-    message::{directory_node::Query, storage_node},
+    message::{directory_node::Query, storage_node, MessageResponse},
     BlobMeta, GetMetaResponse, QueryResponse,
 };
 
@@ -258,6 +258,26 @@ impl Client {
                 // An error occurred.
                 return Err(extract_error(response).await);
             }
+        }
+    }
+
+    pub async fn health(&self) -> Result<String> {
+        let url = format!("{}/health", self.host);
+        let req = self.client.get(&url).build().context(RequestBuildError)?;
+
+        let response = self
+            .client
+            .execute(req)
+            .await
+            .context(RequestExecutionError)?;
+
+        let status = response.status();
+
+        if status.is_success() {
+            let msg: MessageResponse = extract_body(response).await?;
+            Ok(msg.message)
+        } else {
+            Err(extract_error(response).await)
         }
     }
 
