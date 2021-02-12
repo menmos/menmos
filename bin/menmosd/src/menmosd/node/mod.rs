@@ -1,10 +1,7 @@
 use anyhow::Result;
+use indexer::Index;
 
-mod iface;
-mod index;
 mod node_impl;
-
-pub use index::Index;
 
 pub use node_impl::Directory;
 

@@ -9,8 +9,8 @@ use bitvec::prelude::*;
 use futures::TryFutureExt;
 use interface::BlobMeta;
 
-use super::BitvecTree;
-use crate::node::iface::{Flush, MetadataMapper};
+use crate::iface::{Flush, MetadataMapper};
+use crate::BitvecTree;
 
 const META_MAP: &str = "metadata";
 const TAG_MAP: &str = "tags";

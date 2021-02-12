@@ -9,7 +9,7 @@ use chrono::{DateTime, Utc};
 
 use interface::StorageNodeInfo;
 
-use crate::node::iface::{Flush, StorageNodeMapper};
+use crate::iface::{Flush, StorageNodeMapper};
 
 const DISPATCH_TREE: &str = "dispatch";
 pub struct StorageDispatch {

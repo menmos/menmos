@@ -1,50 +1,28 @@
 //! Tests basic functionality of menmosd, without a storage node attached.
-
-use std::path::PathBuf;
+mod fixtures;
 
 use anyhow::Result;
-use interface::QueryResponse;
-use menmos_client::{Client, Query};
-use menmosd::{
-    config::{HTTPParameters, ServerSetting},
-    Config, Directory, Index, Server,
-};
-use tempfile::TempDir;
-
-async fn get_node<P: Into<PathBuf>>(db_path: P) -> Result<(Server<Directory<Index>>, Client)> {
-    const MENMOSD_CONFIG: &str = include_str!("data/menmosd_http.toml");
-
-    let mut cfg = Config::from_toml_string(MENMOSD_CONFIG)?;
-    cfg.node.db_path = db_path.into();
-
-    let port = portpicker::pick_unused_port().unwrap();
-    cfg.server = ServerSetting::HTTP(HTTPParameters { port });
-
-    let node = menmosd::make_node(&cfg)?;
-    let client = Client::new(format!("http://localhost:{}", port), "password")?;
-    Ok((Server::new(cfg, node).await?, client))
-}
+use interface::{QueryResponse, Type};
+use menmos_client::{Meta, Query};
 
 #[tokio::test]
 async fn comes_up_and_stops() -> Result<()> {
-    let db_dir = TempDir::new()?;
-    let (server, client) = get_node(db_dir.path()).await?;
+    let fixture = fixtures::Menmos::new().await?;
 
     // Make sure the server responds.
-    client.health().await?;
+    fixture.client.health().await?;
 
     // Make sure it stops.
-    server.stop().await?;
+    fixture.stop_all().await?;
 
     Ok(())
 }
 
 #[tokio::test]
 async fn queries_initially_return_empty() -> Result<()> {
-    let db_dir = TempDir::new()?;
-    let (server, client) = get_node(db_dir.path()).await?;
+    let fixture = fixtures::Menmos::new().await?;
 
-    let actual_response = client.query(Query::default()).await?;
+    let actual_response = fixture.client.query(Query::default()).await?;
 
     let expected_response = QueryResponse {
         count: 0,
@@ -55,7 +33,55 @@ async fn queries_initially_return_empty() -> Result<()> {
 
     assert_eq!(expected_response, actual_response);
 
-    server.stop().await?;
+    fixture.stop_all().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn no_storage_nodes_initially_registered() -> Result<()> {
+    let fixture = fixtures::Menmos::new().await?;
+
+    let resp = fixture.client.list_storage_nodes().await?;
+
+    assert_eq!(resp.storage_nodes.len(), 0);
+
+    fixture.stop_all().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn add_single_storage_node() -> Result<()> {
+    let mut fixture = fixtures::Menmos::new().await?;
+
+    fixture.add_amphora("alpha").await?;
+
+    let resp = fixture.client.list_storage_nodes().await?;
+    assert_eq!(resp.storage_nodes.len(), 1);
+    assert_eq!(&resp.storage_nodes[0].id, "alpha");
+
+    fixture.stop_all().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn simple_put_query_loop() -> Result<()> {
+    let mut fixture = fixtures::Menmos::new().await?;
+    fixture.add_amphora("alpha").await?;
+
+    let blob_id = fixture
+        .push_document("hello world", Meta::new("myfile", Type::File))
+        .await?;
+
+    let results = fixture.client.query(Query::default()).await?;
+
+    assert_eq!(results.total, 1);
+    assert_eq!(results.count, 1);
+    assert_eq!(results.hits[0].id, blob_id);
+
+    fixture.stop_all().await?;
 
     Ok(())
 }

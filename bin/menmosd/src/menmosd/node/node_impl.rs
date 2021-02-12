@@ -14,7 +14,7 @@ use interface::{
 
 use rapidquery::Resolver;
 
-use super::iface::*;
+use indexer::iface::*;
 
 const NODE_FORGET_DURATION_SECONDS: i64 = 60;
 

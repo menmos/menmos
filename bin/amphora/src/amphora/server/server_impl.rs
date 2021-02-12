@@ -16,17 +16,17 @@ struct ServerProcess {
     pub tx_stop: oneshot::Sender<()>,
 }
 
-pub struct Server<N: StorageNode> {
+pub struct NodeServer<N: StorageNode> {
     _node: Arc<N>,
     handle: ServerProcess,
 }
 
-impl<N> Server<N>
+impl<N> NodeServer<N>
 where
     N: StorageNode + Send + Sync + 'static,
 {
     // TODO: Refactor config into node & server configs so this isn't such a hack.
-    pub fn new(node: Arc<N>, config: Config, cert_paths: Option<CertPath>) -> Server<N> {
+    pub fn new(node: Arc<N>, config: Config, cert_paths: Option<CertPath>) -> Self {
         let (tx_stop, rx) = oneshot::channel();
 
         let warp_server = warp::serve(filters::all(node.clone(), config.clone()));
@@ -58,7 +58,7 @@ where
             h
         };
 
-        Server {
+        Self {
             _node: node,
             handle: ServerProcess {
                 join_handle,

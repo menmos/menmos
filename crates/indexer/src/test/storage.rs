@@ -5,7 +5,7 @@ use anyhow::Result;
 use interface::StorageNodeInfo;
 use tempfile::TempDir;
 
-use crate::node::{iface::StorageNodeMapper, index::storage::StorageDispatch};
+use crate::{iface::StorageNodeMapper, storage::StorageDispatch};
 
 #[test]
 fn storage_dispatch_initializes_without_error() {

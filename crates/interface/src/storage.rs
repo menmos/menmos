@@ -46,6 +46,14 @@ impl BlobMeta {
         }
     }
 
+    pub fn file<S: Into<String>>(name: S) -> Self {
+        BlobMeta::new(name, Type::File)
+    }
+
+    pub fn directory<S: Into<String>>(name: S) -> Self {
+        BlobMeta::new(name, Type::Directory)
+    }
+
     pub fn with_meta<S: Into<String>, T: Into<String>>(mut self, key: S, value: T) -> Self {
         self.metadata.insert(key.into(), value.into());
         self

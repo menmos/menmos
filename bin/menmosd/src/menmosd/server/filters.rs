@@ -134,7 +134,6 @@ where
         .and(with_config(config))
         .and(with_node(node))
         .and(warp::header::<String>("x-blob-meta"))
-        .and(warp::body::stream())
         .and(warp::filters::addr::remote())
         .and_then(handlers::put)
 }

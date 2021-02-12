@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tempfile::TempDir;
 
-use crate::node::index::bitvec_tree::BitvecTree;
+use crate::bitvec_tree::BitvecTree;
 
 #[test]
 fn purging_out_of_range_idx() -> Result<()> {

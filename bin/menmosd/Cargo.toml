@@ -39,6 +39,7 @@ env_logger = "0.8"
 external-ip = "=4.0.0"
 futures = "0.3"
 headers = "=0.3.2"
+indexer = {path = "../../crates/indexer"}
 interface = {path = "../../crates/interface"}
 ipnetwork = "0.17"
 log = "0.4"

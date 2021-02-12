@@ -4,7 +4,7 @@ use bitvec::prelude::*;
 
 use tempfile::TempDir;
 
-use crate::node::{iface::DocIDMapper, index::documents::DocumentIDStore};
+use crate::{documents::DocumentIDStore, iface::DocIDMapper};
 
 #[test]
 fn nb_of_docs_initially_zero() {

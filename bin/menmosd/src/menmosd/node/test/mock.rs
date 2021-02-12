@@ -14,7 +14,7 @@ use chrono::Utc;
 
 use interface::{BlobMeta, StorageNodeInfo};
 
-use crate::node::iface::*;
+use indexer::iface::*;
 
 fn tag_to_kv(tag: &str) -> Result<(&str, &str)> {
     let splitted: Vec<_> = tag.split('$').collect();

@@ -4,9 +4,8 @@ use anyhow::Result;
 
 use async_trait::async_trait;
 
-use super::{documents::DocumentIDStore, meta::MetadataStore, storage::StorageDispatch};
-
-use crate::node::iface::{Flush, IndexProvider};
+use crate::iface::{Flush, IndexProvider};
+use crate::{documents::DocumentIDStore, meta::MetadataStore, storage::StorageDispatch};
 
 pub struct Index {
     db: sled::Db,

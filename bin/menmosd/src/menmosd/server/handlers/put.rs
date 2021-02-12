@@ -5,10 +5,6 @@ use anyhow::Result;
 
 use apikit::reject::{BadRequest, InternalServerError};
 
-use bytes::Buf;
-
-use futures::Stream;
-
 use interface::{BlobMeta, DirectoryNode};
 use warp::Reply;
 
@@ -25,7 +21,6 @@ pub async fn put<N: DirectoryNode>(
     cfg: Config,
     node: Arc<N>,
     meta: String,
-    _body: impl Stream<Item = Result<impl Buf, warp::Error>> + Send + Sync + Unpin + 'static,
     addr: Option<SocketAddr>,
 ) -> Result<warp::reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;

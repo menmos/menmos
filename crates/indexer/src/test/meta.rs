@@ -6,7 +6,7 @@ use bitvec::prelude::*;
 use interface::{BlobMeta, Type};
 use tempfile::TempDir;
 
-use crate::node::{iface::MetadataMapper, index::meta::MetadataStore};
+use crate::{iface::MetadataMapper, meta::MetadataStore};
 
 #[test]
 fn init_doesnt_fail() {

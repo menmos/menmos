@@ -2,13 +2,14 @@ use std::net::IpAddr;
 
 use anyhow::Result;
 
+use indexer::Index;
 use interface::{
     message::directory_node::Query, BlobMeta, DirectoryNode, ListMetadataRequest, QueryResponse,
     StorageNodeInfo, Type,
 };
 use tempfile::TempDir;
 
-use crate::{node::index::Index, Directory};
+use crate::Directory;
 
 use super::mock::MockIndex;
 

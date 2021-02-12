@@ -8,7 +8,7 @@ use bitvec::prelude::*;
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::node::iface::{DocIDMapper, Flush};
+use crate::iface::{DocIDMapper, Flush};
 
 const DOC_MAP: &str = "document";
 const DOC_REV_MAP: &str = "document-rev";
