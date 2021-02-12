@@ -1,0 +1,30 @@
+[package]
+name = "menmos-fuse"
+version = "0.1.0"
+authors = ["William Dussault <dalloriam@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "omnifs"
+path = "src/omnifs/lib.rs"
+
+[[bin]]
+name = "menmos-fuse"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+async-fuse = {git = "https://github.com/menmos/async-fuse-rs"}
+async-trait = "0.1"
+bytes = "=0.5.6"
+clap = "3.0.0-beta.2"
+client = {path = "../../crates/client"}
+env_logger = "0.8"
+lfan = {path=  "../../crates/lfan"}
+libc = "0.2"
+log = "0.4"
+serde = {version = "1", features = ["derive"]}
+serde_json = "1"
+tokio = {version = "0.2", features = ["full"]}

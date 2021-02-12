@@ -1,0 +1,103 @@
+use std::path::PathBuf;
+
+use anyhow::{anyhow, Result};
+use futures::StreamExt;
+use lfan::preconfig::LRUCache;
+use rusoto_s3::{GetObjectRequest, S3Client, S3};
+use tokio::sync::Mutex;
+use tokio::{fs, io::AsyncWriteExt};
+
+pub struct FileCache {
+    bucket: String,
+    client: S3Client,
+    file_path_cache: Mutex<LRUCache<String, PathBuf>>,
+    root_path: PathBuf,
+}
+
+impl FileCache {
+    pub fn new<P: Into<PathBuf>, B: Into<String>>(
+        directory: P,
+        max_nb_of_files: usize,
+        bucket: B,
+        client: S3Client,
+    ) -> Result<Self> {
+        let root_path: PathBuf = directory.into();
+
+        if !root_path.exists() {
+            std::fs::create_dir_all(&root_path)?;
+        }
+
+        let file_path_cache = Mutex::from(LRUCache::new(max_nb_of_files));
+
+        Ok(Self {
+            bucket: bucket.into(),
+            client,
+            file_path_cache,
+            root_path,
+        })
+    }
+
+    async fn get_from_cache<S: AsRef<str>>(&self, blob_id: S) -> Option<PathBuf> {
+        let mut cache_lock = self.file_path_cache.lock().await;
+        if let Some(blob_path) = cache_lock.get(blob_id.as_ref()) {
+            Some(blob_path.clone())
+        } else {
+            None
+        }
+    }
+
+    async fn download_blob<S: AsRef<str>>(&self, blob_id: S) -> Result<PathBuf> {
+        let get_request = GetObjectRequest {
+            bucket: self.bucket.clone(),
+            key: blob_id.as_ref().to_string(),
+            ..Default::default()
+        };
+
+        let result = self.client.get_object(get_request).await?;
+        let mut bytestream = result.body.ok_or_else(|| anyhow!("missing stream"))?;
+
+        let file_path = self.root_path.join(blob_id.as_ref());
+
+        let mut f = fs::File::create(&file_path).await?;
+
+        while let Some(chunk) = bytestream.next().await {
+            match chunk {
+                Ok(c) => f.write_all(c.as_ref()).await?,
+                Err(e) => {
+                    fs::remove_file(&file_path).await?;
+                    return Err(e.into());
+                }
+            }
+        }
+        log::info!(
+            "pulled blob '{}' into the local filecache",
+            blob_id.as_ref()
+        );
+        Ok(file_path)
+    }
+
+    pub async fn get<S: AsRef<str>>(&self, blob_id: S) -> Result<PathBuf> {
+        if let Some(cache_hit) = self.get_from_cache(&blob_id).await {
+            return Ok(cache_hit);
+        }
+
+        let blob_path = self.download_blob(&blob_id).await?;
+
+        let mut cache_lock = self.file_path_cache.lock().await;
+        let (was_inserted, eviction_victim_maybe) =
+            cache_lock.insert(blob_id.as_ref().to_string(), blob_path.clone());
+
+        if let Some(victim) = eviction_victim_maybe {
+            // If a key was evicted from the cache, delete it from disk.
+            fs::remove_file(&victim).await?
+        }
+
+        if !was_inserted {
+            // The cache failed to keep our path, fail gracefully.
+            fs::remove_file(&blob_path).await?;
+            return Err(anyhow!("failed to insert blob in file cache"));
+        }
+
+        Ok(blob_path)
+    }
+}

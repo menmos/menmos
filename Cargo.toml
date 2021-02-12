@@ -1,0 +1,16 @@
+
+[workspace]
+members = [
+    "bin/amphora",
+    "bin/cli",
+    "bin/menmosd",
+    "bin/omnifuse",
+    "crates/apikit",
+    "crates/client",
+    "crates/dns-server",
+    "crates/interface",
+    "crates/lfan",
+    "crates/rapidquery",
+    "crates/repository",
+    "crates/urlsign"
+]

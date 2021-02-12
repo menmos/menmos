@@ -1,0 +1,24 @@
+[package]
+name = "client"
+version = "0.1.0"
+authors = ["William Dussault <dalloriam@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+apikit = {path = "../apikit"}
+base64 = "0.13"
+bytes = "=0.5.6"
+dirs = "3"
+futures = "0.3"
+hyper = "0.13.9"
+mpart-async = "0.4"
+interface = {path = "../interface"}
+log = "0.4"
+reqwest = {version = "0.10", features = ["json"]}
+serde = {version = "1", features = ["derive"]}
+serde_json = "1"
+snafu = "0.6"
+tokio = {version = "0.2", features = ["full"]}
+toml = "0.5"
