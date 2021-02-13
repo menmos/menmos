@@ -9,12 +9,12 @@ edition = "2018"
 [dependencies]
 anyhow = "1"
 async-trait = "0.1.42"
-bytes = "=0.5.6"
+bytes = "1"
 futures = "0.3"
 interface = {path = "../interface"}
 lfan = {path = "../lfan"}
 log = "0.4"
-rusoto_core = "0.45"
-rusoto_s3 = "0.45"
-tokio = {version = "0.2", features = ["full"]}
-tokio-util = {version = "0.3", features = ["codec"]}
+rusoto_core = "0.46"
+rusoto_s3 = "0.46"
+tokio = {version = "1.2", features = ["full"]}
+tokio-util = {version = "0.6.3", features = ["codec"]}
