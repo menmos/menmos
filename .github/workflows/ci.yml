@@ -16,8 +16,6 @@ jobs:
       - name: Install libfuse
         run: sudo apt-get update && sudo apt-get install -y libfuse-dev
 
-      - uses: Swatinem/rust-cache@v1
-
       - name: Lint
         uses: actions-rs/cargo@v1
         with:
