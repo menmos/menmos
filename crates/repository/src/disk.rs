@@ -8,8 +8,12 @@ use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
 use futures::{prelude::*, ready};
-use tokio::fs::{self, OpenOptions};
-use tokio::io::{AsyncRead, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
+use tokio::{
+    fs::{self, OpenOptions},
+    io::AsyncSeekExt,
+};
+use tokio_util::io::poll_read_buf;
 
 use interface::Range;
 
@@ -173,7 +177,7 @@ impl Repository for DiskRepository {
 
                     reserve_at_least(&mut buf, buf_size);
 
-                    let n = match ready!(Pin::new(&mut f).poll_read_buf(cx, &mut buf)) {
+                    let n = match ready!(poll_read_buf(Pin::new(&mut f), cx, &mut buf)) {
                         Ok(n) => n as u64,
                         Err(err) => {
                             log::trace!("file read error: {}", err);
