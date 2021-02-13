@@ -56,7 +56,7 @@ impl Server {
         let txt_challenge = Arc::from(Mutex::from(String::default()));
         let join_handle: JoinHandle<()> = {
             let challenge_cloned = txt_challenge.clone();
-            tokio::spawn(async move {
+            tokio::task::spawn(async move {
                 Server::run(cfg, rx, challenge_cloned).await;
             })
         };
@@ -171,26 +171,26 @@ impl Server {
     async fn run(cfg: Config, mut stop_rx: mpsc::Receiver<()>, challenge: Arc<Mutex<String>>) {
         // Bind to the UDP socket.
         let socket = match UdpSocket::bind(cfg.listen).await {
-            Ok(s) => s,
+            Ok(s) => Arc::from(s),
             Err(e) => {
                 log::error!("cannot bind to socket: {}", e);
                 return;
             }
         };
 
-        let (mut socket_rx, mut socket_tx) = socket.split();
         let (req_tx, mut req_rx) = mpsc::unbounded_channel();
         let (resp_tx, mut resp_rx): (ResponseSender, ResponseReceiver) = mpsc::unbounded_channel();
 
-        let (mut recv_stop_tx, mut recv_stop_rx) = mpsc::channel(1);
-        let (mut send_stop_tx, mut send_stop_rx) = mpsc::channel(1);
+        let (recv_stop_tx, mut recv_stop_rx) = mpsc::channel(1);
+        let (send_stop_tx, mut send_stop_rx) = mpsc::channel(1);
 
         // Socket read routine.
-        let recv_task_handle = tokio::spawn(async move {
+        let socket_copy = socket.clone();
+        let recv_task_handle = tokio::task::spawn(async move {
             loop {
                 let mut req_buffer = BytePacketBuffer::new();
 
-                let recv_future = socket_rx.recv_from(&mut req_buffer.buf);
+                let recv_future = socket_copy.recv_from(&mut req_buffer.buf);
                 let abort_future = recv_stop_rx.recv();
 
                 let should_abort = tokio::select! {
@@ -220,7 +220,8 @@ impl Server {
         });
 
         // Socket write routine.
-        let send_task_handle = tokio::spawn(async move {
+        let socket_copy = socket.clone();
+        let send_task_handle = tokio::task::spawn(async move {
             loop {
                 let recv_future = resp_rx.recv();
                 let abort_future = send_stop_rx.recv();
@@ -232,7 +233,7 @@ impl Server {
                     opt_response = recv_future => {
                         match opt_response {
                             Some((socket_addr, resp_data)) => {
-                                if let Err(e) = socket_tx.send_to(resp_data.as_ref(), &socket_addr).await {
+                                if let Err(e) = socket_copy.send_to(resp_data.as_ref(), &socket_addr).await {
                                     log::warn!("error sending on socket: {}", e);
                                 }
                                 false
@@ -270,7 +271,7 @@ impl Server {
                             let cloned_cfg = cfg.clone();
                             let cloned_challenge = challenge.clone();
                             let cloned_tx = resp_tx.clone();
-                            tokio::spawn(async move {
+                            tokio::task::spawn(async move {
                                 let wait_duration = Instant::now().duration_since(wait_start);
                                 log::debug!("started processing packet from {} (waited {}ms)", socket_addr.ip(), wait_duration.as_millis());
                                 let _permit_handle = concurrent_query_permit; // 0% useful, except to keep the permit alive until the end of the tokio task.
@@ -313,7 +314,7 @@ impl Server {
         }
     }
 
-    pub async fn stop(mut self) -> Result<()> {
+    pub async fn stop(self) -> Result<()> {
         log::info!("requesting to quit");
         self.handle.tx_stop.send(()).await.unwrap();
         self.handle
