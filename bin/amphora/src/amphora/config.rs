@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 const DEFAULT_SUBNET_MASK: &str = "255.255.255.0";
 const DEFAULT_SERVER_PORT: i64 = 80;
 
+const DEFAULT_KEY_LOCKS_MAX_MEMORY: i64 = 500 * 1024; // 500kb of memory for the locks, plus whatever for the string IDs themselves.
+const DEFAULT_KEY_LOCKS_LIFETIME_SECONDS: i64 = 60 * 15; // 15 minutes.
+
 /// The IP to which the directory node should redirect
 /// when referring to this storage node.
 ///
@@ -67,6 +70,9 @@ pub struct NodeSetting {
     pub redirect_ip: RedirectIP,
 
     pub blob_storage: BlobStorageImpl,
+
+    pub key_locks_max_memory: usize,
+    pub key_locks_lifetime_seconds: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -103,6 +109,12 @@ impl Config {
         loader.set_default(
             "node.db_path",
             data_dir.join("storage_db").to_string_lossy().to_string(),
+        )?;
+
+        loader.set_default("node.key_locks_max_memory", DEFAULT_KEY_LOCKS_MAX_MEMORY)?;
+        loader.set_default(
+            "node.key_locks_lifetime_seconds",
+            DEFAULT_KEY_LOCKS_LIFETIME_SECONDS,
         )?;
 
         loader.merge(

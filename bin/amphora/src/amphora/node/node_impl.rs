@@ -1,5 +1,5 @@
-use std::io;
 use std::sync::Arc;
+use std::{io, time::Duration};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -45,11 +45,17 @@ impl Storage {
 
         let index = Arc::from(sled::open(&config.node.db_path)?);
 
+        let repo = ConcurrentRepository::new(
+            repo,
+            Duration::from_secs(config.node.key_locks_lifetime_seconds),
+            config.node.key_locks_max_memory,
+        );
+
         let s = Self {
             config,
             directory: proxy,
             index,
-            repo: ConcurrentRepository::new(repo),
+            repo,
             certificates,
         };
 

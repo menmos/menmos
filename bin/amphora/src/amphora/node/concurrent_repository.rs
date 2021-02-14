@@ -9,20 +9,19 @@ use repository::{Repository, StreamInfo};
 
 use super::stringlock::StringLock;
 
-// TODO: We might want to allow configuring this.
-const KEY_LOCKS_MAX_MEMORY: usize = 500 * 1024; // 500kb of memory for the locks, plus whatever for the string IDs themselves.
-static KEY_LOCKS_LIFETIME: Duration = Duration::from_secs(60 * 15); // 15 minutes.
-
 pub struct ConcurrentRepository {
     key_locks: StringLock,
     repo: Box<dyn Repository + Send + Sync>,
 }
 
 impl ConcurrentRepository {
-    pub fn new(repo: Box<dyn Repository + Send + Sync>) -> Self {
+    pub fn new(
+        repo: Box<dyn Repository + Send + Sync>,
+        lifetime: Duration,
+        max_memory: usize,
+    ) -> Self {
         Self {
-            key_locks: StringLock::new(KEY_LOCKS_LIFETIME)
-                .with_cleanup_trigger(KEY_LOCKS_MAX_MEMORY),
+            key_locks: StringLock::new(lifetime).with_cleanup_trigger(max_memory),
             repo,
         }
     }
