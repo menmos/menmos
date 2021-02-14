@@ -371,3 +371,44 @@ fn meta_update_with_tag_removal() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn tag_case_sensivity() -> Result<()> {
+    let d = TempDir::new()?;
+    let db = sled::open(d.path())?;
+    let m = MetadataStore::new(&db)?;
+
+    m.insert(0, &BlobMeta::file("alpha").with_tag("Bing"))?;
+    m.insert(1, &BlobMeta::file("beta").with_tag("bing"))?;
+
+    assert_eq!(m.load_tag("BING")?, bitvec![1, 1]);
+
+    Ok(())
+}
+
+#[test]
+fn kv_field_case_sensitivity() -> Result<()> {
+    let d = TempDir::new()?;
+    let db = sled::open(d.path())?;
+    let m = MetadataStore::new(&db)?;
+
+    m.insert(0, &BlobMeta::file("alpha").with_meta("Bing", "bong"))?;
+    m.insert(1, &BlobMeta::file("beta").with_meta("bing", "BOng"))?;
+
+    assert_eq!(m.load_key_value("BING", "BONG")?, bitvec![1, 1]);
+
+    Ok(())
+}
+
+#[test]
+fn parents_case_sensitivity() -> Result<()> {
+    let d = TempDir::new()?;
+    let db = sled::open(d.path())?;
+    let m = MetadataStore::new(&db)?;
+
+    m.insert(0, &BlobMeta::file("alpha").with_parent("asdf"))?;
+    m.insert(1, &BlobMeta::file("beta").with_parent("Asdf"))?;
+
+    assert_eq!(m.load_children("ASDF")?, bitvec![1, 1]);
+    Ok(())
+}

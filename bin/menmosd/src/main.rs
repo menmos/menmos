@@ -10,7 +10,13 @@ use menmosd::{Config, Server};
 
 #[tokio::main]
 async fn main_loop(cfg: &Option<PathBuf>) -> Result<()> {
-    let cfg = Config::from_file(cfg)?;
+    let cfg = match Config::from_file(cfg) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("error loading configuration: {}", e);
+            return Err(e);
+        }
+    };
 
     logging::init_logger(&cfg.log_config_file)?;
 

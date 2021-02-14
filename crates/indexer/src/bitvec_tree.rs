@@ -42,12 +42,13 @@ impl BitvecTree {
     }
 
     pub fn insert(&self, key: &str, serialized_idx: &[u8]) -> Result<()> {
-        self.tree.merge(key.as_bytes(), serialized_idx)?;
+        self.tree
+            .merge(key.to_lowercase().as_bytes(), serialized_idx)?;
         Ok(())
     }
 
     pub fn load(&self, key: &str) -> Result<BitVec> {
-        if let Some(ivec) = self.tree.get(key.as_bytes())? {
+        if let Some(ivec) = self.tree.get(key.to_lowercase().as_bytes())? {
             let bv: BitVec = bincode::deserialize_from(ivec.as_ref())?;
             Ok(bv)
         } else {
