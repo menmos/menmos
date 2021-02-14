@@ -1571,7 +1571,7 @@ dependencies = [
  "menmos-client",
  "rood",
  "serde 1.0.123",
- "tokio 0.2.25",
+ "tokio 1.2.0",
  "walkdir",
 ]
 
