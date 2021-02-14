@@ -19,6 +19,7 @@ path = "src/menmosd/lib.rs"
 amphora = {path = "../amphora"}
 menmos-client = {path = "../../crates/menmos-client"}
 portpicker = "0.1"
+reqwest = {version = "0.11", features = ["json", "stream"]}
 tempfile = "3.2"
 
 [dependencies]
@@ -47,7 +48,6 @@ log = "0.4"
 log4rs = "1"
 mime = "0.3"
 rapidquery = {path = "../../crates/rapidquery", features=["bitvec_span"]}
-reqwest = {version = "0.11", features = ["json", "stream"]}
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 sled = {git = "https://github.com/spacejam/sled", branch = "main"}
