@@ -31,7 +31,7 @@ where
         let n_cloned = n.clone();
         let join_handle = match cfg.server {
             ServerSetting::HTTPS(https_cfg) => spawn(async move {
-                match use_tls(n_cloned, config_cloned.clone(), https_cfg).await {
+                match use_tls(n_cloned, config_cloned.clone(), https_cfg, stop_rx).await {
                     Ok(_) => {}
                     Err(e) => {
                         log::error!("async error: {}", e)

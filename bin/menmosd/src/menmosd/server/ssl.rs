@@ -13,7 +13,10 @@ use futures::future::{AbortHandle, Abortable};
 use interface::{message::directory_node::CertificateInfo, DirectoryNode};
 
 use tokio::task::spawn;
-use tokio::{sync::oneshot, task::JoinHandle};
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+};
 
 use warp::Filter;
 
@@ -21,18 +24,18 @@ use x509_parser::pem::Pem;
 
 use crate::{config::HTTPSParameters, server::filters, Config};
 
-async fn interruptible_delay(dur: Duration) -> bool {
+async fn interruptible_delay(dur: Duration, stop_rx: &mut mpsc::Receiver<()>) -> bool {
     let delay = tokio::time::sleep(dur);
     tokio::pin!(delay);
 
-    let ctrl_c_signal = tokio::signal::ctrl_c();
+    let stop_signal = stop_rx.recv();
 
     tokio::select! {
         _ = &mut delay => {
             false
         }
-        _ = ctrl_c_signal => {
-            log::info!("interruptible delay received SIGINT");
+        _ = stop_signal => {
+            log::info!("interruptible delay received stop signal");
             true
         }
     }
@@ -65,7 +68,12 @@ async fn wait_for_server_stop(http_handle: JoinHandle<()>, https_handle: JoinHan
     }
 }
 
-pub async fn use_tls<N>(n: Arc<N>, node_cfg: Config, cfg: HTTPSParameters) -> Result<()>
+pub async fn use_tls<N>(
+    n: Arc<N>,
+    node_cfg: Config,
+    cfg: HTTPSParameters,
+    mut stop_rx: mpsc::Receiver<()>,
+) -> Result<()>
 where
     N: DirectoryNode + Send + Sync + 'static,
 {
@@ -191,7 +199,7 @@ where
         let should_quit;
         if let Some(time_to_renew) = time_to_expiration(&pem_name).and_then(|x| x.checked_sub(TMIN))
         {
-            should_quit = interruptible_delay(time_to_renew).await;
+            should_quit = interruptible_delay(time_to_renew, &mut stop_rx).await;
             tx.send(()).unwrap();
             tx80.send(()).unwrap();
             wait_for_server_stop(http_handle, https_handle).await;
@@ -199,13 +207,13 @@ where
             // Presumably we already failed to renew, so let's
             // just keep using our current certificate as long
             // as we can!
-            should_quit = interruptible_delay(time_to_renew).await;
+            should_quit = interruptible_delay(time_to_renew, &mut stop_rx).await;
             tx.send(()).unwrap();
             tx80.send(()).unwrap();
             wait_for_server_stop(http_handle, https_handle).await;
         } else {
             log::warn!("looks like there is an issue with certificate refresh - waiting an hour before retrying...");
-            should_quit = interruptible_delay(Duration::from_secs(60 * 60)).await;
+            should_quit = interruptible_delay(Duration::from_secs(60 * 60), &mut stop_rx).await;
         }
 
         if should_quit {
