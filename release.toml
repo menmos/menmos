@@ -1,0 +1,4 @@
+consolidate-commits = true
+disable-publish = true
+disable-tag = true
+tag-prefix = ""
