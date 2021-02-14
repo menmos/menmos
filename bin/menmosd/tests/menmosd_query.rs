@@ -3,6 +3,8 @@ mod fixtures;
 
 use anyhow::Result;
 use menmos_client::{Meta, Query, Type};
+use reqwest::StatusCode;
+use serde::Serialize;
 
 #[tokio::test]
 async fn query_pagination() -> Result<()> {
@@ -35,6 +37,30 @@ async fn query_pagination() -> Result<()> {
             }
         }
     }
+
+    cluster.stop_all().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn query_bad_request() -> Result<()> {
+    let cluster = fixtures::Menmos::new().await?;
+
+    #[derive(Serialize)]
+    struct BadQuery {
+        ya: String,
+    }
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&format!("{}/query", &cluster.directory_url))
+        .header("authorization", &cluster.directory_password)
+        .json(&BadQuery { ya: "yeet".into() })
+        .send()
+        .await?;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
     cluster.stop_all().await?;
 

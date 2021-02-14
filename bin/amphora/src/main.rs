@@ -18,7 +18,14 @@ pub struct CLIMain {
 impl CLIMain {
     #[tokio::main]
     pub async fn run(self) -> Result<()> {
-        let cfg = Config::new(&self.cfg)?;
+        let cfg = match Config::new(&self.cfg) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                eprintln!("error loading configuration: {}", e);
+                return Err(e);
+            }
+        };
+
         logging::init_logger(&cfg.log_config_file)?;
 
         let server = Server::new(cfg);

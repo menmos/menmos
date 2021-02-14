@@ -13,6 +13,8 @@ use menmosd::config::{HTTPParameters, ServerSetting};
 use menmosd::{Config, Directory, Server};
 use tempfile::{NamedTempFile, TempDir};
 
+const DIRECTORY_PASSWORD: &str = "password";
+
 static INIT: Once = Once::new();
 
 fn init_logger() {
@@ -33,6 +35,8 @@ pub struct Menmos {
     directory_port: u16,
     pub root_directory: TempDir,
 
+    pub directory_url: String,
+    pub directory_password: String,
     pub client: Client,
 }
 
@@ -54,13 +58,16 @@ impl Menmos {
 
         let dir_server = Server::new(cfg, node).await?;
 
-        let client = Client::new(format!("http://localhost:{}", port), "password")?;
+        let directory_url = format!("http://localhost:{}", port);
+        let client = Client::new(&directory_url, DIRECTORY_PASSWORD)?;
 
         Ok(Self {
             directory: dir_server,
             directory_port: port,
             amphorae: Vec::new(),
             root_directory,
+            directory_url,
+            directory_password: DIRECTORY_PASSWORD.into(),
             client,
         })
     }
