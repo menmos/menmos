@@ -38,13 +38,14 @@ fn prepare_stream(
         .map(|v| v.to_string())
         .ok_or(apikit::reject::BadRequest)?;
 
-    let stream =
-        MultipartStream::new(boundary, body.map_ok(|mut buf| buf.to_bytes())).try_flatten();
+    let stream = MultipartStream::new(
+        boundary,
+        body.map_ok(|mut buf| buf.copy_to_bytes(buf.remaining())),
+    )
+    .try_flatten();
 
-    let io_stream = stream.map(|r| {
-        r.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
-            .map(|mut e| e.to_bytes())
-    });
+    let io_stream =
+        stream.map(|r| r.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string())));
 
     Ok(Box::from(io_stream))
 }

@@ -35,7 +35,7 @@ async fn block_until_cert_change<N: StorageNode>(
             break;
         }
 
-        tokio::time::delay_for(Duration::from_secs(30)).await;
+        tokio::time::sleep(Duration::from_secs(30)).await;
     }
 }
 
@@ -62,7 +62,7 @@ impl RebootableServer {
         let storage_node = Arc::from(make_node(cfg.clone(), certs.clone()).await?);
 
         // Start the periodic registration task.
-        let (registration_handle, mut registration_stop) = {
+        let (registration_handle, registration_stop) = {
             let node_cloned = storage_node.clone();
             let (stop_tx, mut stop_rx) = tokio::sync::mpsc::channel(1);
             let job_handle = tokio::task::spawn(async move {
@@ -77,7 +77,8 @@ impl RebootableServer {
                     }
 
                     let stop_future = stop_rx.recv();
-                    let delay = tokio::time::delay_for(Duration::from_secs(20));
+                    let delay = tokio::time::sleep(Duration::from_secs(20));
+                    tokio::pin!(delay);
 
                     let should_stop = tokio::select! {
                         _ = delay => {
@@ -151,7 +152,7 @@ impl RebootableServer {
         }
     }
 
-    pub async fn stop(mut self) -> Result<()> {
+    pub async fn stop(self) -> Result<()> {
         self.stop_tx.send(()).await?;
         self.handle.await?;
         Ok(())
