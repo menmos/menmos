@@ -1,15 +1,18 @@
 use anyhow::Result;
 
+mod concurrent_repository;
 pub mod constants;
 mod directory_proxy;
 mod node_impl;
 mod node_info;
 mod rebuild;
+mod stringlock;
 
 use interface::message::directory_node::CertificateInfo;
 pub use node_impl::Storage;
 
 use crate::{BlobStorageImpl, Config};
+use concurrent_repository::ConcurrentRepository;
 
 pub async fn make_node(cfg: Config, certs: Option<CertificateInfo>) -> Result<Storage> {
     let repo: Box<dyn repository::Repository + Send + Sync> = match &cfg.node.blob_storage {
