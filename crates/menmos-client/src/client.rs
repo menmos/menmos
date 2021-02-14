@@ -199,7 +199,7 @@ impl Client {
         let new_location = response
             .headers()
             .get(header::LOCATION)
-            .ok_or_else(|| ClientError::MissingRedirect)?;
+            .ok_or(ClientError::MissingRedirect)?;
 
         let new_url = String::from_utf8_lossy(new_location.as_bytes());
         log::debug!("redirect to {}", new_url);

@@ -1,5 +1,5 @@
-use std::io;
 use std::sync::Arc;
+use std::{io, time::Duration};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -11,13 +11,13 @@ use interface::{
 use repository::{Repository, StreamInfo};
 use tokio::sync::Mutex;
 
-use super::{directory_proxy::DirectoryProxy, node_info::get_info, rebuild, Config};
+use super::{
+    directory_proxy::DirectoryProxy, node_info::get_info, rebuild, ConcurrentRepository, Config,
+};
 
 type RepoBox = Box<dyn Repository + Send + Sync>;
 
 type ConcurrentCertInfo = Arc<Mutex<Option<CertificateInfo>>>;
-
-// TODO: Refactor pls.
 
 pub struct Storage {
     config: Config,
@@ -27,7 +27,7 @@ pub struct Storage {
     directory: Arc<DirectoryProxy>,
 
     index: Arc<sled::Db>,
-    repo: RepoBox,
+    repo: ConcurrentRepository,
 }
 
 impl Storage {
@@ -44,6 +44,12 @@ impl Storage {
         let certificates = Arc::from(Mutex::from(certs));
 
         let index = Arc::from(sled::open(&config.node.db_path)?);
+
+        let repo = ConcurrentRepository::new(
+            repo,
+            Duration::from_secs(config.node.key_locks_lifetime_seconds),
+            config.node.key_locks_max_memory,
+        );
 
         let s = Self {
             config,
@@ -124,15 +130,6 @@ impl StorageNode for Storage {
         Ok(())
     }
 
-    async fn update_meta(&self, blob_id: String, meta: BlobMeta) -> Result<()> {
-        self.index
-            .insert(blob_id.as_bytes(), bincode::serialize(&meta)?)?;
-        self.directory
-            .index_blob(&blob_id, meta, &self.config.node.name)
-            .await?;
-        Ok(())
-    }
-
     async fn write(&self, id: String, range: Range, body: Bytes) -> Result<()> {
         // Write the diff
         let new_blob_size = self.repo.write(id.clone(), range, body).await?;
@@ -179,6 +176,15 @@ impl StorageNode for Storage {
             total_blob_size: stream_info.total_blob_size,
             meta,
         })
+    }
+
+    async fn update_meta(&self, blob_id: String, meta: BlobMeta) -> Result<()> {
+        self.index
+            .insert(blob_id.as_bytes(), bincode::serialize(&meta)?)?;
+        self.directory
+            .index_blob(&blob_id, meta, &self.config.node.name)
+            .await?;
+        Ok(())
     }
 
     async fn delete(&self, blob_id: String) -> Result<()> {
