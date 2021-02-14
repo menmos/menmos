@@ -2,15 +2,14 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
-use lfan::preconfig::LRUCache;
+use lfan::preconfig::concurrent::LRUCache;
 use rusoto_s3::{GetObjectRequest, S3Client, S3};
-use tokio::sync::Mutex;
 use tokio::{fs, io::AsyncWriteExt};
 
 pub struct FileCache {
     bucket: String,
     client: S3Client,
-    file_path_cache: Mutex<LRUCache<String, PathBuf>>,
+    file_path_cache: LRUCache<String, PathBuf>,
     root_path: PathBuf,
 }
 
@@ -27,7 +26,7 @@ impl FileCache {
             std::fs::create_dir_all(&root_path)?;
         }
 
-        let file_path_cache = Mutex::from(LRUCache::new(max_nb_of_files));
+        let file_path_cache = LRUCache::new(max_nb_of_files);
 
         Ok(Self {
             bucket: bucket.into(),
@@ -38,8 +37,7 @@ impl FileCache {
     }
 
     async fn get_from_cache<S: AsRef<str>>(&self, blob_id: S) -> Option<PathBuf> {
-        let mut cache_lock = self.file_path_cache.lock().await;
-        if let Some(blob_path) = cache_lock.get(blob_id.as_ref()) {
+        if let Some(blob_path) = self.file_path_cache.get(blob_id.as_ref()).await {
             Some(blob_path.clone())
         } else {
             None
@@ -83,9 +81,10 @@ impl FileCache {
 
         let blob_path = self.download_blob(&blob_id).await?;
 
-        let mut cache_lock = self.file_path_cache.lock().await;
-        let (was_inserted, eviction_victim_maybe) =
-            cache_lock.insert(blob_id.as_ref().to_string(), blob_path.clone());
+        let (was_inserted, eviction_victim_maybe) = self
+            .file_path_cache
+            .insert(blob_id.as_ref().to_string(), blob_path.clone())
+            .await;
 
         if let Some(victim) = eviction_victim_maybe {
             // If a key was evicted from the cache, delete it from disk.

@@ -9,4 +9,14 @@ pub mod preconfig {
     use super::Cache;
 
     pub type LRUCache<K, V> = Cache<K, V, AlwaysInsertPolicy, LRUEvictionPolicy<K>>;
+
+    #[cfg(feature = "async")]
+    pub mod concurrent {
+
+        use crate::cache::ConcurrentCache;
+        use crate::policy::eviction::LRUEvictionPolicy;
+        use crate::policy::insertion::AlwaysInsertPolicy;
+
+        pub type LRUCache<K, V> = ConcurrentCache<K, V, AlwaysInsertPolicy, LRUEvictionPolicy<K>>;
+    }
 }
