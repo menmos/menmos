@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
-use lfan::preconfig::concurrent::LRUCache;
+use lfan::preconfig::concurrent::{new_lru_cache, LRUCache};
 use rusoto_s3::{GetObjectRequest, S3Client, S3};
 use tokio::{fs, io::AsyncWriteExt};
 
@@ -26,7 +26,7 @@ impl FileCache {
             std::fs::create_dir_all(&root_path)?;
         }
 
-        let file_path_cache = LRUCache::new(max_nb_of_files);
+        let file_path_cache = new_lru_cache(max_nb_of_files);
 
         Ok(Self {
             bucket: bucket.into(),

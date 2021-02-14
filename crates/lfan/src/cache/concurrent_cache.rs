@@ -3,31 +3,22 @@ use std::hash::Hash;
 
 use tokio::sync::Mutex;
 
-use crate::Cache;
-
-use super::policy::{EvictionPolicy, InsertionPolicy};
+use super::cache::Cache;
 
 #[derive(Default)]
-pub struct ConcurrentCache<K, V, IP, EP>
-where
-    K: Hash + Eq,
-    V: Clone,
-    IP: Default + InsertionPolicy<K>,
-    EP: Default + EvictionPolicy<K>,
-{
-    cache: Mutex<Cache<K, V, IP, EP>>,
+pub struct ConcurrentCache<C> {
+    cache: Mutex<C>,
 }
 
-impl<K, V, IP, EP> ConcurrentCache<K, V, IP, EP>
+impl<C, K, V> ConcurrentCache<C>
 where
+    C: Cache<Key = K, Value = V>,
     K: Hash + Eq + std::fmt::Debug,
     V: Clone,
-    IP: Default + InsertionPolicy<K>,
-    EP: Default + EvictionPolicy<K>,
 {
-    pub fn new(maximum_size: usize) -> Self {
+    pub fn new(cache: C) -> Self {
         Self {
-            cache: Mutex::from(Cache::new(maximum_size)),
+            cache: Mutex::from(cache),
         }
     }
 

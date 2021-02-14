@@ -1,21 +1,26 @@
+use std::time::Duration;
+
 use anyhow::Result;
 use bytes::Bytes;
-use lfan::preconfig::concurrent::LRUCache;
+use lfan::preconfig::concurrent::{new_ttl_cache, TTLLRUCache};
 use menmos_client::{Client, Meta, Query, QueryResponse};
+
+static META_TTL: Duration = Duration::from_secs(30 * 60); // 30 min.
+static QUERY_TTL: Duration = Duration::from_secs(30);
 
 pub struct CachedClient {
     client: Client,
 
-    meta_cache: LRUCache<String, Option<Meta>>,
-    query_cache: LRUCache<Query, QueryResponse>,
+    meta_cache: TTLLRUCache<String, Option<Meta>>,
+    query_cache: TTLLRUCache<Query, QueryResponse>,
 }
 
 impl CachedClient {
     pub fn new(client: Client) -> Self {
         Self {
             client,
-            meta_cache: LRUCache::new(10000),
-            query_cache: LRUCache::new(50),
+            meta_cache: new_ttl_cache(10000, META_TTL),
+            query_cache: new_ttl_cache(50, QUERY_TTL),
         }
     }
 
