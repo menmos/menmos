@@ -101,12 +101,26 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn locking_same_key_does_not_add_again_to_map() {}
+    async fn locking_same_key_does_not_add_again_to_map() {
+        let lock_map = StringLock::new(Duration::from_secs(1));
+
+        for _ in 0..5 {
+            let mtx = lock_map.get_lock("always_same_key").await;
+            let _r_guard = mtx.read().await;
+        }
+
+        {
+            let guard = lock_map.data.lock().await;
+            assert_eq!(guard.len(), 1);
+        }
+    }
 
     #[tokio::test]
     async fn cleanup_triggered_when_capacity_exceeded() {
-        let lock_map =
-            StringLock::new(Duration::from_millis(10)).with_cleanup_trigger(TOKIO_MUTEX_SIZE * 5);
+        const TTL_MS: u64 = 10;
+
+        let lock_map = StringLock::new(Duration::from_millis(TTL_MS))
+            .with_cleanup_trigger(TOKIO_MUTEX_SIZE * 5);
 
         for i in 0..6 {
             let mtx = lock_map.get_lock(format!("key_{}", i)).await;
@@ -118,7 +132,7 @@ mod tests {
             assert_eq!(guard.len(), 6);
         }
 
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::time::sleep(Duration::from_millis(TTL_MS)).await;
 
         let _lock = lock_map.get_lock("key_that_will_trigger_cleanup").await;
         {
