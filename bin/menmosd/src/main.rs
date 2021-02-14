@@ -6,15 +6,15 @@ use anyhow::Result;
 
 use clap::Clap;
 
-use menmos::{Config, Server};
+use menmosd::{Config, Server};
 
 #[tokio::main]
 async fn main_loop(cfg: &Option<PathBuf>) -> Result<()> {
-    let cfg = Config::new(cfg)?;
+    let cfg = Config::from_file(cfg)?;
 
     logging::init_logger(&cfg.log_config_file)?;
 
-    let s = Server::new(cfg.clone(), menmos::make_node(&cfg)?).await?;
+    let s = Server::new(cfg.clone(), menmosd::make_node(&cfg)?).await?;
     tokio::signal::ctrl_c().await?;
     s.stop().await.unwrap();
 

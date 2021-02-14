@@ -7,16 +7,17 @@ use bytes::{Buf, Bytes};
 
 use futures::{Stream, TryStreamExt};
 
+use header::HeaderName;
 use interface::{
-    message::{directory_node::Query, storage_node},
-    BlobMeta, GetMetaResponse, QueryResponse,
+    message::{directory_node::Query, storage_node, MessageResponse},
+    BlobMeta, GetMetaResponse, ListStorageNodesResponse, QueryResponse,
 };
 
 use hyper::{header, StatusCode};
 
 use mpart_async::client::MultipartRequest;
 
-use reqwest::Client as ReqwestClient;
+use reqwest::{Client as ReqwestClient, Request};
 
 use reqwest::Body;
 
@@ -63,6 +64,12 @@ pub enum ClientError {
     #[snafu(display("missing profile '{}'", name))]
     MissingProfile { name: String },
 
+    #[snafu(display("did not get a redirect when expected"))]
+    MissingRedirect,
+
+    #[snafu(display("too many retries"))]
+    TooManyRetries,
+
     #[snafu(display("unknown error"))]
     UnknownError,
 }
@@ -81,6 +88,15 @@ async fn extract_error(response: reqwest::Response) -> ClientError {
     match extract_body::<ErrorResponse>(response).await {
         Ok(e) => ClientError::ServerReturnedError { message: e.error },
         Err(_) => ClientError::UnknownError,
+    }
+}
+
+async fn extract<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> {
+    let status = response.status();
+    if status.is_success() {
+        extract_body(response).await
+    } else {
+        Err(extract_error(response).await)
     }
 }
 
@@ -168,49 +184,58 @@ impl Client {
         }
     }
 
+    async fn request_with_redirect(&self, request: Request) -> Result<String> {
+        let response = self
+            .client
+            .execute(request)
+            .await
+            .context(RequestExecutionError)?;
+
+        ensure!(
+            response.status() == StatusCode::TEMPORARY_REDIRECT,
+            MissingRedirect
+        );
+
+        let new_location = response
+            .headers()
+            .get(header::LOCATION)
+            .ok_or_else(|| ClientError::MissingRedirect)?;
+
+        let new_url = String::from_utf8_lossy(new_location.as_bytes());
+        log::debug!("redirect to {}", new_url);
+        return Ok(new_url.to_string());
+    }
+
     pub async fn create_empty(&self, meta: BlobMeta) -> Result<String> {
-        let mut iter_count: u16 = 0;
-        let mut url = format!("{}/blob", self.host);
+        let url = format!("{}/blob", self.host);
         let meta_b64 = encode_metadata(meta)?;
 
-        loop {
-            ensure!(iter_count <= 10, RedirectLimitExceeded { limit: 10_u32 });
-            iter_count += 1;
+        let redirect_req = self
+            .client
+            .post(&url)
+            .header(header::AUTHORIZATION, &self.admin_password)
+            .header(HeaderName::from_static("x-blob-meta"), meta_b64.clone())
+            .build()
+            .context(RequestBuildError)?;
 
-            let request = self
-                .client
-                .post(&url)
-                .header(header::AUTHORIZATION, &self.admin_password)
-                .header(
-                    header::HeaderName::from_static("x-blob-meta"),
-                    meta_b64.clone(),
-                )
-                .build()
-                .context(RequestBuildError)?;
+        let redirect_location = self.request_with_redirect(redirect_req).await?;
 
-            let response = self
-                .client
-                .execute(request)
-                .await
-                .context(RequestExecutionError)?;
+        let request = self
+            .client
+            .post(&redirect_location)
+            .header(header::AUTHORIZATION, &self.admin_password)
+            .header(HeaderName::from_static("x-blob-meta"), meta_b64)
+            .build()
+            .context(RequestBuildError)?;
 
-            let status = response.status();
-            if status == StatusCode::TEMPORARY_REDIRECT {
-                if let Some(new_location) = response.headers().get(header::LOCATION) {
-                    let new_url = String::from_utf8_lossy(new_location.as_bytes());
-                    url = new_url.to_string();
-                    log::debug!("redirect to {}", url);
-                }
-            } else if status.is_success() {
-                // Our upload got through.
-                // Deserialize the body to get the content ID.
-                let put_response: storage_node::PutResponse = extract_body(response).await?;
-                return Ok(put_response.id);
-            } else {
-                // An error occurred.
-                return Err(extract_error(response).await);
-            }
-        }
+        let response = self
+            .client
+            .execute(request)
+            .await
+            .context(RequestExecutionError)?;
+
+        let put_response: storage_node::PutResponse = extract(response).await?;
+        Ok(put_response.id)
     }
 
     async fn push_internal<P: AsRef<Path>>(
@@ -226,39 +251,69 @@ impl Client {
             }
         );
 
-        let mut iter_count: u16 = 0;
         let mut url = base_url;
         let meta_b64 = encode_metadata(meta)?;
 
-        loop {
-            ensure!(iter_count <= 10, RedirectLimitExceeded { limit: 10_u32 });
-            iter_count += 1;
+        let initial_redirect_request = self
+            .client
+            .post(&url)
+            .header(header::AUTHORIZATION, &self.admin_password)
+            .header(
+                header::HeaderName::from_static("x-blob-meta"),
+                meta_b64.clone(),
+            )
+            .build()
+            .context(RequestBuildError)?;
 
-            let request = self.prepare_push_request(&url, path.as_ref(), meta_b64.clone())?;
+        url = self.request_with_redirect(initial_redirect_request).await?;
+        let request = self.prepare_push_request(&url, path.as_ref(), meta_b64)?;
+        let response = self
+            .client
+            .execute(request)
+            .await
+            .context(RequestExecutionError)?;
 
-            let response = self
-                .client
-                .execute(request)
-                .await
-                .context(RequestExecutionError)?;
+        let put_response: storage_node::PutResponse = extract(response).await?;
+        Ok(put_response.id)
+    }
 
-            let status = response.status();
-            if status == StatusCode::TEMPORARY_REDIRECT {
-                if let Some(new_location) = response.headers().get(header::LOCATION) {
-                    let new_url = String::from_utf8_lossy(new_location.as_bytes());
-                    url = new_url.to_string();
-                    log::debug!("redirect to {}", url);
-                }
-            } else if status.is_success() {
-                // Our upload got through.
-                // Deserialize the body to get the content ID.
-                let put_response: storage_node::PutResponse = extract_body(response).await?;
-                return Ok(put_response.id);
-            } else {
-                // An error occurred.
-                return Err(extract_error(response).await);
-            }
+    pub async fn health(&self) -> Result<String> {
+        let url = format!("{}/health", self.host);
+        let req = self.client.get(&url).build().context(RequestBuildError)?;
+
+        let response = self
+            .client
+            .execute(req)
+            .await
+            .context(RequestExecutionError)?;
+
+        let status = response.status();
+
+        if status.is_success() {
+            let msg: MessageResponse = extract_body(response).await?;
+            Ok(msg.message)
+        } else {
+            Err(extract_error(response).await)
         }
+    }
+
+    pub async fn list_storage_nodes(&self) -> Result<ListStorageNodesResponse> {
+        let url = format!("{}/node/storage", self.host);
+
+        let request = self
+            .client
+            .get(&url)
+            .header("authorization", &self.admin_password)
+            .build()
+            .context(RequestBuildError)?;
+
+        let response = self
+            .client
+            .execute(request)
+            .await
+            .context(RequestExecutionError)?;
+
+        extract_body(response).await
     }
 
     pub async fn push<P: AsRef<Path>>(&self, path: P, meta: BlobMeta) -> Result<String> {
@@ -277,42 +332,36 @@ impl Client {
     }
 
     pub async fn update_meta(&self, blob_id: &str, meta: BlobMeta) -> Result<()> {
-        let mut iter_count: u16 = 0;
-        let mut url = format!("{}/blob/{}/metadata", self.host, blob_id);
+        let url = format!("{}/blob/{}/metadata", self.host, blob_id);
 
-        loop {
-            ensure!(iter_count <= 10, RedirectLimitExceeded { limit: 10_u32 });
-            iter_count += 1;
+        let request = self
+            .client
+            .post(&url)
+            .header(header::AUTHORIZATION, &self.admin_password)
+            .json(&meta)
+            .build()
+            .context(RequestBuildError)?;
 
-            let request = self
-                .client
-                .post(&url)
-                .header(header::AUTHORIZATION, &self.admin_password)
-                .json(&meta)
-                .build()
-                .context(RequestBuildError)?;
+        let redirect_location = self.request_with_redirect(request).await?;
 
-            let response = self
-                .client
-                .execute(request)
-                .await
-                .context(RequestExecutionError)?;
+        let request = self
+            .client
+            .post(&redirect_location)
+            .header(header::AUTHORIZATION, &self.admin_password)
+            .json(&meta)
+            .build()
+            .context(RequestBuildError)?;
 
-            let status = response.status();
-            if status == StatusCode::TEMPORARY_REDIRECT {
-                if let Some(new_location) = response.headers().get(header::LOCATION) {
-                    let new_url = String::from_utf8_lossy(new_location.as_bytes());
-                    url = new_url.to_string();
-                    log::debug!("redirect to {}", url);
-                }
-            } else if status.is_success() {
-                // Our upload got through.
-                // Deserialize the body to get the content ID.
-                return Ok(());
-            } else {
-                // An error occurred.
-                return Err(extract_error(response).await);
-            }
+        let response = self
+            .client
+            .execute(request)
+            .await
+            .context(RequestExecutionError)?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(extract_error(response).await)
         }
     }
 
@@ -389,59 +438,48 @@ impl Client {
             .await
             .context(RequestExecutionError)?;
 
-        let status = response.status();
+        let resp: GetMetaResponse = extract(response).await?;
+        Ok(resp.meta)
+    }
 
-        if status.is_success() {
-            let resp: GetMetaResponse = extract_body(response).await?;
-            Ok(resp.meta)
+    pub async fn get_file(&self, blob_id: &str) -> Result<impl Stream<Item = Result<Bytes>>> {
+        let url = format!("{}/blob/{}", self.host, blob_id);
+
+        let redirect_request = self
+            .client
+            .get(&url)
+            .header(header::AUTHORIZATION, &self.admin_password)
+            .build()
+            .context(RequestBuildError)?;
+
+        let redirect_location = self.request_with_redirect(redirect_request).await?;
+
+        let request = self
+            .client
+            .get(&redirect_location)
+            .header(header::AUTHORIZATION, &self.admin_password)
+            .build()
+            .context(RequestBuildError)?;
+
+        let response = self
+            .client
+            .execute(request)
+            .await
+            .context(RequestExecutionError)?;
+
+        if response.status().is_success() {
+            Ok(response
+                .bytes_stream()
+                .map_err(|_| ClientError::UnknownError))
         } else {
             Err(extract_error(response).await)
         }
     }
 
-    pub async fn get_file(&self, blob_id: &str) -> Result<impl Stream<Item = Result<Bytes>>> {
-        let mut iter_count: u16 = 0;
-        let mut url = format!("{}/blob/{}", self.host, blob_id);
-
-        loop {
-            ensure!(iter_count <= 10, RedirectLimitExceeded { limit: 10_u32 });
-            iter_count += 1;
-
-            let request = self
-                .client
-                .get(&url)
-                .header(header::AUTHORIZATION, &self.admin_password)
-                .build()
-                .context(RequestBuildError)?;
-
-            let response = self
-                .client
-                .execute(request)
-                .await
-                .context(RequestExecutionError)?;
-
-            let status = response.status();
-            if status == StatusCode::TEMPORARY_REDIRECT {
-                if let Some(new_location) = response.headers().get(header::LOCATION) {
-                    let new_url = String::from_utf8_lossy(new_location.as_bytes());
-                    url = new_url.to_string();
-                    log::debug!("redirect to {}", url);
-                }
-            } else if status.is_success() {
-                // Our upload got through.
-                // Deserialize the body to get the content ID.
-                return Ok(response
-                    .bytes_stream()
-                    .map_err(|_| ClientError::UnknownError));
-            } else {
-                // An error occurred.
-                return Err(extract_error(response).await);
-            }
-        }
-    }
-
     // TODO: This API might be improved by using a bytes buffer instead of a raw vec.
     // TODO: Use a rust range instead of a tuple
+    // TODO: Return a stream of Bytes buffers.
+    // Note: range is end-inclusive here. TODO: Clarify when ranges are inclusive vs. exclusive.
     pub async fn read_range(&self, blob_id: &str, range: (u64, u64)) -> Result<Vec<u8>> {
         let mut iter_count: u16 = 0;
         let mut url = format!("{}/blob/{}", self.host, blob_id);
@@ -500,14 +538,7 @@ impl Client {
             .await
             .context(RequestExecutionError)?;
 
-        let status = response.status();
-
-        if status.is_success() {
-            let query_response: QueryResponse = extract_body(response).await?;
-            Ok(query_response)
-        } else {
-            Err(extract_error(response).await)
-        }
+        extract(response).await
     }
 
     pub async fn delete(&self, blob_id: String) -> Result<()> {

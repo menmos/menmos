@@ -18,13 +18,33 @@ jobs:
 
       - uses: Swatinem/rust-cache@v1
 
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-
       - name: Lint
         uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: --all-features
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --lib
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install libfuse
+        run: sudo apt-get update && sudo apt-get install -y libfuse-dev
+
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          arg: --test '*'

@@ -4,15 +4,12 @@ lint:
     cargo clippy
 
 unit:
-    cargo test --workspace
+    cargo test --workspace --lib
 
 integration +args="":
-    #!/bin/bash
-    cargo build --workspace
-    cd python
-    poetry install
-    poetry run pytest -v {{args}}
+    cargo test --workspace --test '*'
 
 test:
+    @just lint
     @just unit
     @just integration
