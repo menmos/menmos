@@ -44,7 +44,7 @@ pub async fn recover(err: warp::Rejection) -> Result<impl warp::Reply, Infallibl
         Ok(reply::error(MESSAGE_BAD_REQUEST, StatusCode::BAD_REQUEST))
     } else if let Some(InternalServerError { message }) = err.find() {
         Ok(reply::error(message, StatusCode::INTERNAL_SERVER_ERROR))
-    } else if let Some(e) = err.find::<warp::filters::body::BodyDeserializeError>() {
+    } else if let Some(_e) = err.find::<warp::filters::body::BodyDeserializeError>() {
         Ok(reply::error(MESSAGE_BAD_REQUEST, StatusCode::BAD_REQUEST))
     } else {
         log::warn!("unhandled rejection: {:?}", err);
