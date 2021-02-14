@@ -1,3 +1,7 @@
+docker:
+    docker build -t menmos/menmosd --target menmosd .
+    docker build -t menmos/amphora --target amphora .
+
 lint:
     rm -rf target
     cargo check
