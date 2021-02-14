@@ -83,3 +83,47 @@ impl StringLock {
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn basic_get_works() {
+        let lock_map = StringLock::new(Duration::from_secs(1));
+        {
+            let mtx = lock_map.get_lock("mykey").await;
+            let _r_guard = mtx.read().await;
+        }
+
+        let guard = lock_map.data.lock().await;
+        assert_eq!(guard.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn locking_same_key_does_not_add_again_to_map() {}
+
+    #[tokio::test]
+    async fn cleanup_triggered_when_capacity_exceeded() {
+        let lock_map =
+            StringLock::new(Duration::from_millis(10)).with_cleanup_trigger(TOKIO_MUTEX_SIZE * 5);
+
+        for i in 0..6 {
+            let mtx = lock_map.get_lock(format!("key_{}", i)).await;
+            let _r_guard = mtx.read().await;
+        }
+
+        {
+            let guard = lock_map.data.lock().await;
+            assert_eq!(guard.len(), 6);
+        }
+
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        let _lock = lock_map.get_lock("key_that_will_trigger_cleanup").await;
+        {
+            let guard = lock_map.data.lock().await;
+            assert_eq!(guard.len(), 1);
+        }
+    }
+}
