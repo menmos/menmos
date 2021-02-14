@@ -22,7 +22,9 @@ use x509_parser::pem::Pem;
 use crate::{config::HTTPSParameters, server::filters, Config};
 
 async fn interruptible_delay(dur: Duration) -> bool {
-    let mut delay = tokio::time::delay_for(dur);
+    let delay = tokio::time::sleep(dur);
+    tokio::pin!(delay);
+
     let ctrl_c_signal = tokio::signal::ctrl_c();
 
     tokio::select! {
@@ -41,7 +43,7 @@ async fn join_with_timeout(dur: Duration, handle: JoinHandle<()>) -> bool {
     let future = Abortable::new(handle, abort_registration);
 
     tokio::task::spawn(async move {
-        tokio::time::delay_for(dur).await;
+        tokio::time::sleep(dur).await;
         abort_handle.abort();
     });
 
@@ -76,7 +78,7 @@ where
     });
 
     log::debug!("waiting for DNS server to come up...");
-    tokio::time::delay_for(Duration::from_secs(2)).await;
+    tokio::time::sleep(Duration::from_secs(2)).await;
 
     let pem_name = cfg
         .certificate_storage_path

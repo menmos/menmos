@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bytes::Buf;
+use bytes::Bytes;
 use lfan::preconfig::LRUCache;
 use menmos_client::{Client, Meta, Query, QueryResponse};
 use tokio::sync::Mutex;
@@ -74,7 +74,7 @@ impl CachedClient {
         Ok(self.client.create_empty(meta).await?)
     }
 
-    pub async fn write<B: Buf>(&self, blob_id: &str, offset: u64, buffer: B) -> Result<()> {
+    pub async fn write(&self, blob_id: &str, offset: u64, buffer: Bytes) -> Result<()> {
         {
             let mut cache_guard = self.meta_cache.lock().await;
             let cache = &mut *cache_guard;

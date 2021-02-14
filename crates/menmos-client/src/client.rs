@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use apikit::payload::ErrorResponse;
 
-use bytes::{Buf, Bytes};
+use bytes::Bytes;
 
 use futures::{Stream, TryStreamExt};
 
@@ -365,17 +365,15 @@ impl Client {
         }
     }
 
-    pub async fn write<B: Buf>(&self, blob_id: &str, offset: u64, mut buffer: B) -> Result<()> {
+    pub async fn write(&self, blob_id: &str, offset: u64, buffer: Bytes) -> Result<()> {
         let mut iter_count: u16 = 0;
         let mut url = format!("{}/blob/{}", self.host, blob_id);
-
-        let buffer_bytes = buffer.to_bytes();
 
         loop {
             ensure!(iter_count <= 10, RedirectLimitExceeded { limit: 10_u32 });
             iter_count += 1;
 
-            let buffer_clone = buffer_bytes.clone();
+            let buffer_clone = buffer.clone();
             let stream = futures::stream::once(async move {
                 let r: std::result::Result<Bytes, std::io::Error> = Ok(buffer_clone);
                 r
@@ -388,11 +386,7 @@ impl Client {
                 .header(header::AUTHORIZATION, &self.admin_password)
                 .header(
                     header::RANGE,
-                    &format!(
-                        "bytes={}-{}",
-                        offset,
-                        offset + (buffer_bytes.len() - 1) as u64
-                    ),
+                    &format!("bytes={}-{}", offset, offset + (buffer.len() - 1) as u64),
                 )
                 .body(body)
                 .build()

@@ -57,7 +57,7 @@ where
         })
     }
 
-    pub async fn stop(mut self) -> Result<()> {
+    pub async fn stop(self) -> Result<()> {
         log::info!("requesting to quit");
         self.stop_tx.send(()).await?;
         self.handle.await?;

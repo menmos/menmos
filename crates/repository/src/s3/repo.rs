@@ -10,7 +10,7 @@ use rusoto_s3::{
     DeleteObjectRequest, GetObjectRequest, PutObjectRequest, S3Client, StreamingBody, S3,
 };
 use tokio::fs::{self, OpenOptions};
-use tokio::io::{AsyncRead, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncSeekExt, AsyncWriteExt};
 use tokio_util::codec;
 
 use interface::Range;

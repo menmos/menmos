@@ -107,7 +107,7 @@ impl Menmos {
             if self.client.list_storage_nodes().await?.storage_nodes.len() > initial_node_count {
                 break;
             }
-            tokio::time::delay_for(Duration::from_millis(100)).await;
+            tokio::time::sleep(Duration::from_millis(100)).await;
             iter_count -= 1;
         }
 
