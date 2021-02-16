@@ -1,6 +1,6 @@
 [package]
 name = "menmos-client"
-version = "0.0.1"
+version = "0.0.2-alpha.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
 publish = false
