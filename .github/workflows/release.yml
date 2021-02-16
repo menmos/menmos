@@ -65,7 +65,7 @@ jobs:
           push: true
           tags: |
             menmos/menmosd:latest
-            user/menmosd:${{ steps.docker-tag.outputs.tag }}
+            menmos/menmosd:${{ steps.docker-tag.outputs.tag }}
       -
         name: menmos/amphora
         uses: docker/build-push-action@v2
@@ -77,4 +77,4 @@ jobs:
           push: true
           tags: |
             menmos/amphora:latest
-            user/amphora:${{ steps.docker-tag.outputs.tag }}
+            menmos/amphora:${{ steps.docker-tag.outputs.tag }}
