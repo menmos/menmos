@@ -1,0 +1,80 @@
+name: release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install libfuse
+        run: sudo apt-get update && sudo apt-get install -y libfuse-dev
+
+      - name: Build/Release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --workspace
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            target/release/amphora
+            target/release/menmosd
+            target/release/mmos
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - id: docker-tag
+        uses: menmos/docker-tag-from-github-ref-action@v1
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: menmos/menmosd
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          target: menmosd
+          push: true
+          tags: |
+            menmos/menmosd:latest
+            user/menmosd:${{ steps.docker-tag.outputs.tag }}
+      -
+        name: menmos/amphora
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          target: amphora
+          push: true
+          tags: |
+            menmos/amphora:latest
+            user/amphora:${{ steps.docker-tag.outputs.tag }}
