@@ -1,5 +1,7 @@
 use bytes::BytesMut;
 
+const BUFFER_CHUNK_SIZE: usize = 25 * 1024 * 1024; // 25mb
+
 #[derive(Clone)]
 pub struct WriteBuffer {
     pub offset: u64,
@@ -15,6 +17,10 @@ impl WriteBuffer {
     }
 
     pub fn write(&mut self, offset: u64, data: &[u8]) -> bool {
+        if self.data.len() >= BUFFER_CHUNK_SIZE {
+            return false;
+        }
+
         if offset >= self.offset && (offset + data.len() as u64) <= self.data.len() as u64 {
             // We stay within the buffer, we can simply write to it.
             let buffer_slice = &mut self.data[offset as usize..(offset as usize + data.len())];
@@ -71,7 +77,6 @@ impl WriteBuffer {
             }
             true
         } else {
-            log::info!("DISCONTINUOUS WRITE");
             false
         }
     }
