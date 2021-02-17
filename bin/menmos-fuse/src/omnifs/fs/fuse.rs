@@ -514,19 +514,23 @@ impl Filesystem for OmniFS {
         log::info!("unlink {:?}/{:?}", parent, name);
         let str_name = name.to_string_lossy().to_string();
 
-        let error_code = if let Some(blob_id) = self.name_to_blobid.get(&(parent, str_name)).await {
+        let name_tuple = (parent, str_name);
+
+        if let Some(blob_id) = self.name_to_blobid.get(&name_tuple).await {
             log::info!("DELETE {}", blob_id);
-            if self.client.delete(blob_id).await.is_ok() {
-                reply.ok();
+            if self.client.delete(blob_id.clone()).await.is_ok() {
+                self.blobid_to_inode.remove(&blob_id).await;
+            } else {
+                reply.error(EACCES);
                 return;
             }
-            {
-                EACCES
-            }
         } else {
-            ENOENT
+            reply.error(ENOENT);
+            return;
         };
-        reply.error(error_code);
+
+        self.name_to_blobid.remove(&name_tuple).await;
+        reply.ok();
     }
 
     async fn rmdir(&self, _req: &Request, parent: u64, name: &OsStr, reply: ReplyEmpty) {
