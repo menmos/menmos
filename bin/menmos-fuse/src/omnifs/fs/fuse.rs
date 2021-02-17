@@ -12,6 +12,7 @@ use libc::{EACCES, ENOENT, O_CREAT, O_TRUNC};
 use menmos_client::{Meta, Query, Type};
 
 use crate::constants;
+use crate::WriteBuffer;
 
 use super::OmniFS;
 
@@ -403,23 +404,70 @@ impl Filesystem for OmniFS {
         reply: ReplyWrite,
     ) {
         log::info!("write {}bytes on {:?} @ {}", data.len(), ino, offset);
-        let error_code = if let Some(blob_id) = self.inode_to_blobid.get(&ino).await {
-            if let Err(e) = self
-                .client
-                .write(&blob_id, offset as u64, bytes::Bytes::copy_from_slice(data))
-                .await
-            {
-                log::error!("write error: {}", e);
-                EACCES
+
+        let mut buffers_guard = self.write_buffers.lock().await;
+
+        if let Some(mut buffer) = buffers_guard.remove(&ino) {
+            if !buffer.write(offset as u64, data) {
+                // Buffer isn't contiguous, we need to flush.
+                let error_code = if let Some(blob_id) = self.inode_to_blobid.get(&ino).await {
+                    if let Err(e) = self
+                        .client
+                        .write(&blob_id, buffer.offset, buffer.data.freeze())
+                        .await
+                    {
+                        log::error!("write error: {}", e);
+                        EACCES
+                    } else {
+                        buffers_guard.insert(ino, WriteBuffer::new(offset as u64, data));
+                        reply.written(data.len() as u32);
+                        return;
+                    }
+                } else {
+                    ENOENT
+                };
+
+                reply.error(error_code);
             } else {
+                buffers_guard.insert(ino, buffer);
                 reply.written(data.len() as u32);
-                return;
             }
         } else {
-            ENOENT
-        };
+            buffers_guard.insert(ino, WriteBuffer::new(offset as u64, data));
+            reply.written(data.len() as u32);
+        }
+    }
 
-        reply.error(error_code);
+    async fn release(
+        &self,
+        _req: &Request,
+        ino: u64,
+        _fh: u64,
+        _flags: u32,
+        _lock_owner: u64,
+        _flush: bool,
+        reply: ReplyEmpty,
+    ) {
+        let mut buffers_guard = self.write_buffers.lock().await;
+        if let Some(buffer) = buffers_guard.remove(&ino) {
+            log::info!("flushing pending write buffer for {}", ino);
+            if let Some(blob_id) = self.inode_to_blobid.get(&ino).await {
+                if let Err(e) = self
+                    .client
+                    .write(&blob_id, buffer.offset, buffer.data.freeze())
+                    .await
+                {
+                    log::error!("write error: {}", e);
+                    reply.error(EACCES);
+                    return;
+                }
+                log::info!("flush complete");
+            } else {
+                reply.error(ENOENT);
+                return;
+            };
+        }
+        reply.ok()
     }
 
     async fn readdir(
