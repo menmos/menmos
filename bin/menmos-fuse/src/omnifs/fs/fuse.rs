@@ -467,7 +467,17 @@ impl Filesystem for OmniFS {
                 return;
             };
         }
-        reply.ok()
+
+        if let Some(blob_id) = self.inode_to_blobid.get(&ino).await {
+            log::info!("calling fsync");
+            if let Err(e) = self.client.fsync(&blob_id).await {
+                log::error!("menmos fsync error: {}", e);
+            }
+            log::info!("fsync complete");
+            reply.ok();
+        } else {
+            reply.error(ENOENT);
+        }
     }
 
     async fn readdir(

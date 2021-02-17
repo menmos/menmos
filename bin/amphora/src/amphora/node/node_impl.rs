@@ -198,4 +198,8 @@ impl StorageNode for Storage {
         let guard = self.certificates.lock().await;
         (*guard).clone()
     }
+
+    async fn fsync(&self, blob_id: String) -> Result<()> {
+        self.repo.fsync(blob_id).await
+    }
 }

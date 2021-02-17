@@ -27,4 +27,6 @@ pub trait Repository {
     async fn get(&self, blob_id: &str, range: Option<interface::Range>) -> Result<StreamInfo>;
 
     async fn delete(&self, blob_id: &str) -> Result<()>;
+
+    async fn fsync(&self, id: String) -> Result<()>;
 }

@@ -2,11 +2,12 @@ use std::{convert::Infallible, sync::Arc};
 
 use apikit::auth::authenticated;
 
+use bincode::config::RejectTrailing;
 use interface::{message::directory_node::CertificateInfo, DirectoryNode};
 
 use warp::Filter;
 
-use crate::Config;
+use crate::{Config, Directory};
 
 use super::handlers;
 
@@ -19,6 +20,7 @@ const METADATA_PATH: &str = "metadata";
 const COMMIT_PATH: &str = "commit";
 const VERSION_PATH: &str = "version";
 const REBUILD_PATH: &str = "rebuild";
+const FSYNC_PATH: &str = "fsync";
 
 fn with_node<N>(
     node: Arc<N>,
@@ -68,7 +70,8 @@ where
         .or(list_metadata(config.clone(), node.clone()))
         .or(rebuild(config.clone(), node.clone()))
         .or(rebuild_complete(config.clone(), node.clone()))
-        .or(commit(config.clone(), node))
+        .or(commit(config.clone(), node.clone()))
+        .or(fsync(config.clone(), node))
         .or(version(config))
         .recover(apikit::reject::recover)
         .with(warp::log("directory::api"))
@@ -341,6 +344,25 @@ where
         .and(warp::path(REBUILD_PATH))
         .and(warp::path::param())
         .and_then(handlers::rebuild_complete)
+}
+
+fn fsync<N>(
+    config: Config,
+    node: Arc<N>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    N: DirectoryNode + Send + Sync,
+{
+    warp::post()
+        .and(authenticated(config.node.admin_password.clone()))
+        .and(with_config(config))
+        .and(with_node(node))
+        .and(warp::path(BLOBS_PATH))
+        .and(warp::path::param())
+        .and(warp::path(FSYNC_PATH))
+        .and(warp::path::end())
+        .and(warp::filters::addr::remote())
+        .and_then(handlers::fsync)
 }
 
 fn version(

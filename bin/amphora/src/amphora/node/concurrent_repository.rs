@@ -57,4 +57,10 @@ impl Repository for ConcurrentRepository {
         let _w_guard = mtx.write().await;
         self.repo.delete(blob_id).await
     }
+
+    async fn fsync(&self, id: String) -> Result<()> {
+        let mtx = self.key_locks.get_lock(&id).await;
+        let _r_guard = mtx.read().await;
+        self.repo.fsync(id).await
+    }
 }

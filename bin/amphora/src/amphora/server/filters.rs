@@ -17,6 +17,7 @@ const HEALTH_PATH: &str = "health";
 const BLOBS_PATH: &str = "blob";
 const METADATA_PATH: &str = "metadata";
 const VERSION_PATH: &str = "version";
+const FSYNC_PATH: &str = "fsync";
 
 fn with_node<N>(
     node: Arc<N>,
@@ -52,7 +53,8 @@ where
         .or(get(node.clone(), config.clone()))
         .or(write(node.clone(), config.clone()))
         .or(update_meta(config.clone(), node.clone()))
-        .or(delete(node, config))
+        .or(delete(node.clone(), config.clone()))
+        .or(fsync(node, config))
         .or(version())
         .with(warp::log("storage::api"))
         .recover(apikit::reject::recover)
@@ -84,6 +86,7 @@ where
         .and(with_node(node))
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())
+        .and(warp::path::end())
         .and(warp::header::optional::<Mime>("content-type"))
         .and(warp::header::value("x-blob-meta"))
         .and(warp::body::stream())
@@ -155,6 +158,23 @@ where
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())
         .and_then(handlers::delete)
+}
+
+fn fsync<N>(
+    node: Arc<N>,
+    config: Config,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    N: StorageNode + Send + Sync,
+{
+    warp::post()
+        .and(authenticated(config.node.admin_password))
+        .and(with_node(node))
+        .and(warp::path(BLOBS_PATH))
+        .and(warp::path::param())
+        .and(warp::path(FSYNC_PATH))
+        .and(warp::path::end())
+        .and_then(handlers::fsync)
 }
 
 fn version() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {

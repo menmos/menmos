@@ -1,5 +1,6 @@
 mod commit;
 mod delete;
+mod fsync;
 mod get;
 mod get_meta;
 mod health;
@@ -18,6 +19,7 @@ mod write;
 
 pub use commit::commit;
 pub use delete::delete;
+pub use fsync::fsync;
 pub use get::get;
 pub use get_meta::get_meta;
 pub use health::health;

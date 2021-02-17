@@ -381,6 +381,33 @@ impl Client {
         }
     }
 
+    pub async fn fsync(&self, blob_id: &str) -> Result<()> {
+        let url = format!("{}/blob/{}/fsync", self.host, blob_id);
+
+        let request = self
+            .client
+            .post(&url)
+            .header(header::AUTHORIZATION, &self.admin_password)
+            .build()
+            .context(RequestBuildError)?;
+
+        let redirect_location = self.request_with_redirect(request).await?;
+
+        let response = self
+            .client
+            .post(&redirect_location)
+            .header(header::AUTHORIZATION, &self.admin_password)
+            .send()
+            .await
+            .context(RequestExecutionError)?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(extract_error(response).await)
+        }
+    }
+
     pub async fn write(&self, blob_id: &str, offset: u64, buffer: Bytes) -> Result<()> {
         let mut iter_count: u16 = 0;
         let mut url = format!("{}/blob/{}", self.host, blob_id);

@@ -149,4 +149,6 @@ pub trait StorageNode {
     async fn delete(&self, blob_id: String) -> Result<()>;
 
     async fn get_certificates(&self) -> Option<CertificateInfo>;
+
+    async fn fsync(&self, blob_id: String) -> Result<()>;
 }

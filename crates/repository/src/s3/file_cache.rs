@@ -36,7 +36,7 @@ impl FileCache {
         })
     }
 
-    async fn get_from_cache<S: AsRef<str>>(&self, blob_id: S) -> Option<PathBuf> {
+    pub async fn contains<S: AsRef<str>>(&self, blob_id: S) -> Option<PathBuf> {
         if let Some(blob_path) = self.file_path_cache.get(blob_id.as_ref()).await {
             Some(blob_path.clone())
         } else {
@@ -75,7 +75,7 @@ impl FileCache {
     }
 
     pub async fn get<S: AsRef<str>>(&self, blob_id: S) -> Result<PathBuf> {
-        if let Some(cache_hit) = self.get_from_cache(&blob_id).await {
+        if let Some(cache_hit) = self.contains(&blob_id).await {
             return Ok(cache_hit);
         }
 

@@ -108,22 +108,10 @@ impl Repository for S3Repository {
                 .await?;
             f.seek(SeekFrom::Start(start)).await?;
             f.write_all(body.as_ref()).await?;
+            f.sync_all().await?;
         }
 
-        let f = fs::File::open(&file_path).await?;
         let file_length = file_path.metadata()?.len();
-        let _result = self
-            .client
-            .put_object(PutObjectRequest {
-                bucket: self.bucket.clone(),
-                key: id,
-                body: Some(StreamingBody::new_with_size(
-                    into_bytes_stream(f),
-                    file_length as usize,
-                )),
-                ..Default::default()
-            })
-            .await?;
 
         Ok(file_length)
     }
@@ -175,6 +163,31 @@ impl Repository for S3Repository {
         };
 
         self.client.delete_object(delete_request).await?;
+
+        Ok(())
+    }
+
+    async fn fsync(&self, id: String) -> Result<()> {
+        // TODO: Trigger fsync asynchronously so it doesn't block the call.
+        // TODO: Trigger fsync periodically for cache keys, and every time on cache eviction.
+        if let Some(path) = self.file_cache.contains(&id).await {
+            log::info!("begin fsync on {}", &id);
+            let f = fs::File::open(&path).await?;
+            let file_length = path.metadata()?.len();
+            let _result = self
+                .client
+                .put_object(PutObjectRequest {
+                    bucket: self.bucket.clone(),
+                    key: id.clone(),
+                    body: Some(StreamingBody::new_with_size(
+                        into_bytes_stream(f),
+                        file_length as usize,
+                    )),
+                    ..Default::default()
+                })
+                .await?;
+            log::info!("fsync on {} complete", id);
+        }
 
         Ok(())
     }

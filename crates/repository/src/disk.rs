@@ -219,4 +219,9 @@ impl Repository for DiskRepository {
 
         Ok(())
     }
+
+    async fn fsync(&self, _id: String) -> Result<()> {
+        // Nothing to do for us.
+        Ok(())
+    }
 }
