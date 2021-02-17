@@ -13,7 +13,7 @@ use interface::{
     BlobMeta, GetMetaResponse, ListStorageNodesResponse, QueryResponse,
 };
 
-use hyper::{header, StatusCode};
+use hyper::{header, http::request, StatusCode};
 
 use mpart_async::client::MultipartRequest;
 
@@ -24,7 +24,7 @@ use reqwest::Body;
 use serde::de::DeserializeOwned;
 use snafu::{ensure, ResultExt, Snafu};
 
-use crate::{profile::ProfileError, ClientBuilder, Config, Parameters};
+use crate::{parameters::HostConfig, profile::ProfileError, ClientBuilder, Config, Parameters};
 
 #[derive(Debug, Snafu)]
 pub enum ClientError {
@@ -100,6 +100,7 @@ async fn extract<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> 
     }
 }
 
+#[derive(Clone)]
 pub struct Client {
     admin_password: String,
     client: ReqwestClient,
@@ -115,23 +116,23 @@ impl Client {
         admin_password: P,
     ) -> Result<Self> {
         Client::new_with_params(Parameters {
-            host: directory_host.into(),
-            admin_password: admin_password.into(),
+            host_config: HostConfig::Host {
+                host: directory_host.into(),
+                admin_password: admin_password.into(),
+            },
             pool_idle_timeout: Duration::from_secs(5),
             request_timeout: Duration::from_secs(60),
         })
     }
 
-    pub fn new_with_profile<S: AsRef<str>>(profile: S) -> Result<Self> {
-        let config = Config::load().context(ConfigLoadError)?;
-        let profile = config
-            .profiles
-            .get(profile.as_ref())
-            .ok_or(ClientError::MissingProfile {
-                name: String::from(profile.as_ref()),
-            })?;
-
-        Self::new(profile.host.clone(), profile.password.clone())
+    pub fn new_with_profile<S: Into<String>>(profile: S) -> Result<Self> {
+        Self::new_with_params(Parameters {
+            host_config: HostConfig::Profile {
+                profile: profile.into(),
+            },
+            pool_idle_timeout: Duration::from_secs(5),
+            request_timeout: Duration::from_secs(60),
+        })
     }
 
     pub fn builder() -> ClientBuilder {
@@ -146,9 +147,24 @@ impl Client {
             .build()
             .context(ClientBuildError)?;
 
+        let (host, admin_password) = match params.host_config {
+            HostConfig::Host {
+                host,
+                admin_password,
+            } => (host, admin_password),
+            HostConfig::Profile { profile } => {
+                let config = Config::load().context(ConfigLoadError)?;
+                let profile = config
+                    .profiles
+                    .get(&profile)
+                    .ok_or(ClientError::MissingProfile { name: profile })?;
+                (profile.host.clone(), profile.password.clone())
+            }
+        };
+
         Ok(Self {
-            host: params.host,
-            admin_password: params.admin_password,
+            host,
+            admin_password,
             client,
         })
     }
@@ -555,16 +571,13 @@ impl Client {
                 .execute(request)
                 .await
                 .context(RequestExecutionError)?;
-            println!("GOT RESPONSE");
 
             let status = response.status();
             if status == StatusCode::TEMPORARY_REDIRECT {
-                println!("GOT REDIRECT STATUS");
                 if let Some(new_location) = response.headers().get(header::LOCATION) {
                     let new_url = String::from_utf8_lossy(new_location.as_bytes());
                     url = new_url.to_string();
                     log::debug!("redirect to {}", url);
-                    println!("redirect to {}", url);
                 }
             } else if status.is_success() {
                 // Our delete got through.
