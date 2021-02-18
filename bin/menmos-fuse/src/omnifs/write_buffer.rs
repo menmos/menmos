@@ -21,20 +21,25 @@ impl WriteBuffer {
             return false;
         }
 
-        if offset >= self.offset && (offset + data.len() as u64) <= self.data.len() as u64 {
+        if offset >= self.offset
+            && (offset + data.len() as u64) <= self.offset + self.data.len() as u64
+        {
             // We stay within the buffer, we can simply write to it.
-            let buffer_slice = &mut self.data[offset as usize..(offset as usize + data.len())];
+            let start_offset = offset - self.offset;
+            let buffer_slice =
+                &mut self.data[start_offset as usize..(start_offset as usize + data.len())];
             for (l, r) in buffer_slice.iter_mut().zip(data) {
                 *l = *r;
             }
             true
         } else if offset < self.offset && (offset + data.len() as u64) >= self.offset {
-            if (offset + data.len() as u64) <= self.data.len() as u64 {
+            if (offset + data.len() as u64) <= self.offset + self.data.len() as u64 {
                 // We don't overflow the buffer, only underflow. So we need to prepend zeros.
                 let prepended_segment_size = (self.offset - offset) as usize;
+                let new_buffer_length = self.data.len() + prepended_segment_size;
 
-                let mut new_buffer =
-                    BytesMut::with_capacity(self.data.len() + prepended_segment_size);
+                let mut new_buffer = BytesMut::with_capacity(new_buffer_length);
+                new_buffer.resize(new_buffer_length, 0);
 
                 // Copy the old buffer in the new one.
                 for (l, r) in new_buffer[prepended_segment_size..]
@@ -93,5 +98,55 @@ mod tests {
         assert!(buf.write(4, &vec![5, 6, 7, 8]));
         assert!(buf.write(8, &vec![9, 10, 11, 12]));
         assert!(buf.write(12, &vec![13, 14, 15, 16]));
+        assert_eq!(
+            &buf.data,
+            &vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        );
+        assert_eq!(buf.offset, 0);
+    }
+
+    #[test]
+    fn discontinuous_overflow_write() {
+        let mut buf = WriteBuffer::new(0, &vec![1, 2, 3, 4]);
+        assert!(!buf.write(5, &vec! {5, 6, 7, 8}));
+        assert_eq!(&buf.data, &vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn discontinous_underflow_write() {
+        let mut buf = WriteBuffer::new(10, &vec![1, 2, 3]);
+        assert!(!buf.write(6, &vec![4, 5, 6]));
+        assert_eq!(&buf.data, &vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn continuous_underflow_write() {
+        let mut buf = WriteBuffer::new(10, &vec![1, 2, 3]);
+        assert!(buf.write(7, &vec![4, 5, 6, 7, 8]));
+        assert_eq!(&buf.data.as_ref(), &vec![4, 5, 6, 7, 8, 3]);
+        assert_eq!(buf.offset, 7);
+    }
+
+    #[test]
+    fn continuous_overflow_write() {
+        let mut buf = WriteBuffer::new(10, &vec![1, 2, 3]);
+        assert!(buf.write(11, &vec![4, 5, 6]));
+        assert_eq!(&buf.data.as_ref(), &vec![1, 4, 5, 6]);
+    }
+
+    #[test]
+    fn continuous_full_overwrite() {
+        let mut buf = WriteBuffer::new(10, &vec![1, 2, 3]);
+        assert!(buf.write(9, &vec![4, 5, 6, 7, 8]));
+        assert_eq!(buf.offset, 9);
+        assert_eq!(&buf.data.as_ref(), &vec![4, 5, 6, 7, 8]);
+    }
+
+    #[test]
+    fn interior_write_no_resize() {
+        let mut buf = WriteBuffer::new(10, &vec![1, 2, 3, 4]);
+        assert!(buf.write(11, &vec![5, 6]));
+        assert_eq!(buf.offset, 10);
+        assert_eq!(&buf.data.as_ref(), &vec![1, 5, 6, 4]);
     }
 }
