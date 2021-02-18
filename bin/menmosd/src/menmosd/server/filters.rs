@@ -2,12 +2,11 @@ use std::{convert::Infallible, sync::Arc};
 
 use apikit::auth::authenticated;
 
-use bincode::config::RejectTrailing;
 use interface::{message::directory_node::CertificateInfo, DirectoryNode};
 
 use warp::Filter;
 
-use crate::{Config, Directory};
+use crate::Config;
 
 use super::handlers;
 

@@ -13,7 +13,7 @@ use interface::{
     BlobMeta, GetMetaResponse, ListStorageNodesResponse, QueryResponse,
 };
 
-use hyper::{header, http::request, StatusCode};
+use hyper::{header, StatusCode};
 
 use mpart_async::client::MultipartRequest;
 

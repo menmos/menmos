@@ -1,15 +1,12 @@
+use std::collections::HashMap;
 use std::io;
-use std::{collections::HashMap, ops::Bound};
+use std::ops::Bound;
 
-use anyhow::{ensure, Result};
+use anyhow::Result;
 
 use async_trait::async_trait;
 
 use futures::Stream;
-
-use headers::{Header, Range as HRange};
-
-use reqwest::header::HeaderValue;
 
 use serde::{Deserialize, Serialize};
 
@@ -82,55 +79,6 @@ pub struct Blob {
     pub meta: BlobMeta,
 }
 
-#[derive(Clone, Debug)]
-pub struct Range {
-    pub start: Bound<u64>,
-    pub end: Bound<u64>,
-}
-
-impl Range {
-    pub fn from_header(header_value: HeaderValue) -> Result<Self> {
-        // Decode the range string sent in the header value.
-        let requested_ranges = HRange::decode(&mut vec![header_value].iter())?;
-
-        // Convert the decoded range struct into a vectro of tuples of bounds.
-        let ranges: Vec<(Bound<u64>, Bound<u64>)> = requested_ranges.iter().collect();
-
-        ensure!(!ranges.is_empty(), "ranges cannot be empty");
-        ensure!(
-            ranges.len() == 1,
-            "support for multipart range request is not implemented"
-        );
-
-        // Extract the bounds and return.
-        let (start, end) = ranges[0];
-
-        Ok(Self { start, end })
-    }
-
-    pub fn min_value(&self) -> Option<u64> {
-        match self.start {
-            Bound::Included(i) => Some(i),
-            Bound::Excluded(i) => Some(i + 1),
-            Bound::Unbounded => None,
-        }
-    }
-
-    pub fn max_value(&self) -> Option<u64> {
-        match self.end {
-            Bound::Included(i) => Some(i),
-            Bound::Excluded(i) => Some(i - 1),
-            Bound::Unbounded => None,
-        }
-    }
-
-    pub fn get_offset_range(&self, size: u64) -> std::ops::Range<u64> {
-        let start = self.min_value().unwrap_or(0);
-        let end = start + size - 1;
-        start..end
-    }
-}
-
 #[async_trait]
 pub trait StorageNode {
     async fn put(
@@ -140,9 +88,9 @@ pub trait StorageNode {
         stream: Option<Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin>>,
     ) -> Result<()>;
 
-    async fn write(&self, id: String, range: Range, bytes: Bytes) -> Result<()>;
+    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), bytes: Bytes) -> Result<()>;
 
-    async fn get(&self, blob_id: String, range: Option<Range>) -> Result<Blob>;
+    async fn get(&self, blob_id: String, range: Option<(Bound<u64>, Bound<u64>)>) -> Result<Blob>;
 
     async fn update_meta(&self, blob_id: String, meta: BlobMeta) -> Result<()>;
 

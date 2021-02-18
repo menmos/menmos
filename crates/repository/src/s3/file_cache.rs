@@ -44,6 +44,16 @@ impl FileCache {
         }
     }
 
+    pub async fn invalidate<S: AsRef<str>>(&self, blob_id: S) -> Result<()> {
+        let file_path = self.root_path.join(blob_id.as_ref());
+        if file_path.exists() {
+            fs::remove_file(&file_path).await?;
+        }
+        self.file_path_cache.invalidate(blob_id.as_ref()).await;
+
+        Ok(())
+    }
+
     async fn download_blob<S: AsRef<str>>(&self, blob_id: S) -> Result<PathBuf> {
         let get_request = GetObjectRequest {
             bucket: self.bucket.clone(),

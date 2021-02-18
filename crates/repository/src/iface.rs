@@ -1,15 +1,10 @@
-use std::io;
+use std::{io, ops::Bound};
 
 use anyhow::Result;
 use async_trait::async_trait;
+use betterstreams::ChunkedStreamInfo;
 use bytes::Bytes;
 use futures::Stream;
-
-pub struct StreamInfo {
-    pub stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + 'static>,
-    pub current_chunk_size: u64,
-    pub total_blob_size: u64,
-}
 
 #[async_trait]
 pub trait Repository {
@@ -22,9 +17,13 @@ pub trait Repository {
         >,
     ) -> Result<()>;
 
-    async fn write(&self, id: String, range: interface::Range, body: Bytes) -> Result<u64>;
+    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64>;
 
-    async fn get(&self, blob_id: &str, range: Option<interface::Range>) -> Result<StreamInfo>;
+    async fn get(
+        &self,
+        blob_id: &str,
+        range: Option<(Bound<u64>, Bound<u64>)>,
+    ) -> Result<ChunkedStreamInfo>;
 
     async fn delete(&self, blob_id: &str) -> Result<()>;
 

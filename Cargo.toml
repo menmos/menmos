@@ -6,6 +6,7 @@ members = [
     "bin/menmosd",
     "bin/menmos-fuse",
     "crates/apikit",
+    "crates/betterstreams",
     "crates/dns-server",
     "crates/indexer",
     "crates/interface",

@@ -1,13 +1,13 @@
+use std::io;
+use std::ops::Bound;
 use std::sync::Arc;
-use std::{io, time::Duration};
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::{stream::empty, Stream};
-use interface::{
-    message::directory_node::CertificateInfo, Blob, BlobMeta, Range, StorageNode, Type,
-};
+use interface::{message::directory_node::CertificateInfo, Blob, BlobMeta, StorageNode, Type};
 use repository::{Repository, StreamInfo};
 use tokio::sync::Mutex;
 
@@ -130,7 +130,7 @@ impl StorageNode for Storage {
         Ok(())
     }
 
-    async fn write(&self, id: String, range: Range, body: Bytes) -> Result<()> {
+    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<()> {
         // Write the diff
         let new_blob_size = self.repo.write(id.clone(), range, body).await?;
 
@@ -153,7 +153,7 @@ impl StorageNode for Storage {
         Ok(())
     }
 
-    async fn get(&self, blob_id: String, range: Option<Range>) -> Result<Blob> {
+    async fn get(&self, blob_id: String, range: Option<(Bound<u64>, Bound<u64>)>) -> Result<Blob> {
         let meta: BlobMeta = bincode::deserialize(
             self.index
                 .get(blob_id.as_bytes())?
@@ -164,16 +164,16 @@ impl StorageNode for Storage {
         let stream_info = match meta.blob_type {
             Type::Directory => StreamInfo {
                 stream: Box::from(empty()),
-                current_chunk_size: 0,
-                total_blob_size: 0,
+                chunk_size: 0,
+                total_size: 0,
             },
             Type::File => self.repo.get(&blob_id, range).await?,
         };
 
         Ok(Blob {
             stream: stream_info.stream,
-            current_chunk_size: stream_info.current_chunk_size,
-            total_blob_size: stream_info.total_blob_size,
+            current_chunk_size: stream_info.chunk_size,
+            total_blob_size: stream_info.total_size,
             meta,
         })
     }
