@@ -31,7 +31,24 @@ pub struct HTTPSParameters {
     pub https_port: u16,
     pub certificate_storage_path: PathBuf,
     pub letsencrypt_email: String,
+
+    #[serde(default = "LetsEncryptURL::default")]
+    pub letsencrypt_url: LetsEncryptURL,
+
     pub dns: DNSParameters,
+}
+
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum LetsEncryptURL {
+    Production,
+    Staging,
+}
+
+impl Default for LetsEncryptURL {
+    fn default() -> Self {
+        LetsEncryptURL::Production
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize)]
