@@ -33,15 +33,9 @@ pub enum Contents {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum ClientConfig {
-    Host { host: String, password: String },
-    Profile { profile: String },
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Mount {
     pub name: String,
-    pub client: ClientConfig,
+    pub profile: String,
     pub mount_point: PathBuf,
     pub contents: Contents,
 }

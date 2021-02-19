@@ -1,8 +1,9 @@
+use std::time::UNIX_EPOCH;
 use std::{ffi::OsStr, time::SystemTime};
 
 use async_fuse::{
-    Filesystem, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry,
-    ReplyOpen, ReplyWrite, Request,
+    FileAttr, FileType, Filesystem, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty,
+    ReplyEntry, ReplyOpen, ReplyWrite, Request,
 };
 
 use async_trait::async_trait;
@@ -15,14 +16,82 @@ use crate::WriteBuffer;
 
 use super::OmniFS;
 
+fn build_attributes(inode: u64, meta: &Meta, perm: u16) -> FileAttr {
+    let kind = match meta.blob_type {
+        Type::Directory => FileType::Directory,
+        Type::File => FileType::RegularFile,
+    };
+
+    FileAttr {
+        ino: inode,
+        size: meta.size,
+        blocks: meta.size / constants::BLOCK_SIZE,
+        atime: UNIX_EPOCH, // 1970-01-01 00:00:00
+        mtime: UNIX_EPOCH,
+        ctime: UNIX_EPOCH,
+        crtime: UNIX_EPOCH,
+        kind,
+        perm,
+        nlink: if kind == FileType::RegularFile {
+            1
+        } else {
+            2 + meta.parents.len() as u32
+        },
+        uid: 1000,
+        gid: 1000,
+        rdev: 0,
+        flags: 0,
+    }
+}
+
 #[async_trait]
 impl Filesystem for OmniFS {
     async fn lookup(&self, _req: &Request, parent: u64, name: &OsStr, reply: ReplyEntry) {
-        match self.lookup_impl(parent, name).await {
-            Ok(resp) => {
-                reply.entry(&resp.ttl, &resp.attrs, resp.generation);
+        let str_name = name.to_string_lossy().to_string();
+
+        // First, check if it's a virtual directory.
+        {
+            if let Some(inode) = self
+                .virtual_directories
+                .get(&(parent, str_name.clone()))
+                .await
+            {
+                log::info!("lookup on {:?} found vdir inode: {}", name, inode,);
+                let attrs = build_attributes(inode, &Meta::new(&str_name, Type::Directory), 0o444);
+                reply.entry(&constants::TTL, &attrs, inode); // TODO: Replace the generation number by a nanosecond timestamp.
+                return;
             }
-            Err(e) => reply.error(e.to_error_code()),
+        }
+
+        // If not, proceed as usual.
+
+        let blob_id = match self.name_to_blobid.get(&(parent, str_name.clone())).await {
+            Some(b) => b,
+            None => {
+                reply.error(ENOENT);
+                return;
+            }
+        };
+        match self.client.get_meta(&blob_id).await {
+            Ok(Some(blob_meta)) => {
+                // We got the meta, time to make the item attribute.
+                let inode = self.get_inode(&blob_id).await;
+                let attributes = build_attributes(inode, &blob_meta, 0o764);
+                reply.entry(&constants::TTL, &attributes, inode);
+                log::info!(
+                    "lookup on {:?} found inode: {} for ID {} ({:?})",
+                    name,
+                    inode,
+                    blob_id,
+                    blob_meta.blob_type
+                );
+                self.inode_to_blobid.insert(inode, blob_id).await;
+            }
+            Ok(None) => reply.error(ENOENT),
+            Err(e) => {
+                log::error!("lookup error: {}", e);
+                reply.error(ENOENT)
+            }
         }
     }
 
@@ -34,12 +103,32 @@ impl Filesystem for OmniFS {
         _mode: u32,
         reply: ReplyEntry,
     ) {
-        match self.mkdir_impl(parent, name).await {
-            Ok(resp) => {
-                reply.entry(&resp.ttl, &resp.attrs, resp.generation);
+        let parent_blobid = match self.inode_to_blobid.get(&parent).await {
+            Some(b) => b,
+            None => {
+                reply.error(ENOENT);
+                return;
             }
-            Err(e) => reply.error(e.to_error_code()),
-        }
+        };
+
+        let str_name = name.to_string_lossy().to_string();
+        let meta = Meta::new(str_name.clone(), Type::Directory).with_parent(parent_blobid);
+        let blob_id = match self.client.create_empty(meta.clone()).await {
+            Ok(b) => b,
+            Err(e) => {
+                log::error!("client error: {}", e);
+                reply.error(EACCES);
+                return;
+            }
+        };
+
+        let ino = self.get_inode(&blob_id).await;
+        self.inode_to_blobid.insert(ino, blob_id.clone()).await;
+        self.name_to_blobid
+            .insert((parent, str_name), blob_id)
+            .await;
+
+        reply.entry(&constants::TTL, &build_attributes(ino, &meta, 0o764), 0);
     }
 
     async fn rename(
@@ -59,9 +148,60 @@ impl Filesystem for OmniFS {
             newname
         );
 
-        match self.rename_impl(parent, name, newparent, newname).await {
-            Ok(_) => reply.ok(),
-            Err(e) => reply.error(e.to_error_code()),
+        // Does the source file exist?
+        let src_name = name.to_string_lossy().to_string();
+        let dst_name = newname.to_string_lossy().to_string();
+        if let Some(source_blob) = self.name_to_blobid.get(&(parent, src_name.clone())).await {
+            // Does the destination file exist?
+            if let Some(dst_blob) = self
+                .name_to_blobid
+                .get(&(newparent, dst_name.clone()))
+                .await
+            {
+                if let Some(inode) = self.blobid_to_inode.remove(&dst_blob).await {
+                    self.inode_to_blobid.remove(&inode).await;
+                }
+
+                // If so, delete it before our rename.
+                if let Err(e) = self.client.delete(dst_blob).await {
+                    log::error!("client error: {}", e);
+                    reply.error(ENOENT);
+                    return;
+                }
+            }
+
+            let source_parent_id = match self.inode_to_blobid.get(&parent).await {
+                Some(p) => p,
+                None => {
+                    log::error!("parent inode doesn't exist");
+                    reply.error(ENOENT);
+                    return;
+                }
+            };
+
+            // Does the parent inode exist?;
+            if let Some(new_parent_id) = self.inode_to_blobid.get(&newparent).await {
+                // Rename the blob.
+                if let Err(e) = self
+                    .rename_blob(&source_parent_id, &source_blob, &dst_name, &new_parent_id)
+                    .await
+                {
+                    log::error!("client error: {}", e);
+                    reply.error(ENOENT);
+                } else {
+                    self.name_to_blobid.remove(&(parent, src_name)).await;
+                    self.name_to_blobid
+                        .insert((newparent, dst_name), source_blob)
+                        .await;
+
+                    reply.ok();
+                }
+            } else {
+                reply.error(ENOENT);
+            }
+        } else {
+            reply.error(ENOENT);
+            return;
         }
     }
 
@@ -89,9 +229,32 @@ impl Filesystem for OmniFS {
     }
 
     async fn getattr(&self, _req: &Request, ino: u64, reply: ReplyAttr) {
-        match self.getattr_impl(ino).await {
-            Ok(resp) => reply.attr(&resp.ttl, &resp.attrs),
-            Err(e) => reply.error(e.to_error_code()),
+        if ino == 1 {
+            reply.attr(&constants::TTL, &constants::ROOT_DIR_ATTR);
+            return;
+        }
+
+        log::info!("getattr: {}", ino);
+
+        // If virtual directory.
+        if self.virtual_directories_inodes.get(&ino).await.is_some() {
+            // TODO: Make a separate method to get attributes for virtual directories.
+            let attrs = build_attributes(ino, &Meta::new("", Type::Directory), 0o444);
+            reply.attr(&constants::TTL, &attrs);
+            return;
+        }
+
+        match self.get_meta_by_inode(ino).await {
+            Ok(Some(meta)) => {
+                reply.attr(&constants::TTL, &build_attributes(ino, &meta, 0o764));
+            }
+            Ok(None) => {
+                reply.error(ENOENT);
+            }
+            Err(e) => {
+                log::error!("client error: {}", e);
+                reply.error(ENOENT)
+            }
         }
     }
 
@@ -104,9 +267,24 @@ impl Filesystem for OmniFS {
         size: u32,
         reply: ReplyData,
     ) {
-        match self.read_impl(ino, offset, size).await {
-            Ok(resp) => reply.data(&resp.data),
-            Err(e) => reply.error(e.to_error_code()),
+        match self.read(ino, offset, size).await {
+            Ok(Some(bytes)) => {
+                log::info!(
+                    "read {}-{} on ino={} => got {} bytes",
+                    offset,
+                    (offset + size as i64) - 1,
+                    ino,
+                    bytes.len()
+                );
+                reply.data(&bytes);
+            }
+            Ok(None) => {
+                reply.error(ENOENT);
+            }
+            Err(e) => {
+                log::error!("read error: {}", e);
+                reply.error(ENOENT);
+            }
         }
     }
 
@@ -119,16 +297,58 @@ impl Filesystem for OmniFS {
         _flags: u32,
         reply: ReplyCreate,
     ) {
-        match self.create_impl(parent, name).await {
-            Ok(resp) => reply.created(
-                &resp.ttl,
-                &resp.attrs,
-                resp.generation,
-                resp.file_handle,
-                _flags,
-            ),
-            Err(e) => reply.error(e.to_error_code()),
+        let str_name = name.to_string_lossy().to_string();
+        log::info!("CREATE {}/{:?}", parent, &str_name);
+        if let Some(blob_id) = self.name_to_blobid.get(&(parent, str_name)).await {
+            if let Err(e) = self.client.delete(blob_id).await {
+                log::error!("client error: {}", e);
+            }
         }
+
+        let parent_id = match self.inode_to_blobid.get(&parent).await {
+            Some(parent_id) => parent_id,
+            None => {
+                log::error!("CREATE FAILED: EACCES");
+                reply.error(EACCES);
+                return;
+            }
+        };
+
+        let str_name = name.to_string_lossy().to_string();
+
+        let meta = Meta::new(&str_name, Type::File).with_parent(parent_id);
+
+        let blob_id = match self.client.create_empty(meta.clone()).await {
+            Ok(id) => id,
+            Err(e) => {
+                log::error!("client error: {}", e);
+                reply.error(ENOENT);
+                return;
+            }
+        };
+
+        let ino = self.get_inode(&blob_id).await;
+        self.inode_to_blobid.insert(ino, blob_id.clone()).await;
+        self.name_to_blobid
+            .insert((parent, str_name), blob_id)
+            .await;
+
+        reply.created(
+            &constants::TTL,
+            &build_attributes(ino, &meta, 0o764),
+            0,
+            0,
+            _flags,
+        )
+    }
+
+    async fn open(&self, _req: &Request, _ino: u64, flags: u32, reply: ReplyOpen) {
+        let nd = flags as i32 & O_CREAT;
+        log::info!("open {} [{}/{}]", _ino, flags, nd);
+        if (flags as i32 & O_TRUNC) != 0 {
+            log::info!("TRUNC REQUESTED");
+        }
+        reply.opened(0, flags);
     }
 
     async fn mknod(

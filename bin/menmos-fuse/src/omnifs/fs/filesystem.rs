@@ -30,11 +30,7 @@ pub struct OmniFS {
 
 impl OmniFS {
     pub async fn new(mount: config::Mount) -> Result<Self> {
-        let client = match mount.client {
-            config::ClientConfig::Profile { profile } => Client::new_with_profile(profile)?,
-            config::ClientConfig::Host { host, password } => Client::new(host, password)?,
-        };
-        let client = CachedClient::new(client);
+        let client = CachedClient::new(Client::new_with_profile(mount.profile)?);
 
         let fs = Self {
             client,
@@ -232,6 +228,21 @@ impl OmniFS {
         }
     }
 
+    pub(crate) async fn read(&self, inode: u64, offset: i64, size: u32) -> Result<Option<Vec<u8>>> {
+        ensure!(offset >= 0, "invalid offset");
+
+        let blob_id = match self.inode_to_blobid.get(&inode).await {
+            Some(blob_id) => blob_id,
+            None => {
+                return Ok(None);
+            }
+        };
+
+        let bounds = (offset as u64, (offset + (size - 1) as i64) as u64);
+        let bytes = self.client.read_range(&blob_id, bounds).await?;
+        Ok(Some(bytes))
+    }
+
     pub(crate) async fn populate_virtual_directories(
         &self,
         mut query: Query,
@@ -299,7 +310,7 @@ impl OmniFS {
         Ok(())
     }
 
-    pub(crate) async fn rm_rf(&self, blob_id: &str) -> Result<()> {
+    pub async fn rm_rf(&self, blob_id: &str) -> Result<()> {
         let mut working_stack = vec![(String::from(blob_id), Type::Directory)];
 
         while !working_stack.is_empty() {
@@ -321,6 +332,30 @@ impl OmniFS {
             // TODO: Batch delete would be a nice addition.
             self.client.delete(target_id).await?;
         }
+
+        Ok(())
+    }
+
+    pub async fn rename_blob(
+        &self,
+        source_parent_id: &str,
+        source_blob: &str,
+        new_name: &str,
+        new_parent_id: &str,
+    ) -> Result<()> {
+        let mut source_meta = self
+            .client
+            .get_meta(&source_blob)
+            .await?
+            .ok_or_else(|| anyhow!("missing blob"))?;
+
+        source_meta.name = new_name.into();
+        source_meta
+            .parents
+            .retain(|item| item != source_parent_id && item != new_parent_id);
+        source_meta.parents.push(new_parent_id.into());
+
+        self.client.update_meta(source_blob, source_meta).await?;
 
         Ok(())
     }

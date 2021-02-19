@@ -1489,8 +1489,6 @@ dependencies = [
  "menmos-client",
  "serde 1.0.123",
  "serde_json",
- "tempfile",
- "testing",
  "tokio",
 ]
 

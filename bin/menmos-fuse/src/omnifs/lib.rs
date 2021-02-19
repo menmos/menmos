@@ -1,6 +1,6 @@
 mod cached_client;
 mod concurrent_map;
-pub mod config;
+mod config;
 mod constants;
 mod fs;
 mod write_buffer;
