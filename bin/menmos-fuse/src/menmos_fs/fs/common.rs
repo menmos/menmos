@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::{collections::HashMap, time::Instant};
 
 use anyhow::{anyhow, ensure, Result};
 
@@ -20,6 +20,8 @@ pub struct MenmosFS {
     pub(crate) blobid_to_inode: ConcurrentMap<String, u64>,
     pub(crate) inode_to_blobid: ConcurrentMap<u64, String>,
     pub(crate) name_to_blobid: ConcurrentMap<(u64, String), String>,
+
+    pub(crate) inode_to_last_refresh: ConcurrentMap<u64, Instant>,
 
     pub(crate) virtual_directories_inodes: ConcurrentMap<u64, VirtualDirectory>,
     pub(crate) virtual_directories: ConcurrentMap<(u64, String), u64>,
@@ -43,6 +45,8 @@ impl MenmosFS {
             inode_to_blobid: Default::default(),
             name_to_blobid: Default::default(),
             inode_counter: AtomicU64::new(3),
+
+            inode_to_last_refresh: ConcurrentMap::new(),
 
             virtual_directories_inodes: ConcurrentMap::new(),
             virtual_directories: Default::default(),

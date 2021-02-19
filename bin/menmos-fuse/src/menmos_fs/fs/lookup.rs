@@ -1,4 +1,7 @@
-use std::{ffi::OsStr, time::Duration};
+use std::{
+    ffi::OsStr,
+    time::{Duration, Instant},
+};
 
 use async_fuse::FileAttr;
 use menmos_client::{Meta, Type};
@@ -29,6 +32,24 @@ impl MenmosFS {
         }
     }
 
+    async fn should_refresh(&self, parent_inode: u64) -> bool {
+        if let Some(last_refresh) = self.inode_to_last_refresh.get(&parent_inode).await {
+            Instant::now().duration_since(last_refresh) > Duration::from_secs(60)
+        } else {
+            true
+        }
+    }
+
+    async fn refresh_parent_if_required(&self, parent_inode: u64) -> Result<()> {
+        if self.should_refresh(parent_inode).await {
+            self.readdir_impl(parent_inode, 0).await?;
+            self.inode_to_last_refresh
+                .insert(parent_inode, Instant::now())
+                .await;
+        }
+        Ok(())
+    }
+
     pub async fn lookup_impl(&self, parent_inode: u64, name: &OsStr) -> Result<LookupReply> {
         log::info!("lookup i{}/{:?}", parent_inode, name);
 
@@ -36,8 +57,7 @@ impl MenmosFS {
 
         // Before we do anything, we need to make sure the children of our parent directory were populated.
         // This is usually done by readdir when using this fuse mount with a file explorer, but in case someone kept a path or tries to directly access a file, we need to make sure everything is there.
-        // TODO: Find a more efficient way to do this than calling readdir from here.
-        self.readdir_impl(parent_inode, 0).await?;
+        self.refresh_parent_if_required(parent_inode).await?;
 
         // First, check if it's a virtual directory.
         if let Some(resp) = self.lookup_vdir(&(parent_inode, str_name.clone())).await {

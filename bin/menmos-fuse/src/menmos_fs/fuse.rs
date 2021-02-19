@@ -7,7 +7,18 @@ use async_fuse::{
 
 use async_trait::async_trait;
 
+use libc::{O_APPEND, O_CREAT, O_EXCL, O_RDWR, O_TRUNC, O_WRONLY};
+
 use super::MenmosFS;
+
+fn is_writable(mode: i32) -> bool {
+    mode & O_CREAT > 0
+        || mode & O_TRUNC > 0
+        || mode & O_WRONLY > 0
+        || mode & O_RDWR > 0
+        || &mode & O_EXCL > 0
+        || mode & O_APPEND > 0
+}
 
 #[async_trait]
 impl Filesystem for MenmosFS {
@@ -162,12 +173,12 @@ impl Filesystem for MenmosFS {
         _req: &Request,
         ino: u64,
         _fh: u64,
-        _flags: u32,
+        flags: u32,
         _lock_owner: u64,
         _flush: bool,
         reply: ReplyEmpty,
     ) {
-        match self.release_impl(ino).await {
+        match self.release_impl(ino, is_writable(flags as i32)).await {
             Ok(_) => reply.ok(),
             Err(e) => reply.error(e.to_error_code()),
         }
