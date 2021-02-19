@@ -1,4 +1,5 @@
 use std::io;
+use std::ops::Bound;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -40,13 +41,17 @@ impl Repository for ConcurrentRepository {
         self.repo.save(id, size, stream).await
     }
 
-    async fn write(&self, id: String, range: interface::Range, body: Bytes) -> Result<u64> {
+    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
         let mtx = self.key_locks.get_lock(&id).await;
         let _w_guard = mtx.write().await;
         self.repo.write(id, range, body).await
     }
 
-    async fn get(&self, blob_id: &str, range: Option<interface::Range>) -> Result<StreamInfo> {
+    async fn get(
+        &self,
+        blob_id: &str,
+        range: Option<(Bound<u64>, Bound<u64>)>,
+    ) -> Result<StreamInfo> {
         let mtx = self.key_locks.get_lock(&blob_id).await;
         let _r_guard = mtx.read().await;
         self.repo.get(blob_id, range).await
@@ -56,5 +61,11 @@ impl Repository for ConcurrentRepository {
         let mtx = self.key_locks.get_lock(&blob_id).await;
         let _w_guard = mtx.write().await;
         self.repo.delete(blob_id).await
+    }
+
+    async fn fsync(&self, id: String) -> Result<()> {
+        let mtx = self.key_locks.get_lock(&id).await;
+        let _r_guard = mtx.read().await;
+        self.repo.fsync(id).await
     }
 }

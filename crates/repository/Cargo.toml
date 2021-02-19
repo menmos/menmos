@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 anyhow = "1"
 async-trait = "0.1.42"
+betterstreams = {path = "../betterstreams"}
 bytes = "1"
 futures = "0.3"
 interface = {path = "../interface"}
@@ -18,4 +19,3 @@ log = "0.4"
 rusoto_core = "0.46"
 rusoto_s3 = "0.46"
 tokio = {version = "1.2", features = ["full"]}
-tokio-util = {version = "0.6.3", features = ["codec"]}

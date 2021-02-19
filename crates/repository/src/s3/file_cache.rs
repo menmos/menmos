@@ -36,12 +36,22 @@ impl FileCache {
         })
     }
 
-    async fn get_from_cache<S: AsRef<str>>(&self, blob_id: S) -> Option<PathBuf> {
+    pub async fn contains<S: AsRef<str>>(&self, blob_id: S) -> Option<PathBuf> {
         if let Some(blob_path) = self.file_path_cache.get(blob_id.as_ref()).await {
             Some(blob_path.clone())
         } else {
             None
         }
+    }
+
+    pub async fn invalidate<S: AsRef<str>>(&self, blob_id: S) -> Result<()> {
+        let file_path = self.root_path.join(blob_id.as_ref());
+        if file_path.exists() {
+            fs::remove_file(&file_path).await?;
+        }
+        self.file_path_cache.invalidate(blob_id.as_ref()).await;
+
+        Ok(())
     }
 
     async fn download_blob<S: AsRef<str>>(&self, blob_id: S) -> Result<PathBuf> {
@@ -75,7 +85,7 @@ impl FileCache {
     }
 
     pub async fn get<S: AsRef<str>>(&self, blob_id: S) -> Result<PathBuf> {
-        if let Some(cache_hit) = self.get_from_cache(&blob_id).await {
+        if let Some(cache_hit) = self.contains(&blob_id).await {
             return Ok(cache_hit);
         }
 

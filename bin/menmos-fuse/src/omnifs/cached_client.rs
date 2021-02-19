@@ -84,6 +84,11 @@ impl CachedClient {
         Ok(())
     }
 
+    pub async fn fsync(&self, blob_id: &str) -> Result<()> {
+        self.client.fsync(blob_id).await?;
+        Ok(())
+    }
+
     pub async fn delete(&self, blob_id: String) -> Result<()> {
         // a delete is obviously not cached, but it _does_ invalidate our query cache.
         self.query_cache.clear().await;

@@ -2,7 +2,7 @@ use std::time;
 
 use snafu::{ensure, ResultExt, Snafu};
 
-use crate::client::ClientError;
+use crate::{client::ClientError, parameters::HostConfig};
 use crate::{Client, Parameters};
 
 #[derive(Debug, Snafu)]
@@ -20,6 +20,7 @@ pub enum BuildError {
 pub struct ClientBuilder {
     host: Option<String>,
     admin_password: Option<String>,
+    profile: Option<String>,
 
     pool_idle_timeout: time::Duration,
     request_timeout: time::Duration,
@@ -36,6 +37,11 @@ impl ClientBuilder {
         self
     }
 
+    pub fn with_profile<S: Into<String>>(mut self, profile: S) -> Self {
+        self.profile = Some(profile.into());
+        self
+    }
+
     pub fn with_pool_idle_timeout<T: Into<time::Duration>>(mut self, timeout: T) -> Self {
         self.pool_idle_timeout = timeout.into();
         self
@@ -47,12 +53,19 @@ impl ClientBuilder {
     }
 
     pub fn build(self) -> Result<Client, BuildError> {
-        ensure!(self.host.is_some(), MissingHost);
-        ensure!(self.admin_password.is_some(), MissingPassword);
+        let host_config = if let Some(profile) = self.profile {
+            HostConfig::Profile { profile }
+        } else {
+            ensure!(self.host.is_some(), MissingHost);
+            ensure!(self.admin_password.is_some(), MissingPassword);
+            HostConfig::Host {
+                host: self.host.unwrap(),
+                admin_password: self.admin_password.unwrap(),
+            }
+        };
 
         let params = Parameters {
-            host: self.host.unwrap(),
-            admin_password: self.admin_password.unwrap(),
+            host_config,
             pool_idle_timeout: self.pool_idle_timeout,
             request_timeout: self.request_timeout,
         };
@@ -66,6 +79,7 @@ impl Default for ClientBuilder {
         Self {
             host: None,
             admin_password: None,
+            profile: None,
             pool_idle_timeout: time::Duration::from_secs(5),
             request_timeout: time::Duration::from_secs(60),
         }

@@ -6,9 +6,10 @@ use anyhow::{anyhow, ensure, Result};
 use async_fuse::FileType;
 use config::Contents;
 use menmos_client::{Client, Meta, Query, Type};
+use tokio::sync::Mutex;
 
-use crate::config;
 use crate::{cached_client::CachedClient, concurrent_map::ConcurrentMap};
+use crate::{config, write_buffer::WriteBuffer};
 
 use super::virtualdir::VirtualDirectory;
 
@@ -21,6 +22,8 @@ pub struct OmniFS {
 
     pub(crate) virtual_directories_inodes: ConcurrentMap<u64, VirtualDirectory>,
     pub(crate) virtual_directories: ConcurrentMap<(u64, String), u64>,
+
+    pub(crate) write_buffers: Mutex<HashMap<u64, WriteBuffer>>,
 
     inode_counter: AtomicU64,
 }
@@ -38,6 +41,8 @@ impl OmniFS {
 
             virtual_directories_inodes: ConcurrentMap::new(),
             virtual_directories: Default::default(),
+
+            write_buffers: Default::default(),
         };
 
         // Initialize the filesystem roots.
