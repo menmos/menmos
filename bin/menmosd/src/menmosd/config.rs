@@ -14,7 +14,6 @@ const DEFAULT_DNS_NB_OF_CONCURRENT_QUERIES: i64 = 40;
 const DEFAULT_DNS_LISTEN_ADDRESS: &str = "0.0.0.0:53";
 const DEFAULT_HTTP_PORT: i64 = 80;
 const DEFAULT_HTTPS_PORT: i64 = 443;
-const DEFAULT_LETSENCRYPT_URL: LetsEncryptURL = LetsEncryptURL::Production;
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct DNSParameters {
@@ -40,7 +39,7 @@ pub struct HTTPSParameters {
 }
 
 #[derive(Clone, Deserialize, Serialize, PartialEq)]
-#[serde(untagged)]
+#[serde(rename_all = "lowercase")]
 pub enum LetsEncryptURL {
     Production,
     Staging,
