@@ -1,4 +1,7 @@
-use std::io::{self, BufRead};
+use std::{
+    io::{self, BufRead},
+    path::PathBuf,
+};
 
 use anyhow::{anyhow, Result};
 use clap::Clap;
@@ -12,6 +15,10 @@ use tokio::io::AsyncWriteExt;
 pub struct DownloadCommand {
     /// The IDs of the blobs to download.
     blob_ids: Vec<String>,
+
+    /// The directory to which to save the files.
+    #[clap(long = "out", short = 'o')]
+    dst_dir: Option<PathBuf>,
 }
 
 impl DownloadCommand {
@@ -41,13 +48,18 @@ impl DownloadCommand {
             let stream = client.get_file(&blob_id).await?;
             let mut stream_pin = Box::pin(stream);
 
-            let mut f = fs::File::create(&meta.name).await?;
+            let file_path = match &self.dst_dir {
+                Some(d) => d.join(&meta.name),
+                None => PathBuf::from(meta.name),
+            };
+
+            let mut f = fs::File::create(&file_path).await?;
 
             while let Some(chunk) = stream_pin.next().await {
                 match chunk {
                     Ok(c) => f.write_all(c.as_ref()).await?,
                     Err(e) => {
-                        fs::remove_file(&meta.name).await?;
+                        fs::remove_file(&file_path).await?;
                         return Err(anyhow!("{}", e.to_string()));
                     }
                 }
