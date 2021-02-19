@@ -24,6 +24,9 @@ pub struct ClientBuilder {
 
     pool_idle_timeout: time::Duration,
     request_timeout: time::Duration,
+
+    max_retry_count: usize,
+    retry_interval: time::Duration,
 }
 
 impl ClientBuilder {
@@ -52,6 +55,16 @@ impl ClientBuilder {
         self
     }
 
+    pub fn with_max_retry_count(mut self, count: usize) -> Self {
+        self.max_retry_count = count;
+        self
+    }
+
+    pub fn with_retry_interval<T: Into<time::Duration>>(mut self, interval: T) -> Self {
+        self.retry_interval = interval.into();
+        self
+    }
+
     pub fn build(self) -> Result<Client, BuildError> {
         let host_config = if let Some(profile) = self.profile {
             HostConfig::Profile { profile }
@@ -68,6 +81,8 @@ impl ClientBuilder {
             host_config,
             pool_idle_timeout: self.pool_idle_timeout,
             request_timeout: self.request_timeout,
+            max_retry_count: self.max_retry_count,
+            retry_interval: self.retry_interval,
         };
 
         Client::new_with_params(params).context(ClientBuildError)
@@ -82,6 +97,8 @@ impl Default for ClientBuilder {
             profile: None,
             pool_idle_timeout: time::Duration::from_secs(5),
             request_timeout: time::Duration::from_secs(60),
+            max_retry_count: 20,
+            retry_interval: time::Duration::from_millis(100),
         }
     }
 }

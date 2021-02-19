@@ -272,7 +272,7 @@ impl Filesystem for OmniFS {
                 log::info!(
                     "read {}-{} on ino={} => got {} bytes",
                     offset,
-                    (offset + size as i64),
+                    (offset + size as i64) - 1,
                     ino,
                     bytes.len()
                 );

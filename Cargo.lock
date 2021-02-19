@@ -1529,6 +1529,7 @@ dependencies = [
  "serde_json",
  "sled 0.34.6 (git+https://github.com/spacejam/sled?branch=main)",
  "tempfile",
+ "testing",
  "tokio",
  "urlsign",
  "uuid",
@@ -2990,6 +2991,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "testing"
+version = "0.1.0"
+dependencies = [
+ "amphora",
+ "anyhow",
+ "futures",
+ "indexer",
+ "log",
+ "log4rs",
+ "menmos-client",
+ "menmosd",
+ "portpicker",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
