@@ -15,6 +15,10 @@ path = "src/omnifs/lib.rs"
 name = "menmos-fuse"
 path = "src/main.rs"
 
+[dev-dependencies]
+tempfile = "3.2"
+testing = {path = "../../crates/testing"}
+
 [dependencies]
 anyhow = "1"
 async-fuse = {git = "https://github.com/menmos/async-fuse-rs", tag = "v0.1.0"}
