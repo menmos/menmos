@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::{collections::HashMap, time::Instant};
 
 use anyhow::{anyhow, ensure, Result};
 
@@ -12,13 +12,16 @@ use crate::{cached_client::CachedClient, concurrent_map::ConcurrentMap};
 use crate::{config, write_buffer::WriteBuffer};
 
 use super::virtualdir::VirtualDirectory;
+use super::{Error, Result as FSResult};
 
-pub struct OmniFS {
+pub struct MenmosFS {
     pub(crate) client: CachedClient,
 
     pub(crate) blobid_to_inode: ConcurrentMap<String, u64>,
     pub(crate) inode_to_blobid: ConcurrentMap<u64, String>,
     pub(crate) name_to_blobid: ConcurrentMap<(u64, String), String>,
+
+    pub(crate) inode_to_last_refresh: ConcurrentMap<u64, Instant>,
 
     pub(crate) virtual_directories_inodes: ConcurrentMap<u64, VirtualDirectory>,
     pub(crate) virtual_directories: ConcurrentMap<(u64, String), u64>,
@@ -28,9 +31,13 @@ pub struct OmniFS {
     inode_counter: AtomicU64,
 }
 
-impl OmniFS {
+impl MenmosFS {
     pub async fn new(mount: config::Mount) -> Result<Self> {
-        let client = CachedClient::new(Client::new_with_profile(mount.profile)?);
+        let client = match mount.client {
+            config::ClientConfig::Profile { profile } => Client::new_with_profile(profile)?,
+            config::ClientConfig::Host { host, password } => Client::new(host, password)?,
+        };
+        let client = CachedClient::new(client);
 
         let fs = Self {
             client,
@@ -38,6 +45,8 @@ impl OmniFS {
             inode_to_blobid: Default::default(),
             name_to_blobid: Default::default(),
             inode_counter: AtomicU64::new(3),
+
+            inode_to_last_refresh: ConcurrentMap::new(),
 
             virtual_directories_inodes: ConcurrentMap::new(),
             virtual_directories: Default::default(),
@@ -57,6 +66,30 @@ impl OmniFS {
         Ok(fs)
     }
 
+    /// Flushes the write buffer for an inode to the menmos cluster.
+    ///
+    /// Returns an IO error if the write fails.
+    pub(crate) async fn flush_buffer(&self, ino: u64, buffer: WriteBuffer) -> FSResult<()> {
+        let blob_id = self
+            .inode_to_blobid
+            .get(&ino)
+            .await
+            .ok_or(Error::NotFound)?;
+
+        self.client
+            .write(&blob_id, buffer.offset, buffer.data.freeze())
+            .await
+            .map_err(|e| {
+                log::error!("write error: {}", e);
+                Error::IOError
+            })?;
+
+        Ok(())
+    }
+
+    /// Gets the inode corresponding to a blob ID.
+    ///
+    /// If the blob ID wasn't seen before, a new inode is generated and returned.
     pub(crate) async fn get_inode(&self, blob_id: &str) -> u64 {
         if let Some(inode) = self.blobid_to_inode.get(&String::from(blob_id)).await {
             inode
@@ -69,6 +102,9 @@ impl OmniFS {
         }
     }
 
+    /// Gets a virtual directory by its parent inode and its name.
+    ///
+    /// If this directory wasn't seen before, a new inode is generated and returned.
     pub(crate) async fn get_virtual_inode(&self, parent_inode: u64, name: &str) -> u64 {
         if let Some(inode) = self
             .virtual_directories
@@ -85,6 +121,10 @@ impl OmniFS {
         }
     }
 
+    /// Get the metadata for a given inode.
+    ///
+    /// Returns None if the blob id corresponding on the server doesn't exist,
+    /// returns an error if there is no blob ID corresponding to the provided inode.
     pub(crate) async fn get_meta_by_inode(&self, inode: u64) -> Result<Option<Meta>> {
         if let Some(blob_id) = self.inode_to_blobid.get(&inode).await {
             Ok(self.client.get_meta(&blob_id).await?)
@@ -93,6 +133,7 @@ impl OmniFS {
         }
     }
 
+    /// Lists entries for a physical (backed by a blob on the menmos cluster) directory.
     pub(crate) async fn list_entries(
         &self,
         query: Query,
@@ -126,6 +167,7 @@ impl OmniFS {
         Ok(entries)
     }
 
+    /// Lists entries for a virtual (created on the client by a query) directory.
     pub(crate) async fn list_virtual_entries(
         &self,
         virtual_directory: VirtualDirectory,
@@ -173,7 +215,6 @@ impl OmniFS {
                     Ok(entries)
                 }
                 Contents::Virtual(mounts) => {
-                    log::info!("listing mount vdir");
                     let mut entries = vec![
                         (parent_inode, FileType::Directory, ".".to_string()),
                         (parent_inode, FileType::Directory, "..".to_string()),
@@ -182,7 +223,6 @@ impl OmniFS {
                     // Create a virtual directory for each of our mounts.
                     for (k, contents) in mounts.into_iter() {
                         let mount_inode = self.get_virtual_inode(parent_inode, &k).await;
-                        log::info!("got parent inode: {}/{}: {}", parent_inode, &k, mount_inode);
 
                         self.virtual_directories_inodes
                             .insert(mount_inode, VirtualDirectory::Mount { contents })
@@ -228,21 +268,9 @@ impl OmniFS {
         }
     }
 
-    pub(crate) async fn read(&self, inode: u64, offset: i64, size: u32) -> Result<Option<Vec<u8>>> {
-        ensure!(offset >= 0, "invalid offset");
-
-        let blob_id = match self.inode_to_blobid.get(&inode).await {
-            Some(blob_id) => blob_id,
-            None => {
-                return Ok(None);
-            }
-        };
-
-        let bounds = (offset as u64, (offset + (size - 1) as i64) as u64);
-        let bytes = self.client.read_range(&blob_id, bounds).await?;
-        Ok(Some(bytes))
-    }
-
+    /// Populates the metadata maps for virtual directories.
+    ///
+    /// This creates the virtual subdirectories for `query` mounts, creating directories for each tag and k/v pair.
     pub(crate) async fn populate_virtual_directories(
         &self,
         mut query: Query,
@@ -306,56 +334,6 @@ impl OmniFS {
                     .await;
             }
         }
-
-        Ok(())
-    }
-
-    pub async fn rm_rf(&self, blob_id: &str) -> Result<()> {
-        let mut working_stack = vec![(String::from(blob_id), Type::Directory)];
-
-        while !working_stack.is_empty() {
-            // Get a new root.
-            let (target_id, blob_type) = working_stack.pop().unwrap();
-
-            if blob_type == Type::Directory {
-                // List the root's children.
-                let results = self
-                    .client
-                    .query(Query::default().and_parent(&target_id).with_size(5000))
-                    .await?;
-                for hit in results.hits.into_iter() {
-                    working_stack.push((hit.id, hit.meta.blob_type));
-                }
-            }
-
-            // Delete the root.
-            // TODO: Batch delete would be a nice addition.
-            self.client.delete(target_id).await?;
-        }
-
-        Ok(())
-    }
-
-    pub async fn rename_blob(
-        &self,
-        source_parent_id: &str,
-        source_blob: &str,
-        new_name: &str,
-        new_parent_id: &str,
-    ) -> Result<()> {
-        let mut source_meta = self
-            .client
-            .get_meta(&source_blob)
-            .await?
-            .ok_or_else(|| anyhow!("missing blob"))?;
-
-        source_meta.name = new_name.into();
-        source_meta
-            .parents
-            .retain(|item| item != source_parent_id && item != new_parent_id);
-        source_meta.parents.push(new_parent_id.into());
-
-        self.client.update_meta(source_blob, source_meta).await?;
 
         Ok(())
     }
