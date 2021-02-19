@@ -132,8 +132,8 @@ impl Repository for S3Repository {
             };
 
             let fmt_max_value = match r.end_bound() {
-                Bound::Included(i) => (*i + 1).to_string(),
-                Bound::Excluded(i) => i.to_string(),
+                Bound::Included(i) => i.to_string(),
+                Bound::Excluded(i) => (*i + 1).to_string(),
                 Bound::Unbounded => String::default(),
             };
 

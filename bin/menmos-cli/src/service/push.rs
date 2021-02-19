@@ -16,16 +16,12 @@ async fn file<P: AsRef<Path>>(
     cli: OutputManager,
     path: P,
     client: Arc<Client>,
-    max_retry: usize,
     tags: Vec<String>,
     meta_map: HashMap<String, String>,
     blob_type: Type,
     parent: Option<String>,
 ) -> Result<String> {
     cli.step(format!("Started upload for {:?}", path.as_ref()));
-
-    // Retry mechanism to help with the occasional broken pipe.
-    let mut error_count = 0;
 
     let mut meta = Meta::new(
         path.as_ref()
@@ -59,21 +55,10 @@ async fn file<P: AsRef<Path>>(
         meta = meta.with_meta(k, v);
     }
 
-    while error_count < max_retry {
-        match client.push(path.as_ref(), meta.clone()).await {
-            Ok(item_id) => {
-                cli.success(format!("Complete {:?} => {}", path.as_ref(), &item_id));
-                return Ok(item_id);
-            }
-            Err(e) => {
-                cli.debug(format!("upload error ({}), retrying in 100ms", e));
-                error_count += 1;
-                tokio::time::sleep(Duration::from_millis(100)).await;
-            }
-        }
-    }
+    let item_id = client.push(path.as_ref(), meta).await?;
+    cli.success(format!("Complete {:?} => {}", path.as_ref(), &item_id));
 
-    Err(anyhow!("retries exceeded"))
+    Ok(item_id)
 }
 
 fn get_file_stream(
@@ -82,7 +67,6 @@ fn get_file_stream(
     paths: Vec<PathBuf>,
     tags: Vec<String>,
     meta_map: HashMap<String, String>,
-    max_retry: usize,
     parent_id: Option<String>,
 ) -> impl Stream<Item = Result<(Option<String>, PathBuf)>> {
     // Convert a non-recursive (stack based) directory traversal to a stream
@@ -100,7 +84,6 @@ fn get_file_stream(
                     cli.clone(),
                     file_path.clone(),
                     client_arc.clone(),
-                    max_retry,
                     tags.clone(),
                     meta_map.clone(),
                     Type::Directory,
@@ -125,7 +108,6 @@ pub async fn all(
     tags: Vec<String>,
     meta: Vec<String>,
     concurrency: usize,
-    max_retry: usize,
     parent_id: Option<String>,
 ) -> Result<i32> {
     let client_arc = Arc::from(client);
@@ -139,7 +121,6 @@ pub async fn all(
         paths.clone(),
         tags.clone(),
         meta_map.clone(),
-        max_retry,
         parent_id.clone(),
     );
 
@@ -167,7 +148,6 @@ pub async fn all(
                     cloned_cli,
                     file_path,
                     cloned_client,
-                    max_retry,
                     tags_cloned,
                     meta_cloned,
                     Type::File,

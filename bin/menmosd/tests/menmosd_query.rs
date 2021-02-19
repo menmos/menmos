@@ -1,5 +1,4 @@
 //! Test query-related features.
-mod fixtures;
 
 use anyhow::Result;
 use menmos_client::{Meta, Query, Type};
@@ -8,7 +7,7 @@ use serde::Serialize;
 
 #[tokio::test]
 async fn query_pagination() -> Result<()> {
-    let mut cluster = fixtures::Menmos::new().await?;
+    let mut cluster = testing::fixtures::Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
     for i in 0..15 {
@@ -45,7 +44,7 @@ async fn query_pagination() -> Result<()> {
 
 #[tokio::test]
 async fn query_bad_request() -> Result<()> {
-    let cluster = fixtures::Menmos::new().await?;
+    let cluster = testing::fixtures::Menmos::new().await?;
 
     #[derive(Serialize)]
     struct BadQuery {

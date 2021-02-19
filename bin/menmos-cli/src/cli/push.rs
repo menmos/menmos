@@ -12,9 +12,6 @@ pub struct PushCommand {
     #[clap(long = "concurrency", short = 'c', default_value = "4")]
     concurrency: usize,
 
-    #[clap(long = "retry", default_value = "20")]
-    max_retry: usize,
-
     /// A key/value pair to add to all content uploaded in this run.
     #[clap(long = "meta", short = 'm')]
     meta: Vec<String>,
@@ -39,7 +36,6 @@ impl PushCommand {
             self.tags,
             self.meta,
             self.concurrency,
-            self.max_retry,
             None,
         )
         .await?;

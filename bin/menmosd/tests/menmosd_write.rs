@@ -1,11 +1,10 @@
 //! Test blob writing capabilities.
-mod fixtures;
 mod util;
 
 use anyhow::Result;
 use bytes::Bytes;
-use fixtures::Menmos;
 use menmos_client::Meta;
+use testing::fixtures::Menmos;
 use util::stream_to_bytes;
 
 #[tokio::test]

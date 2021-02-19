@@ -1,9 +1,9 @@
 //! Tests basic functionality of menmosd, without a storage node attached.
-mod fixtures;
 
 use anyhow::Result;
 use interface::{QueryResponse, Type};
 use menmos_client::{Meta, Query};
+use testing::fixtures;
 
 #[tokio::test]
 async fn comes_up_and_stops() -> Result<()> {

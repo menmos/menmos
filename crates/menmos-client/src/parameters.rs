@@ -12,6 +12,10 @@ pub enum HostConfig {
 
 pub struct Parameters {
     pub host_config: HostConfig,
+
     pub pool_idle_timeout: time::Duration,
     pub request_timeout: time::Duration,
+
+    pub max_retry_count: usize,
+    pub retry_interval: time::Duration,
 }

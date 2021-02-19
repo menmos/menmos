@@ -14,5 +14,6 @@ members = [
     "crates/menmos-client",
     "crates/rapidquery",
     "crates/repository",
+    "crates/testing",
     "crates/urlsign"
 ]

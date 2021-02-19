@@ -1,11 +1,10 @@
 //! Test blob streaming capabilities.
 // (e.g. readonly)
-mod fixtures;
 mod util;
 
 use anyhow::Result;
-use fixtures::Menmos;
 use menmos_client::Meta;
+use testing::fixtures::Menmos;
 use util::stream_to_bytes;
 
 #[tokio::test]
