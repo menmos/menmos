@@ -17,9 +17,14 @@ pub async fn execute(
 
     let resp = client.query(q).await?;
 
+    let pushed = cli.push();
+
     for hit in resp.hits {
-        cli.step(hit.url);
+        cli.step(hit.id);
+        pushed.debug(hit.url);
     }
+
+    cli.debug(format!("{}/{} hits", resp.count, resp.total));
 
     Ok(())
 }

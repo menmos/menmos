@@ -1,3 +1,5 @@
+use std::io::{self, BufRead};
+
 use anyhow::{anyhow, Result};
 use clap::Clap;
 use futures::StreamExt;
@@ -14,11 +16,19 @@ pub struct DownloadCommand {
 
 impl DownloadCommand {
     pub async fn run(self, cli: OutputManager, client: Client) -> Result<()> {
+        let blob_ids = if self.blob_ids.is_empty() {
+            // Get from stdin
+            let stdin = io::stdin();
+            stdin.lock().lines().filter_map(|l| l.ok()).collect()
+        } else {
+            self.blob_ids
+        };
+
         // TODO: Extract to service & parallelize.
-        cli.step(format!("Downloading {} files...", &self.blob_ids.len()));
+        cli.step(format!("Downloading {} files...", &blob_ids.len()));
 
         let pushed = cli.push();
-        for blob_id in self.blob_ids.into_iter() {
+        for blob_id in blob_ids.into_iter() {
             pushed.step(format!("Downloading blob {}...", &blob_id));
             let meta = match client.get_meta(&blob_id).await? {
                 Some(b) => b,
