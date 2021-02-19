@@ -23,7 +23,8 @@ pub struct Root {
     )]
     profile: String,
 
-    /// The
+    /// The max number of retries for a given request..
+    #[clap(short = 'r', long = "retries")]
     max_retry_count: Option<usize>,
 
     #[clap(subcommand)]
