@@ -22,7 +22,11 @@ use warp::Filter;
 
 use x509_parser::pem::Pem;
 
-use crate::{config::HTTPSParameters, server::filters, Config};
+use crate::{
+    config::{HTTPSParameters, LetsEncryptURL},
+    server::filters,
+    Config,
+};
 
 async fn interruptible_delay(dur: Duration, stop_rx: &mut mpsc::Receiver<()>) -> bool {
     let delay = tokio::time::sleep(dur);
@@ -97,7 +101,11 @@ where
         .join(&cfg.dns.root_domain)
         .with_extension("key");
 
-    let url = acme_lib::DirectoryUrl::LetsEncrypt;
+    let url = if cfg.letsencrypt_url == LetsEncryptURL::Production {
+        acme_lib::DirectoryUrl::LetsEncrypt
+    } else {
+        acme_lib::DirectoryUrl::LetsEncryptStaging
+    };
     let persist = acme_lib::persist::FilePersist::new(&cfg.certificate_storage_path);
     let dir = acme_lib::Directory::from_url(persist, url)?;
 
