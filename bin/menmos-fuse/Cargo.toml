@@ -8,8 +8,8 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "omnifs"
-path = "src/omnifs/lib.rs"
+name = "menmos_fs"
+path = "src/menmos_fs/lib.rs"
 
 [[bin]]
 name = "menmos-fuse"

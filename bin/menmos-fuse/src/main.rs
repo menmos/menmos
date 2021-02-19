@@ -6,7 +6,7 @@ use anyhow::Result;
 use clap::Clap;
 use env_logger::Env;
 
-use omnifs::{Config, OmniFS};
+use menmos_fs::{Config, MenmosFS};
 
 #[derive(Clap)]
 pub struct CLIMain {
@@ -27,7 +27,7 @@ impl CLIMain {
         let mount_dir = cfg.mount.mount_point.clone();
         fs::create_dir_all(&mount_dir)?;
 
-        let filesystem = OmniFS::new(cfg.mount).await?;
+        let filesystem = MenmosFS::new(cfg.mount).await?;
         let cloned_opt = options.clone();
 
         if let Err(e) = async_fuse::mount(filesystem, mount_dir, &cloned_opt) {

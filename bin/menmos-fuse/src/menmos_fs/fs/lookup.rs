@@ -3,7 +3,7 @@ use std::{ffi::OsStr, time::Duration};
 use async_fuse::FileAttr;
 use menmos_client::{Meta, Type};
 
-use crate::{constants, OmniFS};
+use crate::{constants, MenmosFS};
 
 use super::{build_attributes, Error, Result};
 
@@ -13,7 +13,7 @@ pub struct LookupReply {
     pub generation: u64,
 }
 
-impl OmniFS {
+impl MenmosFS {
     async fn lookup_vdir(&self, key: &(u64, String)) -> Option<LookupReply> {
         if let Some(inode) = self.virtual_directories.get(key).await {
             log::info!("lookup on {:?} found vdir inode: {}", key.1, inode,);
@@ -29,8 +29,15 @@ impl OmniFS {
         }
     }
 
-    pub(crate) async fn lookup_impl(&self, parent_inode: u64, name: &OsStr) -> Result<LookupReply> {
+    pub async fn lookup_impl(&self, parent_inode: u64, name: &OsStr) -> Result<LookupReply> {
+        log::info!("lookup i{}/{:?}", parent_inode, name);
+
         let str_name = name.to_string_lossy().to_string();
+
+        // Before we do anything, we need to make sure the children of our parent directory were populated.
+        // This is usually done by readdir when using this fuse mount with a file explorer, but in case someone kept a path or tries to directly access a file, we need to make sure everything is there.
+        // TODO: Find a more efficient way to do this than calling readdir from here.
+        self.readdir_impl(parent_inode, 0).await?;
 
         // First, check if it's a virtual directory.
         if let Some(resp) = self.lookup_vdir(&(parent_inode, str_name.clone())).await {

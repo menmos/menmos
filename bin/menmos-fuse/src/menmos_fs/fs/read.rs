@@ -1,13 +1,13 @@
 use anyhow::ensure;
 
 use super::{Error, Result};
-use crate::OmniFS;
+use crate::MenmosFS;
 
 pub struct ReadReply {
     pub data: Vec<u8>,
 }
 
-impl OmniFS {
+impl MenmosFS {
     async fn read(&self, inode: u64, offset: i64, size: u32) -> anyhow::Result<Option<Vec<u8>>> {
         ensure!(offset >= 0, "invalid offset");
 
@@ -23,11 +23,12 @@ impl OmniFS {
         Ok(Some(bytes))
     }
 
-    pub(crate) async fn read_impl(&self, ino: u64, offset: i64, size: u32) -> Result<ReadReply> {
+    pub async fn read_impl(&self, ino: u64, offset: i64, size: u32) -> Result<ReadReply> {
+        log::info!("read i{} {}-{}", ino, offset, (offset + size as i64) - 1);
         match self.read(ino, offset, size).await {
             Ok(Some(bytes)) => {
-                log::info!(
-                    "read {}-{} on ino={} => got {} bytes",
+                log::debug!(
+                    "read {}-{} on i{} => got {} bytes",
                     offset,
                     (offset + size as i64) - 1,
                     ino,

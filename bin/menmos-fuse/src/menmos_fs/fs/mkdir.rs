@@ -4,7 +4,7 @@ use async_fuse::FileAttr;
 use menmos_client::{Meta, Type};
 
 use super::{build_attributes, Error, Result};
-use crate::{constants, OmniFS};
+use crate::{constants, MenmosFS};
 
 pub struct MkdirReply {
     pub ttl: Duration,
@@ -12,8 +12,10 @@ pub struct MkdirReply {
     pub generation: u64,
 }
 
-impl OmniFS {
-    pub(crate) async fn mkdir_impl(&self, parent_inode: u64, name: &OsStr) -> Result<MkdirReply> {
+impl MenmosFS {
+    pub async fn mkdir_impl(&self, parent_inode: u64, name: &OsStr) -> Result<MkdirReply> {
+        log::info!("mkdir i{}/{:?}", parent_inode, name);
+
         let parent_blobid = self
             .inode_to_blobid
             .get(&parent_inode)

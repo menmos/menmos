@@ -1,11 +1,21 @@
+mod common;
 mod create;
 mod error;
 mod getattr;
 mod lookup;
 mod mkdir;
+mod mknod;
 mod read;
+mod readdir;
+mod release;
 mod rename;
+mod rmdir;
+mod unlink;
+mod write;
 
+mod virtualdir;
+
+pub use common::MenmosFS;
 pub use error::{Error, Result};
 
 use crate::constants;

@@ -4,16 +4,16 @@ use async_fuse::FileAttr;
 use menmos_client::{Meta, Type};
 
 use super::{build_attributes, Error, Result};
-use crate::{constants, OmniFS};
+use crate::{constants, MenmosFS};
 
 pub struct GetAttrReply {
     pub ttl: Duration,
     pub attrs: FileAttr,
 }
 
-impl OmniFS {
-    pub(crate) async fn getattr_impl(&self, ino: u64) -> Result<GetAttrReply> {
-        log::info!("getattr: {}", ino);
+impl MenmosFS {
+    pub async fn getattr_impl(&self, ino: u64) -> Result<GetAttrReply> {
+        log::info!("getattr i{}", ino);
         if ino == 1 {
             return Ok(GetAttrReply {
                 ttl: constants::TTL,

@@ -33,6 +33,7 @@ pub enum Contents {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
 pub enum ClientConfig {
     Host { host: String, password: String },
     Profile { profile: String },

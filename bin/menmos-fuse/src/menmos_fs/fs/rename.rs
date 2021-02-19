@@ -3,9 +3,9 @@ use std::ffi::OsStr;
 use anyhow::anyhow;
 
 use super::{Error, Result};
-use crate::OmniFS;
+use crate::MenmosFS;
 
-impl OmniFS {
+impl MenmosFS {
     async fn delete_dst_blob_if_exists(&self, key: &(u64, String)) -> Result<()> {
         if let Some(dst_blob) = self.name_to_blobid.get(key).await {
             if let Some(inode) = self.blobid_to_inode.remove(&dst_blob).await {
@@ -45,7 +45,7 @@ impl OmniFS {
         Ok(())
     }
 
-    pub(crate) async fn rename_impl(
+    pub async fn rename_impl(
         &self,
         parent: u64,
         name: &OsStr,
@@ -53,7 +53,7 @@ impl OmniFS {
         newname: &OsStr,
     ) -> Result<()> {
         log::info!(
-            "rename {}/{:?} => {}/{:?}",
+            "rename i{}/{:?} => i{}/{:?}",
             parent,
             name,
             newparent,
