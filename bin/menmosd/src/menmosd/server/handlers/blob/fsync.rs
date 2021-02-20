@@ -1,24 +1,21 @@
 use std::net::SocketAddr;
-use std::sync::Arc;
 
 use apikit::reject::{InternalServerError, NotFound};
-
-use interface::DirectoryNode;
 
 use warp::Reply;
 
 use crate::network::get_storage_node_address;
-use crate::Config;
+use crate::server::Context;
 
-pub async fn fsync<N: DirectoryNode>(
-    cfg: Config,
-    node: Arc<N>,
+pub async fn fsync(
+    context: Context,
     blob_id: String,
     addr: Option<SocketAddr>,
 ) -> Result<warp::reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
 
-    let storage_node = node
+    let storage_node = context
+        .node
         .get_blob_storage_node(&blob_id)
         .await
         .map_err(InternalServerError::from)?
@@ -27,7 +24,7 @@ pub async fn fsync<N: DirectoryNode>(
     let node_address = get_storage_node_address(
         socket_addr.ip(),
         storage_node,
-        &cfg,
+        &context.config,
         &format!("blob/{}/fsync", &blob_id),
     )
     .map_err(InternalServerError::from)?;

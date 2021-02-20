@@ -1,27 +1,26 @@
 use std::convert::TryFrom;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 
 use apikit::reject::{BadRequest, InternalServerError};
 
 use interface::message::directory_node as msg;
-use interface::{DirectoryNode, QueryResponse};
+use interface::QueryResponse;
 
 use msg::Query;
 use warp::http::Uri;
 use warp::reply;
 
-use crate::{network::get_storage_node_address, Config};
+use crate::{network::get_storage_node_address, server::context::Context};
 
-async fn get_blob_url<N: DirectoryNode, S: AsRef<str>>(
-    node: Arc<N>,
+async fn get_blob_url<S: AsRef<str>>(
+    context: &Context,
     blob_id: S,
     request_ip: &IpAddr,
-    cfg: &Config,
 ) -> Result<Uri> {
-    let storage_node = node
+    let storage_node = context
+        .node
         .get_blob_storage_node(blob_id.as_ref())
         .await?
         .ok_or_else(|| anyhow!("blob {} not found", blob_id.as_ref()))?;
@@ -29,29 +28,28 @@ async fn get_blob_url<N: DirectoryNode, S: AsRef<str>>(
     let uri = get_storage_node_address(
         *request_ip,
         storage_node,
-        cfg,
+        &context.config,
         &format!("blob/{}", blob_id.as_ref()),
     )?;
 
     Ok(uri)
 }
 
-async fn fetch_urls<N: DirectoryNode>(
+async fn fetch_urls(
     signed: bool,
     results: &mut QueryResponse,
-    node: Arc<N>,
+    context: Context,
     request_ip: IpAddr,
-    cfg: &Config,
 ) -> Result<()> {
     let mut new_hits = Vec::with_capacity(results.count);
 
     for hit in results.hits.iter_mut() {
-        match get_blob_url(node.clone(), &hit.id, &request_ip, cfg).await {
+        match get_blob_url(&context, &hit.id, &request_ip).await {
             Ok(uri) => {
                 let mut blob_uri = uri.to_string();
                 // Sign the URL if requested
                 if signed {
-                    let tok = urlsign::sign(&hit.id, &cfg.node.encryption_key)?;
+                    let tok = urlsign::sign(&hit.id, &context.config.node.encryption_key)?;
                     blob_uri += &format!("?signature={}", tok);
                 }
 
@@ -70,9 +68,8 @@ async fn fetch_urls<N: DirectoryNode>(
     Ok(())
 }
 
-pub async fn query<N: DirectoryNode>(
-    cfg: Config,
-    node: Arc<N>,
+pub async fn query(
+    context: Context,
     addr: Option<SocketAddr>,
     query_request: msg::QueryRequest,
 ) -> Result<reply::Response, warp::Rejection> {
@@ -80,7 +77,8 @@ pub async fn query<N: DirectoryNode>(
 
     let query = Query::try_from(query_request).map_err(|_| BadRequest)?;
 
-    let mut query_response = node
+    let mut query_response = context
+        .node
         .query(&query)
         .await
         .map_err(InternalServerError::from)?;
@@ -88,9 +86,8 @@ pub async fn query<N: DirectoryNode>(
     fetch_urls(
         query.sign_urls,
         &mut query_response,
-        node,
+        context,
         socket_addr.ip(),
-        &cfg,
     )
     .await
     .map_err(InternalServerError::from)?;

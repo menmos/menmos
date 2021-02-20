@@ -16,7 +16,7 @@ fn is_writable(mode: i32) -> bool {
         || mode & O_TRUNC > 0
         || mode & O_WRONLY > 0
         || mode & O_RDWR > 0
-        || &mode & O_EXCL > 0
+        || mode & O_EXCL > 0
         || mode & O_APPEND > 0
 }
 
@@ -168,6 +168,7 @@ impl Filesystem for MenmosFS {
         }
     }
 
+    #[allow(clippy::clippy::too_many_arguments)]
     async fn release(
         &self,
         _req: &Request,

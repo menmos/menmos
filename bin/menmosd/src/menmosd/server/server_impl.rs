@@ -9,29 +9,28 @@ use tokio::task::{spawn, JoinHandle};
 
 use crate::config::{Config, ServerSetting};
 
-use super::{filters, ssl::use_tls};
+use super::{context::Context, filters, ssl::use_tls};
 
-pub struct Server<N: DirectoryNode> {
-    node: Arc<N>,
+pub struct Server {
+    node: Arc<Box<dyn DirectoryNode + Send + Sync>>,
     handle: JoinHandle<()>,
     stop_tx: mpsc::Sender<()>,
 }
 
-impl<N> Server<N>
-where
-    N: DirectoryNode + Send + Sync + 'static,
-{
-    pub async fn new(cfg: Config, node: N) -> Result<Server<N>> {
-        let n = Arc::from(node);
-
-        let config_cloned = cfg.clone();
+impl Server {
+    pub async fn new<N: DirectoryNode + Send + Sync + 'static>(
+        cfg: Config,
+        node: N,
+    ) -> Result<Server> {
+        let node: Arc<Box<dyn DirectoryNode + Send + Sync>> = Arc::new(Box::new(node));
+        let config = Arc::new(cfg.clone());
 
         let (stop_tx, mut stop_rx) = mpsc::channel(1);
 
-        let n_cloned = n.clone();
+        let node_cloned = node.clone();
         let join_handle = match cfg.server {
             ServerSetting::HTTPS(https_cfg) => spawn(async move {
-                match use_tls(n_cloned, config_cloned.clone(), https_cfg, stop_rx).await {
+                match use_tls(node_cloned, config, https_cfg, stop_rx).await {
                     Ok(_) => {}
                     Err(e) => {
                         log::error!("async error: {}", e)
@@ -40,7 +39,13 @@ where
             }),
             ServerSetting::HTTP(http_cfg) => {
                 log::info!("starting http layer");
-                let (_addr, srv) = warp::serve(filters::all(n.clone(), config_cloned, None))
+                let server_context = Context {
+                    node: node.clone(),
+                    config,
+                    certificate_info: Arc::new(None),
+                };
+
+                let (_addr, srv) = warp::serve(filters::all(server_context))
                     .bind_with_graceful_shutdown(([0, 0, 0, 0], http_cfg.port), async move {
                         stop_rx.recv().await;
                     });
@@ -51,7 +56,7 @@ where
         };
 
         Ok(Server {
-            node: n,
+            node,
             handle: join_handle,
             stop_tx,
         })

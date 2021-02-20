@@ -1,16 +1,18 @@
-use std::sync::Arc;
-
 use apikit::reject::InternalServerError;
 
-use interface::{message as msg, DirectoryNode};
+use interface::message as msg;
 
 use warp::reply;
 
-pub async fn rebuild_complete<N: DirectoryNode>(
-    node: Arc<N>,
+use crate::server::context::Context;
+
+pub async fn rebuild_complete(
+    context: Context,
     storage_node_id: String,
 ) -> Result<reply::Response, warp::Rejection> {
-    node.rebuild_complete(&storage_node_id)
+    context
+        .node
+        .rebuild_complete(&storage_node_id)
         .await
         .map_err(InternalServerError::from)?;
 

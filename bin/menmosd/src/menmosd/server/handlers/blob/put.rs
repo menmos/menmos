@@ -1,14 +1,14 @@
 use std::net::SocketAddr;
-use std::sync::Arc;
 
 use anyhow::Result;
 
 use apikit::reject::{BadRequest, InternalServerError};
 
-use interface::{BlobMeta, DirectoryNode};
+use interface::BlobMeta;
 use warp::Reply;
 
-use crate::{network::get_storage_node_address, Config};
+use crate::network::get_storage_node_address;
+use crate::server::Context;
 
 /// Parse the blob metadata from a header value.
 fn parse_metadata(header_value: String) -> Result<BlobMeta> {
@@ -17,9 +17,8 @@ fn parse_metadata(header_value: String) -> Result<BlobMeta> {
     Ok(meta)
 }
 
-pub async fn put<N: DirectoryNode>(
-    cfg: Config,
-    node: Arc<N>,
+pub async fn put(
+    context: Context,
     meta: String,
     addr: Option<SocketAddr>,
 ) -> Result<warp::reply::Response, warp::Rejection> {
@@ -29,7 +28,8 @@ pub async fn put<N: DirectoryNode>(
 
     // Pick a storage node for our new blob.
     let new_blob_id = uuid::Uuid::new_v4().to_string();
-    let targeted_storage_node = node
+    let targeted_storage_node = context
+        .node
         .add_blob(&new_blob_id, meta)
         .await
         .map_err(InternalServerError::from)?;
@@ -38,7 +38,7 @@ pub async fn put<N: DirectoryNode>(
     let node_address = get_storage_node_address(
         socket_addr.ip(),
         targeted_storage_node,
-        &cfg,
+        &context.config,
         &format!("blob/{}", &new_blob_id),
     )
     .map_err(InternalServerError::from)?;

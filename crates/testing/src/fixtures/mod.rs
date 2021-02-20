@@ -4,13 +4,12 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 
-use indexer::Index;
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::config::{Appender, Config as LogConfig, Root};
 use menmos_client::{Client, Meta};
 use menmosd::config::{HTTPParameters, ServerSetting};
-use menmosd::{Config, Directory, Server};
+use menmosd::{Config, Server};
 use tempfile::{NamedTempFile, TempDir};
 
 const DIRECTORY_PASSWORD: &str = "password";
@@ -29,7 +28,7 @@ fn init_logger() {
 }
 
 pub struct Menmos {
-    directory: Server<Directory<Index>>,
+    directory: Server,
     amphorae: Vec<amphora::Server>,
 
     directory_port: u16,
@@ -49,7 +48,7 @@ impl Menmos {
         const MENMOSD_CONFIG: &str = include_str!("data/menmosd_http.toml");
 
         let mut cfg = Config::from_toml_string(MENMOSD_CONFIG)?;
-        cfg.node.db_path = db_path.into();
+        cfg.node.db_path = db_path;
 
         let port = portpicker::pick_unused_port().unwrap();
         cfg.server = ServerSetting::HTTP(HTTPParameters { port });

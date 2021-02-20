@@ -3,7 +3,7 @@ use std::hash::Hash;
 
 use tokio::sync::Mutex;
 
-use super::cache::Cache;
+use super::Cache;
 
 #[derive(Default)]
 pub struct ConcurrentCache<C> {
