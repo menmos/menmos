@@ -3,7 +3,10 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use apikit::reject::{BadRequest, InternalServerError};
+use apikit::{
+    auth::UserIdentity,
+    reject::{BadRequest, InternalServerError},
+};
 
 use bytes::{Buf, Bytes};
 
@@ -51,6 +54,7 @@ fn prepare_stream(
 }
 
 pub async fn put<N: StorageNode>(
+    _user: UserIdentity,
     node: Arc<N>,
     blob_id: String,
     mime: Option<Mime>,

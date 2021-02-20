@@ -1,6 +1,9 @@
 use std::net::SocketAddr;
 
-use apikit::reject::{InternalServerError, NotFound};
+use apikit::{
+    auth::UserIdentity,
+    reject::{InternalServerError, NotFound},
+};
 
 use bytes::Buf;
 
@@ -12,6 +15,7 @@ use crate::network::get_storage_node_address;
 use crate::server::Context;
 
 pub async fn write(
+    _user: UserIdentity,
     context: Context,
     addr: Option<SocketAddr>,
     blob_id: String,

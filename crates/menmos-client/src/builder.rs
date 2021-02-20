@@ -65,7 +65,7 @@ impl ClientBuilder {
         self
     }
 
-    pub fn build(self) -> Result<Client, BuildError> {
+    pub async fn build(self) -> Result<Client, BuildError> {
         let host_config = if let Some(profile) = self.profile {
             HostConfig::Profile { profile }
         } else {
@@ -85,7 +85,9 @@ impl ClientBuilder {
             retry_interval: self.retry_interval,
         };
 
-        Client::new_with_params(params).context(ClientBuildError)
+        Client::new_with_params(params)
+            .await
+            .context(ClientBuildError)
     }
 }
 

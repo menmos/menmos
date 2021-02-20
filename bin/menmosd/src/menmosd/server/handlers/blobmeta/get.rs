@@ -1,4 +1,4 @@
-use apikit::reject::InternalServerError;
+use apikit::{auth::UserIdentity, reject::InternalServerError};
 
 use interface::GetMetaResponse;
 
@@ -6,7 +6,11 @@ use warp::reply;
 
 use crate::server::Context;
 
-pub async fn get(context: Context, blob_id: String) -> Result<reply::Response, warp::Rejection> {
+pub async fn get(
+    _user: UserIdentity,
+    context: Context,
+    blob_id: String,
+) -> Result<reply::Response, warp::Rejection> {
     let blob_meta_maybe = context
         .node
         .get_blob_meta(&blob_id)

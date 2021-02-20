@@ -1,4 +1,4 @@
-use apikit::reject::InternalServerError;
+use apikit::{auth::UserIdentity, reject::InternalServerError};
 
 use interface::ListMetadataRequest;
 
@@ -7,6 +7,7 @@ use warp::reply;
 use crate::server::Context;
 
 pub async fn list(
+    _user: UserIdentity,
     context: Context,
     req: ListMetadataRequest,
 ) -> Result<reply::Response, warp::Rejection> {

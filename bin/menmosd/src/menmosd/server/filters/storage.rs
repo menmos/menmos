@@ -1,6 +1,6 @@
 //! Storage node routes.
 //! /node/storage/*
-use apikit::auth::authenticated;
+use apikit::auth::user;
 
 use warp::Filter;
 
@@ -35,7 +35,7 @@ fn list(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(util::with_context(context))
         .and(warp::path(NODES_PATH))
         .and(warp::path(STORAGE_PATH))

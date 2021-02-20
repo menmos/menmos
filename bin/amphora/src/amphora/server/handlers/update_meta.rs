@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
-use apikit::reject::InternalServerError;
+use apikit::{auth::UserIdentity, reject::InternalServerError};
 
 use interface::{message, BlobMeta, StorageNode};
 
 pub async fn update_meta<N: StorageNode>(
+    _user: UserIdentity,
     node: Arc<N>,
     blob_id: String,
     meta: BlobMeta,

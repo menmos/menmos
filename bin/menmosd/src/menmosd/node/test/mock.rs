@@ -1,8 +1,8 @@
+use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicU32, Ordering},
     Mutex,
 };
-use std::{collections::HashMap, net::ToSocketAddrs};
 
 use anyhow::{ensure, Result};
 

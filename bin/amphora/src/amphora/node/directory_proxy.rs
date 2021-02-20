@@ -53,12 +53,7 @@ impl DirectoryProxy {
         let url = self.directory_url.join("node/storage")?;
         let token = self.get_token(&def.id)?;
 
-        let req = self
-            .client
-            .put(url)
-            .header("authorization", token)
-            .json(&def)
-            .build()?;
+        let req = self.client.put(url).bearer_auth(token).json(&def).build()?;
 
         let resp = self.client.execute(req).await?;
 
@@ -99,11 +94,7 @@ impl DirectoryProxy {
 
         let token = self.get_token(storage_node_id)?;
 
-        let req = self
-            .client
-            .delete(url)
-            .header("authorization", token)
-            .build()?;
+        let req = self.client.delete(url).bearer_auth(token).build()?;
 
         let resp = self.client.execute(req).await?;
 
@@ -134,7 +125,7 @@ impl DirectoryProxy {
             .client
             .put(url)
             .json(&blob_meta)
-            .header("authorization", token)
+            .bearer_auth(token)
             .build()?;
 
         let resp = self.client.execute(req).await?;

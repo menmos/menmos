@@ -3,7 +3,10 @@ use std::net::{IpAddr, SocketAddr};
 
 use anyhow::{anyhow, Result};
 
-use apikit::reject::{BadRequest, InternalServerError};
+use apikit::{
+    auth::UserIdentity,
+    reject::{BadRequest, InternalServerError},
+};
 
 use interface::message::directory_node as msg;
 use interface::QueryResponse;
@@ -69,6 +72,7 @@ async fn fetch_urls(
 }
 
 pub async fn query(
+    _user: UserIdentity,
     context: Context,
     addr: Option<SocketAddr>,
     query_request: msg::QueryRequest,

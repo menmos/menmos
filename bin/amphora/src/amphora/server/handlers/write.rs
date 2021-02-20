@@ -2,7 +2,10 @@ use std::ops::Bound;
 use std::sync::Arc;
 
 use anyhow::{ensure, Result};
-use apikit::reject::{BadRequest, InternalServerError};
+use apikit::{
+    auth::UserIdentity,
+    reject::{BadRequest, InternalServerError},
+};
 use bytes::Bytes;
 use headers::{Header, HeaderValue};
 use interface::{message, StorageNode};
@@ -20,6 +23,7 @@ fn parse_range_header(value: HeaderValue) -> Result<(Bound<u64>, Bound<u64>)> {
 }
 
 pub async fn write<N: StorageNode>(
+    _user: UserIdentity,
     node: Arc<N>,
     range_header: HeaderValue,
     blob_id: String,

@@ -9,29 +9,6 @@ use crate::reject;
 
 const TOKEN_TTL_SECONDS: u32 = 60 * 60 * 6; // 6 hours.
 
-pub async fn validate_password<E: AsRef<str>, A: AsRef<str>>(
-    actual_password: Option<A>,
-    expected_password: E,
-) -> Result<(), warp::Rejection> {
-    if actual_password.is_none() || expected_password.as_ref() != actual_password.unwrap().as_ref()
-    {
-        Err(warp::reject::custom(reject::Forbidden))
-    } else {
-        Ok(())
-    }
-}
-
-pub fn authenticated<S: Into<String>>(
-    expected_password: S,
-) -> impl Filter<Extract = (), Error = warp::Rejection> + Clone {
-    let password: String = expected_password.into();
-    warp::header::optional::<String>("authorization")
-        .and(warp::any().map(move || password.clone()))
-        .and_then(validate_password)
-        .and(warp::any())
-        .untuple_one()
-}
-
 pub fn make_token<K: AsRef<str>, D: Serialize>(key: K, data: D) -> anyhow::Result<String> {
     let mut token = Branca::new(key.as_ref().as_bytes())?;
     token
@@ -66,7 +43,7 @@ fn optq<T: 'static + Default + Send + DeserializeOwned>() -> BoxedFilter<(T,)> {
         .boxed()
 }
 
-fn extract_token<T, K>(key: K, token: String) -> Result<T, warp::Rejection>
+fn extract_token<T, K>(key: K, token: &str) -> Result<T, warp::Rejection>
 where
     T: DeserializeOwned,
     K: AsRef<str>,
@@ -74,10 +51,21 @@ where
     let token_decoder = Branca::new(key.as_ref().as_bytes()).map_err(|_| reject::Forbidden)?;
 
     let decoded = token_decoder
-        .decode(&token, TOKEN_TTL_SECONDS)
+        .decode(token, TOKEN_TTL_SECONDS)
         .map_err(|_| reject::Forbidden)?;
 
     Ok(bincode::deserialize(&decoded).map_err(|_| reject::Forbidden)?)
+}
+
+fn strip_bearer(tok: &str) -> Result<&str, warp::Rejection> {
+    const BEARER: &str = "Bearer ";
+
+    if !tok.starts_with(BEARER) {
+        log::debug!("invalid token");
+        return Err(reject::Forbidden.into());
+    }
+
+    Ok(tok.trim_start_matches(BEARER))
 }
 
 async fn validate_user_tokens(
@@ -86,10 +74,12 @@ async fn validate_user_tokens(
     key: String,
 ) -> Result<UserIdentity, warp::Rejection> {
     let token = header_token
+        .map(|t| strip_bearer(&t).map(String::from).ok())
+        .flatten()
         .or(url_signature_token)
         .ok_or(reject::Forbidden)?;
 
-    extract_token(&key, token)
+    extract_token(&key, &token)
 }
 
 pub fn user(
@@ -106,6 +96,7 @@ async fn validate_storage_node_token(
     key: String,
 ) -> Result<StorageNodeIdentity, warp::Rejection> {
     let token = token.ok_or(reject::Forbidden)?;
+    let token = strip_bearer(&token)?;
     extract_token(&key, token)
 }
 

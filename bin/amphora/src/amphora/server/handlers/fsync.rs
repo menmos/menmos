@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
-use apikit::reject::InternalServerError;
+use apikit::{auth::UserIdentity, reject::InternalServerError};
 
 use interface::{message::MessageResponse, StorageNode};
 
 use warp::reply;
 
 pub async fn fsync<N: StorageNode>(
+    _user: UserIdentity,
     node: Arc<N>,
     blob_id: String,
 ) -> Result<reply::Response, warp::Rejection> {

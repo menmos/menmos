@@ -3,7 +3,10 @@ use std::{ops::Range, pin::Pin};
 
 use anyhow::{ensure, Result};
 
-use apikit::reject::{Forbidden, InternalServerError};
+use apikit::{
+    auth::UserIdentity,
+    reject::{Forbidden, InternalServerError},
+};
 
 use headers::{ContentLength, ContentRange, Header, HeaderMapExt, HeaderValue};
 
@@ -16,24 +19,9 @@ use serde::{Deserialize, Serialize};
 use warp::hyper::Body;
 use warp::reply;
 
-use crate::Config;
-
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Signature {
     pub signature: Option<String>,
-}
-
-fn validate_signed_url(
-    signature: Signature,
-    for_blob_id: &str,
-    encryption_key: &str,
-) -> Result<(), warp::Rejection> {
-    if let Some(token) = signature.signature {
-        urlsign::validate(&token, for_blob_id, encryption_key).map_err(|_| Forbidden)?;
-        Ok(())
-    } else {
-        Err(warp::reject::custom(Forbidden))
-    }
 }
 
 fn add_range_info_to_response(
@@ -69,17 +57,16 @@ fn parse_range_header(value: HeaderValue) -> Result<(Bound<u64>, Bound<u64>)> {
 }
 
 pub async fn get<N: StorageNode>(
-    config: Config,
+    user: UserIdentity,
     node: Arc<N>,
-    user_password: Option<String>,
     range_header: Option<HeaderValue>,
-    signature: Signature,
     blob_id: String,
 ) -> Result<reply::Response, warp::Rejection> {
-    // Validate authentication _or_ pre-signed URL.
-    apikit::auth::validate_password(user_password, &config.node.admin_password)
-        .await
-        .or_else(|_| validate_signed_url(signature, &blob_id, &config.node.encryption_key))?;
+    if let Some(whitelist) = user.blobs_whitelist {
+        if !whitelist.contains(&blob_id) {
+            return Err(Forbidden.into());
+        }
+    }
 
     // Fetch the request content range from the header if any.
     let range = range_header.map(|h| parse_range_header(h).ok()).flatten();

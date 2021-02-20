@@ -42,7 +42,7 @@ impl Root {
             client_builder = client_builder.with_max_retry_count(max_retry_count);
         }
 
-        let client = client_builder.build()?;
+        let client = client_builder.build().await?;
 
         match self.command {
             Command::Delete(cmd) => cmd.run(cli, client).await?,

@@ -1,4 +1,4 @@
-use apikit::auth::authenticated;
+use apikit::auth::user;
 
 use warp::Filter;
 
@@ -37,7 +37,7 @@ fn update(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())
@@ -51,7 +51,7 @@ fn get(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())
@@ -63,7 +63,7 @@ fn list(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::path(METADATA_PATH))
         .and(warp::body::json())

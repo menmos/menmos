@@ -2,7 +2,10 @@ use std::net::SocketAddr;
 
 use anyhow::Result;
 
-use apikit::reject::{BadRequest, InternalServerError};
+use apikit::{
+    auth::UserIdentity,
+    reject::{BadRequest, InternalServerError},
+};
 
 use interface::BlobMeta;
 use warp::Reply;
@@ -18,6 +21,7 @@ fn parse_metadata(header_value: String) -> Result<BlobMeta> {
 }
 
 pub async fn put(
+    _user: UserIdentity,
     context: Context,
     meta: String,
     addr: Option<SocketAddr>,

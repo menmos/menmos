@@ -1,13 +1,12 @@
 use std::{convert::Infallible, sync::Arc};
 
-use apikit::auth::authenticated;
+use apikit::auth::user;
 
 use interface::StorageNode;
 
 use mime::Mime;
 
-use serde::de::DeserializeOwned;
-use warp::{filters::BoxedFilter, Filter};
+use warp::Filter;
 
 use super::handlers;
 
@@ -28,19 +27,6 @@ where
     warp::any().map(move || node.clone())
 }
 
-fn with_config(
-    cfg: Config,
-) -> impl Filter<Extract = (Config,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || cfg.clone())
-}
-
-fn optq<T: 'static + Default + Send + DeserializeOwned>() -> BoxedFilter<(T,)> {
-    warp::any()
-        .and(warp::query().or(warp::any().map(T::default)))
-        .unify()
-        .boxed()
-}
-
 pub fn all<N>(
     node: Arc<N>,
     config: Config,
@@ -48,7 +34,7 @@ pub fn all<N>(
 where
     N: StorageNode + Send + Sync,
 {
-    health(node.clone(), config.clone())
+    health(node.clone())
         .or(put(node.clone(), config.clone()))
         .or(get(node.clone(), config.clone()))
         .or(write(node.clone(), config.clone()))
@@ -62,13 +48,11 @@ where
 
 fn health<N>(
     node: Arc<N>,
-    config: Config,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
 where
     N: StorageNode + Send + Sync,
 {
     warp::get()
-        .and(authenticated(config.node.admin_password))
         .and(warp::path(HEALTH_PATH))
         .and(with_node(node))
         .and_then(handlers::health)
@@ -82,7 +66,7 @@ where
     N: StorageNode + Send + Sync,
 {
     warp::post()
-        .and(authenticated(config.node.admin_password))
+        .and(user(config.node.encryption_key))
         .and(with_node(node))
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())
@@ -101,7 +85,7 @@ where
     N: StorageNode + Send + Sync,
 {
     warp::post()
-        .and(authenticated(config.node.admin_password))
+        .and(user(config.node.encryption_key))
         .and(with_node(node))
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())
@@ -118,7 +102,7 @@ where
     N: StorageNode + Send + Sync,
 {
     warp::put()
-        .and(authenticated(config.node.admin_password))
+        .and(user(config.node.encryption_key))
         .and(with_node(node))
         .and(warp::header("range"))
         .and(warp::path(BLOBS_PATH))
@@ -135,11 +119,9 @@ where
     N: StorageNode + Send + Sync,
 {
     warp::get()
-        .and(with_config(config))
+        .and(user(config.node.encryption_key))
         .and(with_node(node))
-        .and(warp::header::optional::<String>("authorization"))
         .and(warp::header::optional("range"))
-        .and(optq::<handlers::Signature>())
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())
         .and_then(handlers::get)
@@ -153,7 +135,7 @@ where
     N: StorageNode + Send + Sync,
 {
     warp::delete()
-        .and(authenticated(config.node.admin_password))
+        .and(user(config.node.encryption_key))
         .and(with_node(node))
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())
@@ -168,7 +150,7 @@ where
     N: StorageNode + Send + Sync,
 {
     warp::post()
-        .and(authenticated(config.node.admin_password))
+        .and(user(config.node.encryption_key))
         .and(with_node(node))
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())

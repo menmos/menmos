@@ -1,7 +1,7 @@
 //! Blob-related routes.
 //! /blob/*
 
-use apikit::auth::authenticated;
+use apikit::auth::user;
 use warp::Filter;
 
 use crate::server::{handlers, Context};
@@ -27,7 +27,7 @@ fn put(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::end())
         .and(with_context(context))
@@ -41,7 +41,7 @@ fn update(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::filters::addr::remote())
         .and(warp::path(BLOBS_PATH))
@@ -55,7 +55,7 @@ fn write(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::put()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::filters::addr::remote())
         .and(warp::path(BLOBS_PATH))
@@ -70,7 +70,7 @@ fn get(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::filters::addr::remote())
         .and(warp::path(BLOBS_PATH))
@@ -84,7 +84,7 @@ fn delete(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::delete()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::filters::addr::remote())
         .and(warp::path(BLOBS_PATH))
@@ -97,7 +97,7 @@ fn fsync(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())
