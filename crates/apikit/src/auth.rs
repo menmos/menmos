@@ -24,7 +24,7 @@ pub struct StorageNodeIdentity {
     pub id: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct UserIdentity {
     pub username: String,
     pub admin: bool,

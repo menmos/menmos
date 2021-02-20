@@ -43,6 +43,7 @@ async fn fetch_urls(
     results: &mut QueryResponse,
     context: Context,
     request_ip: IpAddr,
+    identity: UserIdentity,
 ) -> Result<()> {
     let mut new_hits = Vec::with_capacity(results.count);
 
@@ -52,7 +53,10 @@ async fn fetch_urls(
                 let mut blob_uri = uri.to_string();
                 // Sign the URL if requested
                 if signed {
-                    let tok = urlsign::sign(&hit.id, &context.config.node.encryption_key)?;
+                    let mut identity = identity.clone();
+                    identity.blobs_whitelist = Some(vec![hit.id.clone()]);
+                    let tok =
+                        apikit::auth::make_token(&context.config.node.encryption_key, &identity)?;
                     blob_uri += &format!("?signature={}", tok);
                 }
 
@@ -72,7 +76,7 @@ async fn fetch_urls(
 }
 
 pub async fn query(
-    _user: UserIdentity,
+    user: UserIdentity,
     context: Context,
     addr: Option<SocketAddr>,
     query_request: msg::QueryRequest,
@@ -92,6 +96,7 @@ pub async fn query(
         &mut query_response,
         context,
         socket_addr.ip(),
+        user,
     )
     .await
     .map_err(InternalServerError::from)?;
