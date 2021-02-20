@@ -14,12 +14,13 @@ use futures::{Stream, StreamExt, TryStreamExt};
 
 use headers::HeaderValue;
 
-use interface::message::storage_node as msg;
 use interface::{BlobMeta, StorageNode};
 
 use mime::Mime;
 
 use mpart_async::server::MultipartStream;
+
+use protocol::storage::PutResponse;
 
 use warp::reply::Response;
 
@@ -76,7 +77,7 @@ pub async fn put<N: StorageNode>(
     }
 
     match node.put(blob_id.clone(), meta, stream).await {
-        Ok(_) => Ok(apikit::reply::json(&msg::PutResponse { id: blob_id })),
+        Ok(_) => Ok(apikit::reply::json(&PutResponse { id: blob_id })),
         Err(e) => Err(InternalServerError::from(e).into()),
     }
 }

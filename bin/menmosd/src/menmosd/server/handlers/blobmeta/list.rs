@@ -1,6 +1,6 @@
 use apikit::{auth::UserIdentity, reject::InternalServerError};
 
-use interface::ListMetadataRequest;
+use protocol::directory::blobmeta::ListMetadataRequest;
 
 use warp::reply;
 
@@ -13,8 +13,9 @@ pub async fn list(
 ) -> Result<reply::Response, warp::Rejection> {
     let response = context
         .node
-        .list_metadata(&req)
+        .list_metadata(req.tags, req.meta_keys)
         .await
         .map_err(InternalServerError::from)?;
+
     Ok(apikit::reply::json(&response))
 }

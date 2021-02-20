@@ -1,8 +1,7 @@
 use std::net::SocketAddr;
 
-use apikit::{auth::UserIdentity, reject::InternalServerError};
-
-use interface::message as msg;
+use apikit::auth::UserIdentity;
+use apikit::reject::InternalServerError;
 
 use warp::{reply, Reply};
 
@@ -33,11 +32,9 @@ pub async fn delete(
         )
         .map_err(InternalServerError::from)?;
 
-        log::info!("redirecting to: {}", node_address);
+        log::debug!("redirecting to: {}", node_address);
         Ok(warp::redirect::temporary(node_address).into_response())
     } else {
-        Ok(apikit::reply::json(&msg::MessageResponse {
-            message: String::from("OK"),
-        }))
+        Ok(apikit::reply::message("OK"))
     }
 }

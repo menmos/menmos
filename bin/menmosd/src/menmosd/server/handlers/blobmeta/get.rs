@@ -1,6 +1,6 @@
 use apikit::{auth::UserIdentity, reject::InternalServerError};
 
-use interface::GetMetaResponse;
+use protocol::directory::blobmeta::GetMetaResponse;
 
 use warp::reply;
 

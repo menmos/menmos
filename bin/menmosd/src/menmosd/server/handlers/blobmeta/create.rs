@@ -1,7 +1,6 @@
 use apikit::auth::StorageNodeIdentity;
 use apikit::reject::InternalServerError;
 
-use interface::message::MessageResponse;
 use interface::BlobMeta;
 
 use warp::reply;
@@ -20,7 +19,5 @@ pub async fn create(
         .await
         .map_err(InternalServerError::from)?;
 
-    Ok(apikit::reply::json(&MessageResponse {
-        message: "Ok".to_string(),
-    }))
+    Ok(apikit::reply::message("Ok"))
 }

@@ -7,9 +7,8 @@ use bitvec::prelude::*;
 use chrono::Duration;
 
 use interface::{
-    message::directory_node::Query, BlobMeta, DirectoryNode, FacetResponse, Hit,
-    ListMetadataRequest, ListMetadataResponse, QueryResponse, RegisterStorageNodeResponse,
-    StorageNodeInfo,
+    BlobMeta, DirectoryNode, FacetResponse, Hit, MetadataList, Query, QueryResponse,
+    StorageNodeInfo, StorageNodeResponseData,
 };
 
 use rapidquery::Resolver;
@@ -123,7 +122,7 @@ where
     async fn register_storage_node(
         &self,
         def: interface::StorageNodeInfo,
-    ) -> Result<RegisterStorageNodeResponse> {
+    ) -> Result<StorageNodeResponseData> {
         let id = def.id.clone();
 
         let already_existed = self.index.storage().write_node(def, chrono::Utc::now())?;
@@ -149,7 +148,7 @@ where
             round_robin.push_back(id);
         }
 
-        Ok(RegisterStorageNodeResponse { rebuild_requested })
+        Ok(StorageNodeResponseData { rebuild_requested })
     }
 
     async fn add_blob(&self, _blob_id: &str, meta: BlobMeta) -> Result<StorageNodeInfo> {
@@ -301,8 +300,12 @@ where
         })
     }
 
-    async fn list_metadata(&self, r: &ListMetadataRequest) -> Result<ListMetadataResponse> {
-        let tag_list = match r.tags.as_ref() {
+    async fn list_metadata(
+        &self,
+        tags: Option<Vec<String>>,
+        meta_keys: Option<Vec<String>>,
+    ) -> Result<MetadataList> {
+        let tag_list = match tags.as_ref() {
             Some(tag_filters) => {
                 let mut hsh = HashMap::with_capacity(tag_filters.len());
                 for tag in tag_filters {
@@ -313,9 +316,9 @@ where
             None => self.index.meta().list_all_tags()?,
         };
 
-        let kv_list = self.index.meta().list_all_kv_fields(&r.meta_keys)?;
+        let kv_list = self.index.meta().list_all_kv_fields(&meta_keys)?;
 
-        Ok(ListMetadataResponse {
+        Ok(MetadataList {
             tags: tag_list,
             meta: kv_list,
         })

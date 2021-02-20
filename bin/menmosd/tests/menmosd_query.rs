@@ -1,8 +1,8 @@
 //! Test query-related features.
 
 use anyhow::Result;
-use interface::{LoginRequest, LoginResponse};
 use menmos_client::{Meta, Query, Type};
+use protocol::directory::auth::{LoginRequest, LoginResponse};
 use reqwest::StatusCode;
 use serde::Serialize;
 

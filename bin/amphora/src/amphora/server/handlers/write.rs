@@ -8,7 +8,7 @@ use apikit::{
 };
 use bytes::Bytes;
 use headers::{Header, HeaderValue};
-use interface::{message, StorageNode};
+use interface::StorageNode;
 use warp::reply;
 
 fn parse_range_header(value: HeaderValue) -> Result<(Bound<u64>, Bound<u64>)> {
@@ -36,7 +36,5 @@ pub async fn write<N: StorageNode>(
         .await
         .map_err(InternalServerError::from)?;
 
-    Ok(apikit::reply::json(&message::MessageResponse {
-        message: "Ok".to_string(),
-    }))
+    Ok(apikit::reply::message("OK"))
 }

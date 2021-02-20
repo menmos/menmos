@@ -16,6 +16,7 @@ const META_MAP: &str = "metadata";
 const TAG_MAP: &str = "tags";
 const KV_MAP: &str = "keyvalue";
 const PARENTS_MAP: &str = "parents";
+const USER_MASK_MAP: &str = "users";
 
 fn kv_to_tag(key: &str, value: &str) -> String {
     format!("{}${}", key, value)
@@ -32,6 +33,7 @@ pub struct MetadataStore {
     tag_map: BitvecTree,
     kv_map: BitvecTree,
     parents_map: BitvecTree,
+    user_mask_map: BitvecTree,
 }
 
 impl MetadataStore {
@@ -41,12 +43,14 @@ impl MetadataStore {
         let tag_map = BitvecTree::new(db, TAG_MAP)?;
         let kv_map = BitvecTree::new(db, KV_MAP)?;
         let parents_map = BitvecTree::new(db, PARENTS_MAP)?;
+        let user_mask_map = BitvecTree::new(db, USER_MASK_MAP)?;
 
         Ok(Self {
             meta_map,
             tag_map,
             kv_map,
             parents_map,
+            user_mask_map,
         })
     }
 

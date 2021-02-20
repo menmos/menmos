@@ -1,6 +1,8 @@
+use apikit::auth::UserIdentity;
 use apikit::reject::{Forbidden, InternalServerError};
 
-use interface::{LoginResponse, RegisterRequest};
+use protocol::directory::auth::{LoginResponse, RegisterRequest};
+
 use warp::reply;
 
 use crate::server::Context;
@@ -23,7 +25,7 @@ pub async fn register(
 
     let token = apikit::auth::make_token(
         &context.config.node.encryption_key,
-        apikit::auth::UserIdentity {
+        UserIdentity {
             username: request.username,
             admin: true, // TODO: We don't support privilege levels yet.
             blobs_whitelist: None,

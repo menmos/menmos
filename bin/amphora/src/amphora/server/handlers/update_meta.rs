@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use apikit::{auth::UserIdentity, reject::InternalServerError};
 
-use interface::{message, BlobMeta, StorageNode};
+use interface::{BlobMeta, StorageNode};
 
 pub async fn update_meta<N: StorageNode>(
     _user: UserIdentity,
@@ -13,7 +13,6 @@ pub async fn update_meta<N: StorageNode>(
     node.update_meta(blob_id, meta)
         .await
         .map_err(InternalServerError::from)?;
-    Ok(apikit::reply::json(&message::MessageResponse {
-        message: String::from("OK"),
-    }))
+
+    Ok(apikit::reply::message("OK"))
 }

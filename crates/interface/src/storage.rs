@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::fs;
 use std::io;
 use std::ops::Bound;
+use std::path::Path;
 
 use anyhow::Result;
 
@@ -12,12 +14,33 @@ use serde::{Deserialize, Serialize};
 
 use warp::hyper::body::Bytes;
 
-use crate::message::directory_node::CertificateInfo;
-
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub enum Type {
     File,
     Directory,
+}
+
+fn file_to_base64<P: AsRef<Path>>(path: P) -> Result<String> {
+    Ok(base64::encode(fs::read(path.as_ref())?))
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct CertificateInfo {
+    pub certificate_b64: String,
+    pub private_key_b64: String,
+}
+
+impl CertificateInfo {
+    pub fn from_path<P: AsRef<Path>, Q: AsRef<Path>>(
+        certificate_path: P,
+        private_key_path: Q,
+    ) -> Result<CertificateInfo> {
+        Ok(Self {
+            certificate_b64: file_to_base64(certificate_path)?,
+            private_key_b64: file_to_base64(private_key_path)?,
+        })
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

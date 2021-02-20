@@ -1,23 +1,27 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use apikit::payload::ErrorResponse;
+use apikit::payload::{ErrorResponse, MessageResponse};
 
 use bytes::Bytes;
 
 use futures::{Stream, TryStreamExt};
 
 use header::HeaderName;
-use interface::{
-    message::{directory_node::Query, storage_node, MessageResponse},
-    BlobMeta, GetMetaResponse, ListStorageNodesResponse, LoginRequest, LoginResponse,
-    QueryResponse,
-};
+use interface::{BlobMeta, Query, QueryResponse};
 
 use hyper::{header, StatusCode};
 
 use mpart_async::client::MultipartRequest;
 
+use protocol::{
+    directory::{
+        auth::{LoginRequest, LoginResponse},
+        blobmeta::GetMetaResponse,
+        storage::ListStorageNodesResponse,
+    },
+    storage::PutResponse,
+};
 use reqwest::{Client as ReqwestClient, Request};
 
 use reqwest::Body;
@@ -310,7 +314,7 @@ impl Client {
             })
             .await?;
 
-        let put_response: storage_node::PutResponse = extract(response).await?;
+        let put_response: PutResponse = extract(response).await?;
         Ok(put_response.id)
     }
 
@@ -347,7 +351,7 @@ impl Client {
             .execute(|| self.prepare_push_request(&url, path.as_ref(), &meta_b64))
             .await?;
 
-        let put_response: storage_node::PutResponse = extract(response).await?;
+        let put_response: PutResponse = extract(response).await?;
         Ok(put_response.id)
     }
 

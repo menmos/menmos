@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::{stream::empty, Stream};
-use interface::{message::directory_node::CertificateInfo, Blob, BlobMeta, StorageNode, Type};
+use interface::{Blob, BlobMeta, CertificateInfo, StorageNode, Type};
 use repository::{Repository, StreamInfo};
 use tokio::sync::Mutex;
 

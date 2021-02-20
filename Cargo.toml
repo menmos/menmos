@@ -11,6 +11,7 @@ members = [
     "crates/interface",
     "crates/lfan",
     "crates/menmos-client",
+    "crates/protocol",
     "crates/rapidquery",
     "crates/repository",
     "crates/testing",

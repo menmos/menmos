@@ -3,10 +3,7 @@ use std::net::IpAddr;
 use anyhow::Result;
 
 use indexer::Index;
-use interface::{
-    message::directory_node::Query, BlobMeta, DirectoryNode, ListMetadataRequest, QueryResponse,
-    StorageNodeInfo, Type,
-};
+use interface::{BlobMeta, DirectoryNode, Query, QueryResponse, StorageNodeInfo, Type};
 use tempfile::TempDir;
 
 use crate::Directory;
@@ -339,10 +336,7 @@ async fn list_metadata_tags() -> Result<()> {
     .await;
 
     let r = node
-        .list_metadata(&ListMetadataRequest {
-            tags: Some(vec!["bing".to_string()]),
-            meta_keys: None,
-        })
+        .list_metadata(Some(vec!["bing".to_string()]), None)
         .await?;
 
     assert_eq!(r.tags.len(), 1);

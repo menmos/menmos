@@ -15,6 +15,10 @@ pub fn error<T: ToString>(e: T, code: StatusCode) -> reply::Response {
     .into_response()
 }
 
+pub fn message<M: Into<String>>(message: M) -> reply::Response {
+    return json(&payload::MessageResponse::new(message));
+}
+
 pub fn json<T: Serialize>(payload: &T) -> reply::Response {
     reply::json(payload).into_response()
 }

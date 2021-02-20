@@ -4,10 +4,9 @@ use std::path::Path;
 
 use anyhow::{ensure, Result};
 
-use interface::{
-    message::directory_node::{CertificateInfo, RegisterResponse},
-    BlobMeta, StorageNodeInfo,
-};
+use interface::{BlobMeta, CertificateInfo, StorageNodeInfo};
+
+use protocol::directory::storage::RegisterResponse;
 
 use reqwest::Url;
 
