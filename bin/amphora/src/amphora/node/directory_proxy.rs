@@ -4,8 +4,6 @@ use std::path::Path;
 
 use anyhow::{ensure, Result};
 
-use reqwest::header;
-
 use interface::{
     message::directory_node::{CertificateInfo, RegisterResponse},
     BlobMeta, StorageNodeInfo,
@@ -25,17 +23,26 @@ pub struct DirectoryProxy {
     client: reqwest::Client,
 
     directory_url: Url,
-    registration_secret: String,
+    encryption_key: String,
 }
 
 impl DirectoryProxy {
-    pub fn new(cfg: &DirectoryHostConfig, registration_secret: String) -> Result<Self> {
+    pub fn new(cfg: &DirectoryHostConfig, encryption_key: &str) -> Result<Self> {
         let url = Url::parse(&format!("{}:{}", &cfg.url, cfg.port))?;
         Ok(Self {
             client: reqwest::Client::new(),
             directory_url: url,
-            registration_secret,
+            encryption_key: encryption_key.to_string(),
         })
+    }
+
+    fn get_token(&self, id: &str) -> Result<String> {
+        apikit::auth::make_token(
+            &self.encryption_key,
+            apikit::auth::StorageNodeIdentity {
+                id: String::from(id),
+            },
+        )
     }
 
     pub async fn register_storage_node(
@@ -44,14 +51,13 @@ impl DirectoryProxy {
         certificate_path: &Path,
     ) -> Result<RegisterResponseWrapper> {
         let url = self.directory_url.join("node/storage")?;
+        let token = self.get_token(&def.id)?;
+
         let req = self
             .client
             .put(url)
+            .header("authorization", token)
             .json(&def)
-            .header(
-                header::HeaderName::from_static("x-registration-secret"),
-                self.registration_secret.clone(),
-            )
             .build()?;
 
         let resp = self.client.execute(req).await?;
@@ -86,19 +92,17 @@ impl DirectoryProxy {
         })
     }
 
-    pub async fn rebuild_complete(
-        &self,
-        storage_node_id: &str,
-        admin_password: &str,
-    ) -> Result<()> {
+    pub async fn rebuild_complete(&self, storage_node_id: &str) -> Result<()> {
         let url = self
             .directory_url
             .join(&format!("rebuild/{}", storage_node_id))?;
 
+        let token = self.get_token(storage_node_id)?;
+
         let req = self
             .client
             .delete(url)
-            .header("authorization", admin_password)
+            .header("authorization", token)
             .build()?;
 
         let resp = self.client.execute(req).await?;
@@ -124,18 +128,13 @@ impl DirectoryProxy {
             .directory_url
             .join(&format!("blob/{}/metadata", blob_id))?;
 
+        let token = self.get_token(storage_node_id)?;
+
         let req = self
             .client
             .put(url)
             .json(&blob_meta)
-            .header(
-                header::HeaderName::from_static("x-storage-id"),
-                storage_node_id.to_string(),
-            )
-            .header(
-                header::HeaderName::from_static("x-registration-secret"),
-                self.registration_secret.clone(),
-            )
+            .header("authorization", token)
             .build()?;
 
         let resp = self.client.execute(req).await?;
