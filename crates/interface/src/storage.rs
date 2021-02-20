@@ -95,11 +95,18 @@ impl BlobMeta {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BlobInfo {
+    pub meta: BlobMeta,
+    pub owner: String,
+}
+
 pub struct Blob {
     pub stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync>,
     pub current_chunk_size: u64,
     pub total_blob_size: u64,
-    pub meta: BlobMeta,
+    pub info: BlobInfo,
 }
 
 #[async_trait]
@@ -107,7 +114,7 @@ pub trait StorageNode {
     async fn put(
         &self,
         id: String,
-        meta: BlobMeta,
+        info: BlobInfo,
         stream: Option<Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin>>,
     ) -> Result<()>;
 
@@ -115,7 +122,7 @@ pub trait StorageNode {
 
     async fn get(&self, blob_id: String, range: Option<(Bound<u64>, Bound<u64>)>) -> Result<Blob>;
 
-    async fn update_meta(&self, blob_id: String, meta: BlobMeta) -> Result<()>;
+    async fn update_meta(&self, blob_id: String, info: BlobInfo) -> Result<()>;
 
     async fn delete(&self, blob_id: String) -> Result<()>;
 

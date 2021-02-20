@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use bitvec::prelude::*;
 
 use futures::TryFutureExt;
-use interface::BlobMeta;
+use interface::BlobInfo;
 
 use crate::iface::{Flush, MetadataMapper};
 use crate::BitvecTree;
@@ -56,24 +56,24 @@ impl MetadataStore {
 
     fn diff_and_purge_on_meta_update(
         &self,
-        old_meta: BlobMeta,
-        new_meta: &BlobMeta,
+        old_meta: BlobInfo,
+        new_meta: &BlobInfo,
         for_idx: u32,
     ) -> Result<()> {
-        for tag in old_meta.tags.into_iter() {
-            if !new_meta.tags.contains(&tag) {
+        for tag in old_meta.meta.tags.into_iter() {
+            if !new_meta.meta.tags.contains(&tag) {
                 self.tag_map.purge_key(&tag, for_idx)?;
             }
         }
 
-        for (key, value) in old_meta.metadata.into_iter() {
-            if new_meta.metadata.get(&key) != Some(&value) {
+        for (key, value) in old_meta.meta.metadata.into_iter() {
+            if new_meta.meta.metadata.get(&key) != Some(&value) {
                 self.kv_map.purge_key(&kv_to_tag(&key, &value), for_idx)?;
             }
         }
 
-        for parent in old_meta.parents.into_iter() {
-            if !new_meta.parents.contains(&parent) {
+        for parent in old_meta.meta.parents.into_iter() {
+            if !new_meta.meta.parents.contains(&parent) {
                 self.parents_map.purge_key(&parent, for_idx)?;
             }
         }
@@ -102,45 +102,48 @@ impl Flush for MetadataStore {
 }
 
 impl MetadataMapper for MetadataStore {
-    fn get(&self, idx: u32) -> Result<Option<BlobMeta>> {
+    fn get(&self, idx: u32) -> Result<Option<BlobInfo>> {
         if let Some(ivec) = self.meta_map.get(idx.to_le_bytes())? {
-            let meta: BlobMeta = bincode::deserialize(&ivec)?;
-            Ok(Some(meta))
+            let info: BlobInfo = bincode::deserialize(&ivec)?;
+            Ok(Some(info))
         } else {
             Ok(None)
         }
     }
 
-    fn insert(&self, id: u32, meta: &BlobMeta) -> Result<()> {
+    fn insert(&self, id: u32, info: &BlobInfo) -> Result<()> {
         // Validate tags are ok.
-        for tag in meta.tags.iter() {
+        for tag in info.meta.tags.iter() {
             ensure!(!tag.contains('$'), "tag cannot contain separator");
         }
 
         let serialized_id = id.to_le_bytes();
 
+        // Set the owner field in the users mask.
+        self.user_mask_map.insert(&info.owner, &serialized_id)?;
+
         // Save the whole meta for recuperation.
-        let serialized = bincode::serialize(&meta)?;
+        let serialized = bincode::serialize(&info)?;
         let r: &[u8] = serialized.as_ref();
         if let Some(last_meta_ivec) = self.meta_map.insert(&serialized_id, r)? {
             // We need to purge tags, parents, and k/v pairs that were _removed_ from the meta
             // so they don't come up in searches anymore.
-            let old_meta: BlobMeta = bincode::deserialize(last_meta_ivec.as_ref())?;
-            self.diff_and_purge_on_meta_update(old_meta, &meta, id)?;
+            let old_info: BlobInfo = bincode::deserialize(last_meta_ivec.as_ref())?;
+            self.diff_and_purge_on_meta_update(old_info, &info, id)?;
         }
 
         // Save tags in the reverse map.
-        for tag in meta.tags.iter() {
+        for tag in info.meta.tags.iter() {
             self.tag_map.insert(tag, &serialized_id)?;
         }
 
         // Save key/value fields in the reverse map.
-        for (k, v) in meta.metadata.iter().filter(|(_, v)| !v.is_empty()) {
+        for (k, v) in info.meta.metadata.iter().filter(|(_, v)| !v.is_empty()) {
             self.kv_map.insert(&kv_to_tag(k, v), &serialized_id)?;
         }
 
         // Set parent fields in the reverse map.
-        for parent_id in meta.parents.iter() {
+        for parent_id in info.meta.parents.iter() {
             self.parents_map.insert(parent_id, &serialized_id)?;
         }
 

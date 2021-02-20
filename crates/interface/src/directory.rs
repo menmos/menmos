@@ -9,7 +9,7 @@ use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
 
-use crate::BlobMeta;
+use crate::{BlobInfo, BlobMeta};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -148,9 +148,9 @@ impl Default for Query {
 
 #[async_trait]
 pub trait DirectoryNode {
-    async fn add_blob(&self, blob_id: &str, meta: BlobMeta) -> Result<StorageNodeInfo>;
-    async fn get_blob_meta(&self, blob_id: &str) -> Result<Option<BlobMeta>>;
-    async fn index_blob(&self, blob_id: &str, meta: BlobMeta, storage_node_id: &str) -> Result<()>;
+    async fn add_blob(&self, blob_id: &str, info: BlobInfo) -> Result<StorageNodeInfo>;
+    async fn get_blob_meta(&self, blob_id: &str) -> Result<Option<BlobInfo>>;
+    async fn index_blob(&self, blob_id: &str, meta: BlobInfo, storage_node_id: &str) -> Result<()>;
     async fn delete_blob(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>>;
 
     async fn register_storage_node(&self, def: StorageNodeInfo) -> Result<StorageNodeResponseData>;

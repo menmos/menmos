@@ -12,7 +12,7 @@ use bitvec::prelude::*;
 
 use chrono::Utc;
 
-use interface::{BlobMeta, StorageNodeInfo};
+use interface::{BlobInfo, StorageNodeInfo};
 
 use indexer::iface::*;
 
@@ -180,30 +180,30 @@ impl StorageNodeMapper for MockStorageMap {
 
 #[derive(Default)]
 pub struct MockMetaMap {
-    meta_map: Mutex<HashMap<u32, BlobMeta>>,
+    meta_map: Mutex<HashMap<u32, BlobInfo>>,
     tag_map: Mutex<HashMap<String, BitVec>>,
 }
 
 impl MetadataMapper for MockMetaMap {
-    fn get(&self, idx: u32) -> Result<Option<BlobMeta>> {
+    fn get(&self, idx: u32) -> Result<Option<BlobInfo>> {
         let guard = self.meta_map.lock().unwrap();
         let map = &*guard;
         Ok(map.get(&idx).cloned())
     }
 
-    fn insert(&self, id: u32, meta: &BlobMeta) -> Result<()> {
+    fn insert(&self, id: u32, info: &BlobInfo) -> Result<()> {
         let mut meta_guard = self.meta_map.lock().unwrap();
         let mut tag_guard = self.tag_map.lock().unwrap();
         let meta_map = &mut *meta_guard;
         let tag_map = &mut *tag_guard;
 
-        meta_map.insert(id, meta.clone());
+        meta_map.insert(id, info.clone());
 
-        let mut taglist = meta.tags.clone();
-        for (k, v) in meta.metadata.iter() {
+        let mut taglist = info.meta.tags.clone();
+        for (k, v) in info.meta.metadata.iter() {
             taglist.push(format!("{}${}", k, v));
         }
-        for p in meta.parents.iter() {
+        for p in info.meta.parents.iter() {
             taglist.push(format!("__parent!{}", p));
         }
 

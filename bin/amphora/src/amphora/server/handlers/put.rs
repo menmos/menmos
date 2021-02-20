@@ -14,7 +14,7 @@ use futures::{Stream, StreamExt, TryStreamExt};
 
 use headers::HeaderValue;
 
-use interface::{BlobMeta, StorageNode};
+use interface::{BlobInfo, BlobMeta, StorageNode};
 
 use mime::Mime;
 
@@ -55,7 +55,7 @@ fn prepare_stream(
 }
 
 pub async fn put<N: StorageNode>(
-    _user: UserIdentity,
+    user: UserIdentity,
     node: Arc<N>,
     blob_id: String,
     mime: Option<Mime>,
@@ -76,7 +76,17 @@ pub async fn put<N: StorageNode>(
         stream = Some(Box::from(futures::stream::empty()))
     }
 
-    match node.put(blob_id.clone(), meta, stream).await {
+    match node
+        .put(
+            blob_id.clone(),
+            BlobInfo {
+                meta,
+                owner: user.username,
+            },
+            stream,
+        )
+        .await
+    {
         Ok(_) => Ok(apikit::reply::json(&PutResponse { id: blob_id })),
         Err(e) => Err(InternalServerError::from(e).into()),
     }

@@ -7,7 +7,7 @@ use bitvec::prelude::*;
 use chrono::Duration;
 
 use interface::{
-    BlobMeta, DirectoryNode, FacetResponse, Hit, MetadataList, Query, QueryResponse,
+    BlobInfo, DirectoryNode, FacetResponse, Hit, MetadataList, Query, QueryResponse,
     StorageNodeInfo, StorageNodeResponseData,
 };
 
@@ -67,7 +67,7 @@ where
         Ok(())
     }
 
-    fn pick_node(&self, _meta: &BlobMeta) -> Result<StorageNodeInfo> {
+    fn pick_node(&self, _info: &BlobInfo) -> Result<StorageNodeInfo> {
         loop {
             // Get the node ID.
             let node_id = {
@@ -100,10 +100,14 @@ where
         let doc = self.index.documents().lookup(idx)?;
         ensure!(doc.is_some(), "missing document");
 
-        let meta = self.index.meta().get(idx)?;
-        ensure!(meta.is_some(), "missing meta");
+        let info = self.index.meta().get(idx)?;
+        ensure!(info.is_some(), "missing blob info");
 
-        Ok(Hit::new(doc.unwrap(), meta.unwrap(), String::default())) // TODO: This default string isn't super clean, but in the current architecture its guaranteed to be replaced before returning.
+        Ok(Hit::new(
+            doc.unwrap(),
+            info.unwrap().meta,
+            String::default(),
+        )) // TODO: This default string isn't super clean, but in the current architecture its guaranteed to be replaced before returning.
     }
 }
 
@@ -151,11 +155,11 @@ where
         Ok(StorageNodeResponseData { rebuild_requested })
     }
 
-    async fn add_blob(&self, _blob_id: &str, meta: BlobMeta) -> Result<StorageNodeInfo> {
-        self.pick_node(&meta)
+    async fn add_blob(&self, _blob_id: &str, info: BlobInfo) -> Result<StorageNodeInfo> {
+        self.pick_node(&info)
     }
 
-    async fn get_blob_meta(&self, blob_id: &str) -> Result<Option<BlobMeta>> {
+    async fn get_blob_meta(&self, blob_id: &str) -> Result<Option<BlobInfo>> {
         self.index
             .documents()
             .get(blob_id)?
@@ -176,14 +180,14 @@ where
         }
     }
 
-    async fn index_blob(&self, blob_id: &str, meta: BlobMeta, storage_node_id: &str) -> Result<()> {
+    async fn index_blob(&self, blob_id: &str, info: BlobInfo, storage_node_id: &str) -> Result<()> {
         self.index
             .storage()
             .set_node_for_blob(blob_id, storage_node_id.to_string())?;
 
         // TODO: Figure out a way to implement transactions here, so that a failed insert won't pollute the document index..
         let doc_idx = self.index.documents().insert(blob_id)?;
-        self.index.meta().insert(doc_idx, &meta)?;
+        self.index.meta().insert(doc_idx, &info)?;
 
         Ok(())
     }

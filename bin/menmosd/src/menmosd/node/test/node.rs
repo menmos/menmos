@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use anyhow::Result;
 
 use indexer::Index;
-use interface::{BlobMeta, DirectoryNode, Query, QueryResponse, StorageNodeInfo, Type};
+use interface::{BlobInfo, BlobMeta, DirectoryNode, Query, QueryResponse, StorageNodeInfo, Type};
 use tempfile::TempDir;
 
 use crate::Directory;
@@ -27,8 +27,14 @@ async fn index<S: AsRef<str>, N: DirectoryNode>(
     meta: BlobMeta,
     node: &N,
 ) -> StorageNodeInfo {
-    let tgt_storage_node = node.add_blob(id.as_ref(), meta.clone()).await.unwrap();
-    node.index_blob(id.as_ref(), meta, &tgt_storage_node.id)
+    let info = BlobInfo {
+        meta: meta.clone(),
+        owner: String::from("admin"),
+    };
+
+    let tgt_storage_node = node.add_blob(id.as_ref(), info.clone()).await.unwrap();
+
+    node.index_blob(id.as_ref(), info, &tgt_storage_node.id)
         .await
         .unwrap();
     tgt_storage_node
@@ -38,7 +44,13 @@ async fn index<S: AsRef<str>, N: DirectoryNode>(
 async fn add_blob_with_no_storage_nodes() {
     let node = TestDirNode::new(MockIndex::default());
     assert!(node
-        .add_blob("bing", BlobMeta::new("somename", Type::File))
+        .add_blob(
+            "bing",
+            BlobInfo {
+                meta: BlobMeta::new("somename", Type::File),
+                owner: String::from("admin")
+            }
+        )
         .await
         .is_err());
 }

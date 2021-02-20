@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::{stream::empty, Stream};
-use interface::{Blob, BlobMeta, CertificateInfo, StorageNode, Type};
+use interface::{Blob, BlobInfo, CertificateInfo, StorageNode, Type};
 use repository::{Repository, StreamInfo};
 use tokio::sync::Mutex;
 
@@ -113,18 +113,18 @@ impl StorageNode for Storage {
     async fn put(
         &self,
         id: String,
-        meta: BlobMeta,
+        info: BlobInfo,
         stream: Option<Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin>>,
     ) -> Result<()> {
         if let Some(s) = stream {
-            self.repo.save(id.clone(), meta.size, s).await?;
+            self.repo.save(id.clone(), info.meta.size, s).await?;
         }
 
         self.index
-            .insert(id.as_bytes(), bincode::serialize(&meta)?)?;
+            .insert(id.as_bytes(), bincode::serialize(&info)?)?;
 
         self.directory
-            .index_blob(&id, meta, &self.config.node.name)
+            .index_blob(&id, info, &self.config.node.name)
             .await?;
 
         Ok(())
@@ -134,17 +134,15 @@ impl StorageNode for Storage {
         // Write the diff
         let new_blob_size = self.repo.write(id.clone(), range, body).await?;
 
-        // Atomically update the blob size in the index.
-        // (We need to do this atomically, which is why we can't "properly" handle errors).
         if let Some(meta_ivec) = self.index.get(id.as_bytes())? {
-            let mut meta: BlobMeta = bincode::deserialize(&meta_ivec)?;
-            meta.size = new_blob_size;
+            let mut info: BlobInfo = bincode::deserialize(&meta_ivec)?;
+            info.meta.size = new_blob_size;
             self.index
-                .insert(id.as_bytes(), bincode::serialize(&meta)?)?;
+                .insert(id.as_bytes(), bincode::serialize(&info)?)?;
 
             // Update the config on the directory.
             self.directory
-                .index_blob(&id, meta, &self.config.node.name)
+                .index_blob(&id, info, &self.config.node.name)
                 .await?;
         } else {
             return Err(anyhow!("failed to update blob size"));
@@ -154,14 +152,14 @@ impl StorageNode for Storage {
     }
 
     async fn get(&self, blob_id: String, range: Option<(Bound<u64>, Bound<u64>)>) -> Result<Blob> {
-        let meta: BlobMeta = bincode::deserialize(
+        let info: BlobInfo = bincode::deserialize(
             self.index
                 .get(blob_id.as_bytes())?
                 .ok_or_else(|| anyhow!("missing meta"))?
                 .as_ref(),
         )?;
 
-        let stream_info = match meta.blob_type {
+        let stream_info = match info.meta.blob_type {
             Type::Directory => StreamInfo {
                 stream: Box::from(empty()),
                 chunk_size: 0,
@@ -174,15 +172,15 @@ impl StorageNode for Storage {
             stream: stream_info.stream,
             current_chunk_size: stream_info.chunk_size,
             total_blob_size: stream_info.total_size,
-            meta,
+            info,
         })
     }
 
-    async fn update_meta(&self, blob_id: String, meta: BlobMeta) -> Result<()> {
+    async fn update_meta(&self, blob_id: String, info: BlobInfo) -> Result<()> {
         self.index
-            .insert(blob_id.as_bytes(), bincode::serialize(&meta)?)?;
+            .insert(blob_id.as_bytes(), bincode::serialize(&info)?)?;
         self.directory
-            .index_blob(&blob_id, meta, &self.config.node.name)
+            .index_blob(&blob_id, info, &self.config.node.name)
             .await?;
         Ok(())
     }

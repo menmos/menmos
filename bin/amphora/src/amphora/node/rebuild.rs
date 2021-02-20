@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use futures::StreamExt;
-use interface::BlobMeta;
+use interface::BlobInfo;
 
 use super::directory_proxy::DirectoryProxy;
 
@@ -42,8 +42,8 @@ pub async fn execute(
                 return Ok(());
             }
 
-            let meta: BlobMeta = bincode::deserialize(meta_maybe.unwrap().as_ref())?;
-            cloned_proxy.index_blob(&key, meta, &cloned_node_id).await?;
+            let info: BlobInfo = bincode::deserialize(meta_maybe.unwrap().as_ref())?;
+            cloned_proxy.index_blob(&key, info, &cloned_node_id).await?;
             log::info!("rebuilt {}", &key);
             Ok(())
         }

@@ -4,7 +4,7 @@ use std::path::Path;
 
 use anyhow::{ensure, Result};
 
-use interface::{BlobMeta, CertificateInfo, StorageNodeInfo};
+use interface::{BlobInfo, CertificateInfo, StorageNodeInfo};
 
 use protocol::directory::storage::RegisterResponse;
 
@@ -111,7 +111,7 @@ impl DirectoryProxy {
     pub async fn index_blob(
         &self,
         blob_id: &str,
-        blob_meta: BlobMeta,
+        blob_info: BlobInfo,
         storage_node_id: &str,
     ) -> Result<()> {
         let url = self
@@ -123,7 +123,7 @@ impl DirectoryProxy {
         let req = self
             .client
             .put(url)
-            .json(&blob_meta)
+            .json(&blob_info)
             .bearer_auth(token)
             .build()?;
 

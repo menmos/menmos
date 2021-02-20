@@ -76,6 +76,13 @@ pub async fn get<N: StorageNode>(
         .get(blob_id, range)
         .await
         .map_err(InternalServerError::from)?;
+
+    // Check that the blob is only accessed by its owner.
+    // (this doesn't break sharing because signed URLs are signed with their owner's identity)
+    if blob.info.owner != user.username {
+        return Err(Forbidden.into());
+    }
+
     let stream = Pin::from(blob.stream);
 
     // Start building our response.
@@ -93,7 +100,7 @@ pub async fn get<N: StorageNode>(
     }
 
     // If the blob has a mimetype, we want to return it as a header so browsers can use it.
-    if let Some(mimetype) = blob.meta.metadata.get("mimetype") {
+    if let Some(mimetype) = blob.info.meta.metadata.get("mimetype") {
         if let Ok(hval) = HeaderValue::from_str(mimetype) {
             resp.headers_mut().append("content-type", hval);
         }

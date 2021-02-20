@@ -8,7 +8,7 @@ use bitvec::prelude::*;
 
 use chrono::Utc;
 
-use interface::{BlobMeta, StorageNodeInfo};
+use interface::{BlobInfo, StorageNodeInfo};
 
 #[async_trait]
 pub trait Flush {
@@ -26,8 +26,8 @@ pub trait DocIDMapper {
 }
 
 pub trait MetadataMapper {
-    fn get(&self, idx: u32) -> Result<Option<BlobMeta>>;
-    fn insert(&self, id: u32, meta: &BlobMeta) -> Result<()>;
+    fn get(&self, idx: u32) -> Result<Option<BlobInfo>>;
+    fn insert(&self, id: u32, info: &BlobInfo) -> Result<()>;
 
     fn load_tag(&self, tag: &str) -> Result<BitVec>;
 
