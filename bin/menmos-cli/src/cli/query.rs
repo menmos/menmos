@@ -15,14 +15,16 @@ pub struct QueryCommand {
     /// The maximum number of results to fetch.
     #[clap(long = "size", short = 's', default_value = "10")]
     size: usize,
+
+    /// Whether to enumerate all results .
+    #[clap(long = "all", short = 'a')]
+    all: bool,
 }
 
 impl QueryCommand {
     pub async fn run(self, cli: OutputManager, client: Client) -> Result<()> {
-        cli.step("Query");
-        service::query::execute(cli.push(), self.expression, self.from, self.size, client).await?;
-        cli.success("Done");
-
+        service::query::execute(cli, self.expression, self.from, self.size, self.all, client)
+            .await?;
         Ok(())
     }
 }

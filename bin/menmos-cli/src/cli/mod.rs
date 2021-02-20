@@ -58,9 +58,11 @@ impl Root {
 #[derive(Clap)]
 enum Command {
     /// Delete a blob from a menmos cluster.
+    #[clap(name = "delete")]
     Delete(delete::DeleteCommand),
 
     /// Download a blob to disk.
+    #[clap(name = "download")]
     Download(download::DownloadCommand),
 
     /// Push a file or directory to a menmos cluster.
