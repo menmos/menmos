@@ -60,7 +60,6 @@ dependencies = [
  "sled 0.34.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile",
  "tokio",
- "urlsign",
  "warp",
 ]
 
@@ -1546,7 +1545,6 @@ dependencies = [
  "tempfile",
  "testing",
  "tokio",
- "urlsign",
  "uuid",
  "warp",
  "x509-parser",
@@ -3511,17 +3509,6 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
-]
-
-[[package]]
-name = "urlsign"
-version = "0.0.2-alpha.2"
-dependencies = [
- "bincode",
- "branca",
- "chrono",
- "serde 1.0.123",
- "snafu",
 ]
 
 [[package]]
