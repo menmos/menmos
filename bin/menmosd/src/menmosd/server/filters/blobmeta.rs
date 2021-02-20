@@ -22,14 +22,13 @@ fn create(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::put()
-        .and(apikit::auth::storage_node(
-            context.config.node.encryption_key.clone(),
-        ))
         .and(with_context(context))
         .and(warp::path(BLOBS_PATH))
         .and(warp::path::param())
         .and(warp::path(METADATA_PATH))
         .and(warp::body::json())
+        .and(warp::header::<String>("x-storage-id"))
+        .and(warp::header::<String>("x-registration-secret"))
         .and_then(handlers::blobmeta::create)
 }
 

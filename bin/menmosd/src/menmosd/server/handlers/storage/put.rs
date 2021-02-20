@@ -10,12 +10,12 @@ use crate::server::context::Context;
 const MESSAGE_REGISTRATION_SUCCESSFUL: &str = "storage node registered";
 
 pub async fn put(
-    identity: apikit::auth::StorageNodeIdentity,
     context: Context,
+    registration_secret: String,
     info: StorageNodeInfo,
 ) -> Result<reply::Response, warp::Rejection> {
-    if identity.id != info.id {
-        return Err(Forbidden.into());
+    if context.config.node.registration_secret != registration_secret {
+        return Err(warp::reject::custom(Forbidden));
     }
 
     let node_resp = context

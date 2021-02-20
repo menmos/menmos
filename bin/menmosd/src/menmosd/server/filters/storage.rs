@@ -23,10 +23,8 @@ fn put(
     warp::put()
         .and(warp::path(NODES_PATH))
         .and(warp::path(STORAGE_PATH))
-        .and(apikit::auth::storage_node(
-            context.config.node.encryption_key.clone(),
-        ))
         .and(util::with_context(context))
+        .and(warp::header::<String>("x-registration-secret"))
         .and(warp::body::json())
         .and_then(handlers::storage::put)
 }

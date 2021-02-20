@@ -57,7 +57,10 @@ pub async fn execute(
 
     // Step 4 - Tell the directory that we're done pushing.
     proxy
-        .rebuild_complete(&parameters.storage_node_name)
+        .rebuild_complete(
+            &parameters.storage_node_name,
+            &parameters.directory_node_password,
+        )
         .await?;
 
     log::info!("rebuild complete");

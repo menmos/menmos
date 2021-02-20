@@ -51,9 +51,7 @@ fn rebuild_complete(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::delete()
-        .and(apikit::auth::storage_node(
-            context.config.node.encryption_key.clone(),
-        ))
+        .and(authenticated(context.config.node.admin_password.clone()))
         .and(with_context(context))
         .and(warp::path(REBUILD_PATH))
         .and(warp::path::param())

@@ -38,7 +38,7 @@ impl Storage {
     ) -> Result<Self> {
         let proxy = Arc::from(DirectoryProxy::new(
             &config.directory,
-            &config.node.encryption_key,
+            config.node.registration_secret.clone(),
         )?);
 
         let certificates = Arc::from(Mutex::from(certs));
