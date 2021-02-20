@@ -16,7 +16,7 @@ use mpart_async::client::MultipartRequest;
 
 use protocol::{
     directory::{
-        auth::{LoginRequest, LoginResponse},
+        auth::{LoginRequest, LoginResponse, RegisterRequest},
         blobmeta::GetMetaResponse,
         storage::ListStorageNodesResponse,
     },
@@ -293,6 +293,24 @@ impl Client {
 
         let resp: LoginResponse = extract(response).await?;
 
+        Ok(resp.token)
+    }
+
+    pub async fn register(&self, username: &str, password: &str) -> Result<String> {
+        let url = format!("{}/auth/register", self.host);
+
+        let response = self
+            .client
+            .post(&url)
+            .json(&RegisterRequest {
+                username: username.to_string(),
+                password: password.to_string(),
+            })
+            .send()
+            .await
+            .context(RequestExecutionError)?;
+
+        let resp: LoginResponse = extract(response).await?;
         Ok(resp.token)
     }
 
