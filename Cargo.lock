@@ -1196,6 +1196,8 @@ dependencies = [
  "futures",
  "interface",
  "log",
+ "ring",
+ "rust-argon2",
  "sled 0.34.6 (git+https://github.com/spacejam/sled?branch=main)",
  "tempfile",
  "tokio",

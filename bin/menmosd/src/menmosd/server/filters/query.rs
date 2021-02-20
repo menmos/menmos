@@ -23,5 +23,5 @@ fn query(
         .and(warp::path(QUERY_PATH))
         .and(warp::filters::addr::remote())
         .and(warp::body::json())
-        .and_then(handlers::query)
+        .and_then(handlers::query::query)
 }

@@ -4,8 +4,11 @@ use anyhow::Result;
 
 use async_trait::async_trait;
 
-use crate::iface::{Flush, IndexProvider};
 use crate::{documents::DocumentIDStore, meta::MetadataStore, storage::StorageDispatch};
+use crate::{
+    iface::{Flush, IndexProvider},
+    users::UsersStore,
+};
 
 pub struct Index {
     db: sled::Db,
@@ -13,6 +16,7 @@ pub struct Index {
     documents: DocumentIDStore,
     meta: MetadataStore,
     storage: StorageDispatch,
+    users: UsersStore,
 }
 
 impl Index {
@@ -21,12 +25,14 @@ impl Index {
         let documents = DocumentIDStore::new(&db)?;
         let meta = MetadataStore::new(&db)?;
         let storage = StorageDispatch::new(&db)?;
+        let users = UsersStore::new(&db)?;
 
         Ok(Self {
             db,
             documents,
             meta,
             storage,
+            users,
         })
     }
 }
@@ -38,6 +44,7 @@ impl Flush for Index {
         self.documents.flush().await?;
         self.meta.flush().await?;
         self.storage.flush().await?;
+        self.users.flush().await?;
 
         Ok(())
     }
@@ -47,6 +54,7 @@ impl IndexProvider for Index {
     type DocumentProvider = DocumentIDStore;
     type MetadataProvider = MetadataStore;
     type StorageProvider = StorageDispatch;
+    type UserProvider = UsersStore;
 
     fn documents(&self) -> &Self::DocumentProvider {
         &self.documents
@@ -58,5 +66,9 @@ impl IndexProvider for Index {
 
     fn storage(&self) -> &Self::StorageProvider {
         &self.storage
+    }
+
+    fn users(&self) -> &Self::UserProvider {
+        &self.users
     }
 }

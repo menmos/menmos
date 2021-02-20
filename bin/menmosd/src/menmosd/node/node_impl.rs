@@ -339,6 +339,14 @@ where
 
         Ok(node_infos)
     }
+
+    async fn login(&self, user: &str, password: &str) -> Result<bool> {
+        self.index.users().authenticate(user, password)
+    }
+
+    async fn register(&self, user: &str, password: &str) -> Result<()> {
+        self.index.users().add_user(user, password)
+    }
 }
 
 impl<I> Resolver<BitVec> for Directory<I>

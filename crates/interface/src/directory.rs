@@ -94,6 +94,26 @@ pub struct GetMetaResponse {
     pub meta: Option<BlobMeta>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LoginResponse {
+    pub token: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct RegisterRequest {
+    pub username: String,
+    pub password: String,
+}
+
 #[async_trait]
 pub trait DirectoryNode {
     async fn add_blob(&self, blob_id: &str, meta: BlobMeta) -> Result<StorageNodeInfo>;
@@ -114,4 +134,7 @@ pub trait DirectoryNode {
     async fn query(&self, q: &Query) -> Result<QueryResponse>;
     async fn list_metadata(&self, r: &ListMetadataRequest) -> Result<ListMetadataResponse>;
     async fn list_storage_nodes(&self) -> Result<Vec<StorageNodeInfo>>;
+
+    async fn login(&self, user: &str, password: &str) -> Result<bool>;
+    async fn register(&self, user: &str, password: &str) -> Result<()>;
 }

@@ -23,6 +23,10 @@ impl Server {
         node: N,
     ) -> Result<Server> {
         let node: Arc<Box<dyn DirectoryNode + Send + Sync>> = Arc::new(Box::new(node));
+
+        // Create the admin user.
+        node.register("admin", &cfg.node.admin_password).await?;
+
         let config = Arc::new(cfg.clone());
 
         let (stop_tx, mut stop_rx) = mpsc::channel(1);

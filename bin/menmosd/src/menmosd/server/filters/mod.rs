@@ -1,4 +1,5 @@
 mod admin;
+mod auth;
 mod blob;
 mod blobmeta;
 mod query;
@@ -18,7 +19,8 @@ pub fn all(
         .or(blob::all(context.clone()))
         .or(blobmeta::all(context.clone()))
         .or(admin::all(context.clone()))
-        .or(query::all(context))
+        .or(query::all(context.clone()))
+        .or(auth::all(context))
         .recover(apikit::reject::recover)
         .with(warp::log("directory::api"))
 }

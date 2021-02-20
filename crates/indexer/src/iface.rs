@@ -58,12 +58,19 @@ pub trait StorageNodeMapper {
     fn clear(&self) -> Result<()>;
 }
 
+pub trait UserMapper {
+    fn add_user(&self, username: &str, password: &str) -> Result<()>;
+    fn authenticate(&self, username: &str, password: &str) -> Result<bool>;
+}
+
 pub trait IndexProvider {
     type DocumentProvider: DocIDMapper;
     type MetadataProvider: MetadataMapper;
     type StorageProvider: StorageNodeMapper;
+    type UserProvider: UserMapper;
 
     fn documents(&self) -> &Self::DocumentProvider;
     fn meta(&self) -> &Self::MetadataProvider;
     fn storage(&self) -> &Self::StorageProvider;
+    fn users(&self) -> &Self::UserProvider;
 }

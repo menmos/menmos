@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicU32, Ordering},
     Mutex,
 };
+use std::{collections::HashMap, net::ToSocketAddrs};
 
 use anyhow::{ensure, Result};
 
@@ -334,10 +334,29 @@ impl MetadataMapper for MockMetaMap {
 }
 
 #[derive(Default)]
+pub struct MockUserMap {
+    users: Mutex<HashMap<String, String>>,
+}
+
+impl UserMapper for MockUserMap {
+    fn authenticate(&self, username: &str, password: &str) -> Result<bool> {
+        let guard = self.users.lock().unwrap();
+        Ok(guard.get(username).cloned().unwrap_or(String::default()) == password)
+    }
+
+    fn add_user(&self, username: &str, password: &str) -> Result<()> {
+        let mut guard = self.users.lock().unwrap();
+        guard.insert(username.to_string(), password.to_string());
+        Ok(())
+    }
+}
+
+#[derive(Default)]
 pub struct MockIndex {
     documents: MockDocIDMap,
     meta: MockMetaMap,
     storage: MockStorageMap,
+    users: MockUserMap,
 }
 
 #[async_trait]
@@ -351,6 +370,7 @@ impl IndexProvider for MockIndex {
     type MetadataProvider = MockMetaMap;
     type DocumentProvider = MockDocIDMap;
     type StorageProvider = MockStorageMap;
+    type UserProvider = MockUserMap;
 
     fn documents(&self) -> &Self::DocumentProvider {
         &self.documents
@@ -362,5 +382,9 @@ impl IndexProvider for MockIndex {
 
     fn storage(&self) -> &Self::StorageProvider {
         &self.storage
+    }
+
+    fn users(&self) -> &Self::UserProvider {
+        &self.users
     }
 }
