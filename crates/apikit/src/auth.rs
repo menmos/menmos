@@ -7,6 +7,8 @@ use warp::{filters::BoxedFilter, Filter};
 
 use crate::reject;
 
+const TOKEN_TTL_SECONDS: u32 = 60 * 60 * 6; // 6 hours.
+
 pub async fn validate_password<E: AsRef<str>, A: AsRef<str>>(
     actual_password: Option<A>,
     expected_password: E,
@@ -33,7 +35,7 @@ pub fn authenticated<S: Into<String>>(
 pub fn make_token<K: AsRef<str>, D: Serialize>(key: K, data: D) -> anyhow::Result<String> {
     let mut token = Branca::new(key.as_ref().as_bytes())?;
     token
-        .set_ttl(60 * 60 * 6)
+        .set_ttl(TOKEN_TTL_SECONDS)
         .set_timestamp(chrono::Utc::now().timestamp() as u32);
 
     let encoded_body = bincode::serialize(&data)?;
@@ -74,7 +76,7 @@ where
     let token_decoder = Branca::new(key.as_ref().as_bytes()).map_err(|_| reject::Forbidden)?;
 
     let decoded = token_decoder
-        .decode(&token, 60 * 60 * 6)
+        .decode(&token, TOKEN_TTL_SECONDS)
         .map_err(|_| reject::Forbidden)?;
 
     Ok(bincode::deserialize(&decoded).map_err(|_| reject::Forbidden)?)
