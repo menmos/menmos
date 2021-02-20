@@ -118,13 +118,15 @@ type Result<T> = std::result::Result<T, ClientError>;
 
 impl Client {
     /// Create a new client with default settings.
-    pub async fn new<S: Into<String>, P: Into<String>>(
+    pub async fn new<S: Into<String>, U: Into<String>, P: Into<String>>(
         directory_host: S,
+        username: U,
         admin_password: P,
     ) -> Result<Self> {
         Client::new_with_params(Parameters {
             host_config: HostConfig::Host {
                 host: directory_host.into(),
+                username: username.into(),
                 admin_password: admin_password.into(),
             },
             pool_idle_timeout: Duration::from_secs(5),
@@ -160,22 +162,27 @@ impl Client {
             .build()
             .context(ClientBuildError)?;
 
-        let (host, admin_password) = match params.host_config {
+        let (host, username, admin_password) = match params.host_config {
             HostConfig::Host {
                 host,
+                username,
                 admin_password,
-            } => (host, admin_password),
+            } => (host, username, admin_password),
             HostConfig::Profile { profile } => {
                 let config = Config::load().context(ConfigLoadError)?;
                 let profile = config
                     .profiles
                     .get(&profile)
                     .ok_or(ClientError::MissingProfile { name: profile })?;
-                (profile.host.clone(), profile.password.clone())
+                (
+                    profile.host.clone(),
+                    profile.username.clone(),
+                    profile.password.clone(),
+                )
             }
         };
 
-        let token = Client::login(&client, &host, "admin", &admin_password).await?;
+        let token = Client::login(&client, &host, &username, &admin_password).await?;
 
         Ok(Self {
             host,

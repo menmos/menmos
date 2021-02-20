@@ -58,7 +58,7 @@ impl Menmos {
         let dir_server = Server::new(cfg, node).await?;
 
         let directory_url = format!("http://localhost:{}", port);
-        let client = Client::new(&directory_url, DIRECTORY_PASSWORD).await?;
+        let client = Client::new(&directory_url, "admin", DIRECTORY_PASSWORD).await?;
 
         Ok(Self {
             directory: dir_server,
