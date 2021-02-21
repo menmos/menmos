@@ -71,12 +71,39 @@ impl Menmos {
         })
     }
 
+    pub async fn add_user<U: AsRef<str>, P: AsRef<str>>(
+        &self,
+        username: U,
+        password: P,
+    ) -> Result<String> {
+        let tok = self
+            .client
+            .register(username.as_ref(), password.as_ref())
+            .await?;
+        Ok(tok)
+    }
+
     pub async fn push_document<B: AsRef<[u8]>>(&self, body: B, meta: Meta) -> Result<String> {
         let tfile = NamedTempFile::new()?;
         tfile.as_file().write_all(body.as_ref())?;
         let file_path = tfile.into_temp_path();
 
         let blob_id = self.client.push(&file_path, meta).await?;
+
+        Ok(blob_id)
+    }
+
+    pub async fn push_document_client<B: AsRef<[u8]>>(
+        &self,
+        body: B,
+        meta: Meta,
+        client: &Client,
+    ) -> Result<String> {
+        let tfile = NamedTempFile::new()?;
+        tfile.as_file().write_all(body.as_ref())?;
+        let file_path = tfile.into_temp_path();
+
+        let blob_id = client.push(&file_path, meta).await?;
 
         Ok(blob_id)
     }

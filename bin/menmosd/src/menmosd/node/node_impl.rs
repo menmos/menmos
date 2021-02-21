@@ -159,13 +159,20 @@ where
         self.pick_node(&info)
     }
 
-    async fn get_blob_meta(&self, blob_id: &str) -> Result<Option<BlobInfo>> {
-        self.index
-            .documents()
-            .get(blob_id)?
-            .map(|blob_idx| self.index.meta().get(blob_idx))
-            .transpose()
-            .map(|result_maybe| result_maybe.flatten())
+    async fn get_blob_meta(&self, blob_id: &str, username: &str) -> Result<Option<BlobInfo>> {
+        let blob_idx_maybe = self.index.documents().get(blob_id)?;
+        let blob_info_maybe = blob_idx_maybe
+            .map(|i| self.index.meta().get(i))
+            .transpose()?
+            .flatten();
+
+        if let Some(info) = &blob_info_maybe {
+            if info.owner != username {
+                return Ok(None);
+            }
+        }
+
+        Ok(blob_info_maybe)
     }
 
     async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>> {
@@ -214,7 +221,18 @@ where
         Ok(())
     }
 
-    async fn delete_blob(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>> {
+    async fn delete_blob(&self, blob_id: &str, username: &str) -> Result<Option<StorageNodeInfo>> {
+        // Check if we're allowed to delete.
+        let blob_idx_maybe = self.index.documents().get(blob_id)?;
+        let blob_info_maybe = blob_idx_maybe
+            .map(|i| self.index.meta().get(i))
+            .transpose()?
+            .flatten();
+
+        if let Some(info) = &blob_info_maybe {
+            ensure!(info.owner == username, "forbidden");
+        }
+
         // This is tricky, because since our internal document IDs are sequential, we can't just delete the blob from the index and call it a day.
         // Also, since we have a limit of u32::MAX document IDs, we'd better recycle those deleted IDs so we don't creep
         // towards the limit too fast in delete-heavy implementations.
@@ -246,8 +264,9 @@ where
         Ok(storage_node_info)
     }
 
-    async fn query(&self, query: &Query) -> Result<QueryResponse> {
-        let result_bitvector = query.expression.evaluate(self)?;
+    async fn query(&self, query: &Query, username: &str) -> Result<QueryResponse> {
+        let result_bitvector =
+            query.expression.evaluate(self)? & self.index.meta().load_user_mask(username)?;
 
         // The number of true bits in the bitvector is the total number of query hits.
         let total = result_bitvector.count_ones(); // Total number of query hits.
@@ -308,19 +327,28 @@ where
         &self,
         tags: Option<Vec<String>>,
         meta_keys: Option<Vec<String>>,
+        username: &str,
     ) -> Result<MetadataList> {
+        let user_mask = self.index.meta().load_user_mask(username)?;
+
         let tag_list = match tags.as_ref() {
             Some(tag_filters) => {
                 let mut hsh = HashMap::with_capacity(tag_filters.len());
                 for tag in tag_filters {
-                    hsh.insert(tag.clone(), self.index.meta().load_tag(tag)?.count_ones());
+                    hsh.insert(
+                        tag.clone(),
+                        (self.index.meta().load_tag(tag)? & user_mask.clone()).count_ones(),
+                    );
                 }
                 hsh
             }
-            None => self.index.meta().list_all_tags()?,
+            None => self.index.meta().list_all_tags(Some(&user_mask))?,
         };
 
-        let kv_list = self.index.meta().list_all_kv_fields(&meta_keys)?;
+        let kv_list = self
+            .index
+            .meta()
+            .list_all_kv_fields(&meta_keys, Some(&user_mask))?;
 
         Ok(MetadataList {
             tags: tag_list,

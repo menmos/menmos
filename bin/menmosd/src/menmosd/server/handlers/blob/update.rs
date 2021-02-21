@@ -18,6 +18,8 @@ pub async fn update(
 ) -> Result<reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
 
+    // TODO: Ensure the blob is owned by this user.
+
     let storage_node = context
         .node
         .get_blob_storage_node(&blob_id)

@@ -3,7 +3,7 @@ use std::ops::Bound;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::{stream::empty, Stream};
@@ -106,6 +106,15 @@ impl Storage {
         }
         Ok(())
     }
+
+    fn is_blob_owned_by(&self, blob_id: &str, username: &str) -> Result<bool> {
+        if let Some(blob_info_iv) = self.index.get(blob_id.as_bytes())? {
+            let blob_info: BlobInfo = bincode::deserialize(blob_info_iv.as_ref())?;
+            Ok(blob_info.owner == username)
+        } else {
+            Err(anyhow!("not found"))
+        }
+    }
 }
 
 #[async_trait]
@@ -130,7 +139,16 @@ impl StorageNode for Storage {
         Ok(())
     }
 
-    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<()> {
+    async fn write(
+        &self,
+        id: String,
+        range: (Bound<u64>, Bound<u64>),
+        body: Bytes,
+        username: &str,
+    ) -> Result<()> {
+        // Privilege check.
+        ensure!(self.is_blob_owned_by(&id, username)?, "forbidden");
+
         // Write the diff
         let new_blob_size = self.repo.write(id.clone(), range, body).await?;
 
@@ -177,6 +195,9 @@ impl StorageNode for Storage {
     }
 
     async fn update_meta(&self, blob_id: String, info: BlobInfo) -> Result<()> {
+        // Privilege check.
+        ensure!(self.is_blob_owned_by(&blob_id, &info.owner)?, "forbidden");
+
         self.index
             .insert(blob_id.as_bytes(), bincode::serialize(&info)?)?;
         self.directory
@@ -185,7 +206,10 @@ impl StorageNode for Storage {
         Ok(())
     }
 
-    async fn delete(&self, blob_id: String) -> Result<()> {
+    async fn delete(&self, blob_id: String, username: &str) -> Result<()> {
+        // Privilege check.
+        ensure!(self.is_blob_owned_by(&blob_id, username)?, "forbidden");
+
         self.index.remove(&blob_id.as_bytes())?;
         self.repo.delete(&blob_id).await?;
 
@@ -197,7 +221,10 @@ impl StorageNode for Storage {
         (*guard).clone()
     }
 
-    async fn fsync(&self, blob_id: String) -> Result<()> {
+    async fn fsync(&self, blob_id: String, username: &str) -> Result<()> {
+        // Privilege check.
+        ensure!(self.is_blob_owned_by(&blob_id, username)?, "forbidden");
+
         self.repo.fsync(blob_id).await
     }
 }

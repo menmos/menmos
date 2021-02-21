@@ -310,7 +310,7 @@ fn list_all_tags_basic() -> Result<()> {
         ),
     )?;
 
-    let result_map = m.list_all_tags()?;
+    let result_map = m.list_all_tags(Some(&m.load_user_mask("admin")?))?;
     assert_eq!(result_map.len(), 3);
     assert_eq!(*result_map.get("a").unwrap(), 2);
     assert_eq!(*result_map.get("b").unwrap(), 2);
@@ -352,7 +352,10 @@ fn list_all_kv_nofilter() -> Result<()> {
         .or_insert_with(HashMap::default)
         .insert("e".to_string(), 1);
 
-    assert_eq!(result_map, m.list_all_kv_fields(&None)?);
+    assert_eq!(
+        result_map,
+        m.list_all_kv_fields(&None, Some(&m.load_user_mask("admin")?))?
+    );
 
     Ok(())
 }
@@ -388,7 +391,10 @@ fn list_all_kv_filter() -> Result<()> {
 
     assert_eq!(
         result_map,
-        m.list_all_kv_fields(&Some(vec!["a".to_string()]))?
+        m.list_all_kv_fields(
+            &Some(vec!["a".to_string()]),
+            Some(&m.load_user_mask("admin")?)
+        )?
     );
 
     Ok(())

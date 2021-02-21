@@ -7,13 +7,13 @@ use warp::reply;
 use crate::server::Context;
 
 pub async fn get(
-    _user: UserIdentity,
+    user: UserIdentity,
     context: Context,
     blob_id: String,
 ) -> Result<reply::Response, warp::Rejection> {
     let info_maybe = context
         .node
-        .get_blob_meta(&blob_id)
+        .get_blob_meta(&blob_id, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 

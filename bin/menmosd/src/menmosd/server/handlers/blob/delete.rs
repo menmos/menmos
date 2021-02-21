@@ -9,7 +9,7 @@ use crate::network::get_storage_node_address;
 use crate::server::Context;
 
 pub async fn delete(
-    _user: UserIdentity,
+    user: UserIdentity,
     context: Context,
     addr: Option<SocketAddr>,
     blob_id: String,
@@ -18,7 +18,7 @@ pub async fn delete(
 
     let storage_node = context
         .node
-        .delete_blob(&blob_id)
+        .delete_blob(&blob_id, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 

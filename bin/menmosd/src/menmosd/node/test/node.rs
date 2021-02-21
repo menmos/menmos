@@ -135,7 +135,7 @@ async fn get_nonexistent_blob() {
 async fn empty_query_empty_node() {
     let node = TestDirNode::new(MockIndex::default());
 
-    let r = node.query(&Query::default()).await.unwrap();
+    let r = node.query(&Query::default(), "admin").await.unwrap();
     assert_eq!(
         r,
         QueryResponse {
@@ -168,7 +168,7 @@ async fn query_single_tag() {
     .await;
 
     let r = node
-        .query(&Query::default().and_tag("hello"))
+        .query(&Query::default().and_tag("hello"), "admin")
         .await
         .unwrap();
 
@@ -199,7 +199,7 @@ async fn query_single_kv() {
     .await;
 
     let r = node
-        .query(&Query::default().and_meta("hello", "world"))
+        .query(&Query::default().and_meta("hello", "world"), "admin")
         .await
         .unwrap();
 
@@ -239,7 +239,7 @@ async fn query_multi_tag() {
     .await;
 
     let r = node
-        .query(&Query::default().and_tag("hello").and_tag("world"))
+        .query(&Query::default().and_tag("hello").and_tag("world"), "admin")
         .await
         .unwrap();
 
@@ -268,7 +268,10 @@ async fn query_single_tag_no_match() {
     )
     .await;
 
-    let r = node.query(&Query::default().and_tag("bing")).await.unwrap();
+    let r = node
+        .query(&Query::default().and_tag("bing"), "admin")
+        .await
+        .unwrap();
 
     assert_eq!(
         r,
@@ -308,7 +311,7 @@ async fn query_children() -> Result<()> {
     .await;
 
     let r = node
-        .query(&Query::default().and_parent("mydirectory"))
+        .query(&Query::default().and_parent("mydirectory"), "admin")
         .await
         .unwrap();
 
@@ -348,7 +351,7 @@ async fn list_metadata_tags() -> Result<()> {
     .await;
 
     let r = node
-        .list_metadata(Some(vec!["bing".to_string()]), None)
+        .list_metadata(Some(vec!["bing".to_string()]), None, "admin")
         .await?;
 
     assert_eq!(r.tags.len(), 1);
@@ -368,13 +371,13 @@ async fn document_deletion_missing_document_with_not() -> Result<()> {
     index("alpha", BlobMeta::new("somename", Type::File), &node).await;
     index("beta", BlobMeta::new("somename", Type::File), &node).await;
 
-    let results = node.query(&Query::default()).await?;
+    let results = node.query(&Query::default(), "admin").await?;
     assert_eq!(results.total, 2);
 
     node.delete_blob("alpha").await?;
 
     let results = node
-        .query(&Query::default().with_expression("!bing")?)
+        .query(&Query::default().with_expression("!bing")?, "admin")
         .await?;
     assert_eq!(results.total, 1);
 
@@ -414,7 +417,9 @@ async fn faceting_basic() -> Result<()> {
     )
     .await;
 
-    let res = node.query(&Query::default().with_facets(true)).await?;
+    let res = node
+        .query(&Query::default().with_facets(true), "admin")
+        .await?;
 
     let facets = res.facets.unwrap();
     assert_eq!(facets.tags.len(), 2);
@@ -462,7 +467,7 @@ async fn facet_grouping() -> Result<()> {
     .await;
 
     let res = node
-        .query(&Query::default().and_tag("a").with_facets(true))
+        .query(&Query::default().and_tag("a").with_facets(true), "admin")
         .await?;
 
     let facets = res.facets.unwrap();

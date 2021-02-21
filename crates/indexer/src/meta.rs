@@ -150,6 +150,10 @@ impl MetadataMapper for MetadataStore {
         Ok(())
     }
 
+    fn load_user_mask(&self, username: &str) -> Result<BitVec> {
+        self.user_mask_map.load(username)
+    }
+
     fn load_tag(&self, tag: &str) -> Result<BitVec> {
         self.tag_map.load(tag)
     }
@@ -186,15 +190,23 @@ impl MetadataMapper for MetadataStore {
         self.parents_map.load(parent_id)
     }
 
-    fn list_all_tags(&self) -> Result<HashMap<String, usize>> {
+    fn list_all_tags(&self, mask: Option<&BitVec>) -> Result<HashMap<String, usize>> {
         let mut hsh = HashMap::with_capacity(self.tag_map.tree().len());
 
         for r in self.tag_map.tree().iter() {
             let (tag, vector) = r?;
 
             let tag_str = String::from_utf8_lossy(tag.as_ref()).to_string();
-            let bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
-            hsh.insert(tag_str, bv.count_ones());
+            let mut bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
+
+            if let Some(user_bitvec) = mask {
+                bv &= user_bitvec.clone();
+            }
+
+            let count = bv.count_ones();
+            if count > 0 {
+                hsh.insert(tag_str, count);
+            }
         }
 
         Ok(hsh)
@@ -203,6 +215,7 @@ impl MetadataMapper for MetadataStore {
     fn list_all_kv_fields(
         &self,
         key_filter: &Option<Vec<String>>,
+        mask: Option<&BitVec>,
     ) -> Result<HashMap<String, HashMap<String, usize>>> {
         let mut hsh: HashMap<String, HashMap<String, usize>> = HashMap::new();
 
@@ -217,11 +230,19 @@ impl MetadataMapper for MetadataStore {
                     {
                         let tag_str = String::from_utf8_lossy(kv_iv.as_ref()).to_string();
                         let (k, v) = tag_to_kv(&tag_str)?;
-                        let bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
+                        let mut bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
 
-                        hsh.entry(k.to_string())
-                            .or_insert_with(HashMap::default)
-                            .insert(v.to_string(), bv.count_ones());
+                        if let Some(user_bitvec) = mask {
+                            bv &= user_bitvec.clone();
+                        }
+
+                        let count = bv.count_ones();
+
+                        if count > 0 {
+                            hsh.entry(k.to_string())
+                                .or_insert_with(HashMap::default)
+                                .insert(v.to_string(), count);
+                        }
                     }
                 }
             }
@@ -232,11 +253,18 @@ impl MetadataMapper for MetadataStore {
                     let (k_v_pair, vector) = r?;
                     let tag_str = String::from_utf8_lossy(k_v_pair.as_ref()).to_string();
                     let (k, v) = tag_to_kv(&tag_str)?;
-                    let bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
+                    let mut bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
 
-                    hsh.entry(k.to_string())
-                        .or_insert_with(HashMap::default)
-                        .insert(v.to_string(), bv.count_ones());
+                    if let Some(user_bitvec) = mask {
+                        bv &= user_bitvec.clone();
+                    }
+
+                    let count = bv.count_ones();
+                    if count > 0 {
+                        hsh.entry(k.to_string())
+                            .or_insert_with(HashMap::default)
+                            .insert(v.to_string(), count);
+                    }
                 }
             }
         }
@@ -255,6 +283,7 @@ impl MetadataMapper for MetadataStore {
         self.tag_map.purge(idx)?;
         self.kv_map.purge(idx)?;
         self.parents_map.purge(idx)?;
+        self.user_mask_map.purge(idx)?;
 
         Ok(())
     }

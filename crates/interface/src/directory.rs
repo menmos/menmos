@@ -149,9 +149,9 @@ impl Default for Query {
 #[async_trait]
 pub trait DirectoryNode {
     async fn add_blob(&self, blob_id: &str, info: BlobInfo) -> Result<StorageNodeInfo>;
-    async fn get_blob_meta(&self, blob_id: &str) -> Result<Option<BlobInfo>>;
+    async fn get_blob_meta(&self, blob_id: &str, user: &str) -> Result<Option<BlobInfo>>;
     async fn index_blob(&self, blob_id: &str, meta: BlobInfo, storage_node_id: &str) -> Result<()>;
-    async fn delete_blob(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>>;
+    async fn delete_blob(&self, blob_id: &str, username: &str) -> Result<Option<StorageNodeInfo>>;
 
     async fn register_storage_node(&self, def: StorageNodeInfo) -> Result<StorageNodeResponseData>;
     async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>>;
@@ -160,11 +160,12 @@ pub trait DirectoryNode {
     async fn start_rebuild(&self) -> Result<()>;
     async fn rebuild_complete(&self, storage_node_id: &str) -> Result<()>;
 
-    async fn query(&self, q: &Query) -> Result<QueryResponse>;
+    async fn query(&self, q: &Query, username: &str) -> Result<QueryResponse>;
     async fn list_metadata(
         &self,
         tags: Option<Vec<String>>,
         meta_keys: Option<Vec<String>>,
+        username: &str,
     ) -> Result<MetadataList>;
     async fn list_storage_nodes(&self) -> Result<Vec<StorageNodeInfo>>;
 

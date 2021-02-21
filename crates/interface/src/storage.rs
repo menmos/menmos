@@ -118,15 +118,21 @@ pub trait StorageNode {
         stream: Option<Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin>>,
     ) -> Result<()>;
 
-    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), bytes: Bytes) -> Result<()>;
+    async fn write(
+        &self,
+        id: String,
+        range: (Bound<u64>, Bound<u64>),
+        bytes: Bytes,
+        username: &str,
+    ) -> Result<()>;
 
     async fn get(&self, blob_id: String, range: Option<(Bound<u64>, Bound<u64>)>) -> Result<Blob>;
 
     async fn update_meta(&self, blob_id: String, info: BlobInfo) -> Result<()>;
 
-    async fn delete(&self, blob_id: String) -> Result<()>;
+    async fn delete(&self, blob_id: String, username: &str) -> Result<()>;
 
     async fn get_certificates(&self) -> Option<CertificateInfo>;
 
-    async fn fsync(&self, blob_id: String) -> Result<()>;
+    async fn fsync(&self, blob_id: String, username: &str) -> Result<()>;
 }

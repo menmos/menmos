@@ -8,7 +8,7 @@ use bytes::Bytes;
 use futures::{Stream, TryStreamExt};
 
 use header::HeaderName;
-use interface::{BlobMeta, Query, QueryResponse};
+use interface::{BlobMeta, MetadataList, Query, QueryResponse};
 
 use hyper::{header, StatusCode};
 
@@ -17,7 +17,7 @@ use mpart_async::client::MultipartRequest;
 use protocol::{
     directory::{
         auth::{LoginRequest, LoginResponse, RegisterRequest},
-        blobmeta::GetMetaResponse,
+        blobmeta::{GetMetaResponse, ListMetadataRequest},
         storage::ListStorageNodesResponse,
     },
     storage::PutResponse,
@@ -302,6 +302,7 @@ impl Client {
         let response = self
             .client
             .post(&url)
+            .bearer_auth(&self.token)
             .json(&RegisterRequest {
                 username: username.to_string(),
                 password: password.to_string(),
@@ -426,6 +427,25 @@ impl Client {
     ) -> Result<String> {
         self.push_internal(path, meta, format!("{}/blob/{}", self.host, blob_id))
             .await
+    }
+
+    pub async fn list_meta(
+        &self,
+        tags: Option<Vec<String>>,
+        meta_keys: Option<Vec<String>>,
+    ) -> Result<MetadataList> {
+        let url = format!("{}/metadata", &self.host);
+
+        let response = self
+            .client
+            .get(&url)
+            .bearer_auth(&self.token)
+            .json(&ListMetadataRequest { tags, meta_keys })
+            .send()
+            .await
+            .context(RequestExecutionError)?;
+
+        extract(response).await
     }
 
     pub async fn update_meta(&self, blob_id: &str, meta: BlobMeta) -> Result<()> {

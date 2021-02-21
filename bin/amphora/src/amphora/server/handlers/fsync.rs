@@ -7,11 +7,11 @@ use interface::StorageNode;
 use warp::reply;
 
 pub async fn fsync<N: StorageNode>(
-    _user: UserIdentity,
+    user: UserIdentity,
     node: Arc<N>,
     blob_id: String,
 ) -> Result<reply::Response, warp::Rejection> {
-    node.fsync(blob_id)
+    node.fsync(blob_id, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 

@@ -87,7 +87,7 @@ pub async fn query(
 
     let mut query_response = context
         .node
-        .query(&query)
+        .query(&query, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 
