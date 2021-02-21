@@ -108,6 +108,20 @@ impl Menmos {
         Ok(blob_id)
     }
 
+    pub async fn update_document_client<B: AsRef<[u8]>>(
+        &self,
+        blob_id: &str,
+        body: B,
+        meta: Meta,
+        client: &Client,
+    ) -> Result<()> {
+        let tfile = NamedTempFile::new()?;
+        tfile.as_file().write_all(body.as_ref())?;
+        let file_path = tfile.into_temp_path();
+        client.update_blob(blob_id, &file_path, meta).await?;
+        Ok(())
+    }
+
     pub async fn add_amphora<S: Into<String>>(&mut self, name: S) -> Result<()> {
         const BASE_CFG: &str = include_str!("data/amphora_http.toml");
         let mut cfg = amphora::Config::from_toml_string(BASE_CFG)?;

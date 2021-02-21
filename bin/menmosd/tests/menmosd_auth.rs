@@ -277,3 +277,23 @@ async fn permissions_fsync() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn permissions_update_blob() -> Result<()> {
+    let mut cluster = Menmos::new().await?;
+    cluster.add_amphora("alpha").await?;
+
+    let blob_id = cluster
+        .push_document("bing bong", Meta::file("test.txt"))
+        .await?;
+
+    // Try update from non-owner.
+    cluster.add_user("john", "bingbong").await?;
+    let john_client = Client::new(&cluster.directory_url, "john", "bingbong").await?;
+    assert!(cluster
+        .update_document_client(&blob_id, "ya yeet", Meta::file("test.txt"), &john_client)
+        .await
+        .is_err());
+
+    Ok(())
+}

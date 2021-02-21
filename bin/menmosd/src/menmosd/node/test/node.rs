@@ -374,7 +374,7 @@ async fn document_deletion_missing_document_with_not() -> Result<()> {
     let results = node.query(&Query::default(), "admin").await?;
     assert_eq!(results.total, 2);
 
-    node.delete_blob("alpha").await?;
+    node.delete_blob("alpha", "admin").await?;
 
     let results = node
         .query(&Query::default().with_expression("!bing")?, "admin")

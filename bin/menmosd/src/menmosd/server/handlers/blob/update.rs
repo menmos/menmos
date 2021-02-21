@@ -11,14 +11,23 @@ use crate::network::get_storage_node_address;
 use crate::server::Context;
 
 pub async fn update(
-    _user: UserIdentity,
+    user: UserIdentity,
     context: Context,
     addr: Option<SocketAddr>,
     blob_id: String,
 ) -> Result<reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
 
-    // TODO: Ensure the blob is owned by this user.
+    let blob_info = context
+        .node
+        .get_blob_meta(&blob_id, &user.username)
+        .await
+        .map_err(InternalServerError::from)?
+        .ok_or(NotFound)?;
+
+    if blob_info.owner != user.username {
+        return Err(NotFound.into());
+    }
 
     let storage_node = context
         .node
