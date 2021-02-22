@@ -92,5 +92,8 @@ async fn cant_register_same_username() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
+    cluster.add_user("bing", "bong").await?;
+    assert!(cluster.add_user("bing", "other password").await.is_err());
+
     Ok(())
 }

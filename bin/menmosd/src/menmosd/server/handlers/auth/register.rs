@@ -17,6 +17,16 @@ pub async fn register(
         return Err(Forbidden.into());
     }
 
+    // Don't allow duplicate username registration.
+    if context
+        .node
+        .has_user(&request.username)
+        .await
+        .map_err(InternalServerError::from)?
+    {
+        return Err(Forbidden.into());
+    }
+
     context
         .node
         .register(&request.username, &request.password)
