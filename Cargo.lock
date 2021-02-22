@@ -74,6 +74,10 @@ checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
 name = "apikit"
 version = "0.0.3-alpha.0"
 dependencies = [
+ "anyhow",
+ "bincode",
+ "branca",
+ "chrono",
  "log",
  "serde 1.0.123",
  "warp",
