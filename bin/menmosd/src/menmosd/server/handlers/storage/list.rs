@@ -1,6 +1,6 @@
 use apikit::{auth::UserIdentity, reject::InternalServerError};
 
-use interface::ListStorageNodesResponse;
+use protocol::directory::storage::ListStorageNodesResponse;
 
 use warp::reply;
 

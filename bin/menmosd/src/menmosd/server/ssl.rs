@@ -10,7 +10,7 @@ use dns_server::{Config as DnsConfig, Server as DnsServer};
 
 use futures::future::{AbortHandle, Abortable};
 
-use interface::{message::directory_node::CertificateInfo, DirectoryNode};
+use interface::{CertificateInfo, DirectoryNode};
 
 use tokio::task::spawn;
 use tokio::{

@@ -35,7 +35,11 @@ impl MenmosFS {
     pub async fn new(mount: config::Mount) -> Result<Self> {
         let client = match mount.client {
             config::ClientConfig::Profile { profile } => Client::new_with_profile(profile).await?,
-            config::ClientConfig::Host { host, password } => Client::new(host, password).await?,
+            config::ClientConfig::Host {
+                host,
+                username,
+                password,
+            } => Client::new(host, username, password).await?,
         };
         let client = CachedClient::new(client);
 

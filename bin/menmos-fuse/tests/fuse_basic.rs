@@ -22,6 +22,7 @@ async fn basic_lookup_and_read() -> Result<()> {
         name: String::from("test_mount"),
         client: ClientConfig::Host {
             host: cluster.directory_url,
+            username: "admin".to_string(),
             password: cluster.directory_password,
         },
         mount_point: PathBuf::from("/tmp"), // We won't mount it so we don't really care about the path.

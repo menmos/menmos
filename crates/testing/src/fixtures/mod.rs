@@ -58,7 +58,7 @@ impl Menmos {
         let dir_server = Server::new(cfg, node).await?;
 
         let directory_url = format!("http://localhost:{}", port);
-        let client = Client::new(&directory_url, DIRECTORY_PASSWORD).await?;
+        let client = Client::new(&directory_url, "admin", DIRECTORY_PASSWORD).await?;
 
         Ok(Self {
             directory: dir_server,
@@ -71,6 +71,18 @@ impl Menmos {
         })
     }
 
+    pub async fn add_user<U: AsRef<str>, P: AsRef<str>>(
+        &self,
+        username: U,
+        password: P,
+    ) -> Result<String> {
+        let tok = self
+            .client
+            .register(username.as_ref(), password.as_ref())
+            .await?;
+        Ok(tok)
+    }
+
     pub async fn push_document<B: AsRef<[u8]>>(&self, body: B, meta: Meta) -> Result<String> {
         let tfile = NamedTempFile::new()?;
         tfile.as_file().write_all(body.as_ref())?;
@@ -79,6 +91,35 @@ impl Menmos {
         let blob_id = self.client.push(&file_path, meta).await?;
 
         Ok(blob_id)
+    }
+
+    pub async fn push_document_client<B: AsRef<[u8]>>(
+        &self,
+        body: B,
+        meta: Meta,
+        client: &Client,
+    ) -> Result<String> {
+        let tfile = NamedTempFile::new()?;
+        tfile.as_file().write_all(body.as_ref())?;
+        let file_path = tfile.into_temp_path();
+
+        let blob_id = client.push(&file_path, meta).await?;
+
+        Ok(blob_id)
+    }
+
+    pub async fn update_document_client<B: AsRef<[u8]>>(
+        &self,
+        blob_id: &str,
+        body: B,
+        meta: Meta,
+        client: &Client,
+    ) -> Result<()> {
+        let tfile = NamedTempFile::new()?;
+        tfile.as_file().write_all(body.as_ref())?;
+        let file_path = tfile.into_temp_path();
+        client.update_blob(blob_id, &file_path, meta).await?;
+        Ok(())
     }
 
     pub async fn add_amphora<S: Into<String>>(&mut self, name: S) -> Result<()> {

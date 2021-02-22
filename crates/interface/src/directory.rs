@@ -5,9 +5,11 @@ use anyhow::Result;
 
 use async_trait::async_trait;
 
+use rapidquery::Expression;
+
 use serde::{Deserialize, Serialize};
 
-use crate::{message::directory_node::Query, BlobMeta};
+use crate::{BlobInfo, BlobMeta};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -59,80 +61,112 @@ pub struct StorageNodeInfo {
     pub port: u16,
 }
 
+/// Data sent back to the storage node from the directory.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct ListMetadataResponse {
-    pub tags: HashMap<String, usize>,
-    pub meta: HashMap<String, HashMap<String, usize>>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct ListMetadataRequest {
-    /// Optionally filter which tags to return (defaults to all).
-    pub tags: Option<Vec<String>>,
-
-    /// Optionally filter which keys to return (defaults to all). [e.g. "filetype"]
-    pub meta_keys: Option<Vec<String>>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct ListStorageNodesResponse {
-    pub storage_nodes: Vec<StorageNodeInfo>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct RegisterStorageNodeResponse {
+pub struct StorageNodeResponseData {
     pub rebuild_requested: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct GetMetaResponse {
-    pub meta: Option<BlobMeta>,
+pub struct MetadataList {
+    pub tags: HashMap<String, usize>,
+    pub meta: HashMap<String, HashMap<String, usize>>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct LoginRequest {
-    pub username: String,
-    pub password: String,
+pub struct Query {
+    pub expression: Expression,
+    pub from: usize,
+    pub size: usize,
+    pub sign_urls: bool,
+    pub facets: bool, // TODO: Permit requesting facets for specific tags instead of doing it for all.
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct LoginResponse {
-    pub token: String,
+impl Query {
+    pub fn with_expression<S: Into<String>>(mut self, expression: S) -> Result<Self> {
+        self.expression = Expression::parse(expression.into())?;
+        Ok(self)
+    }
+
+    pub fn and_tag<S: Into<String>>(mut self, tag: S) -> Self {
+        let new_expr = Expression::Tag { tag: tag.into() };
+        self.expression = Expression::And {
+            and: (Box::from(self.expression), Box::from(new_expr)),
+        };
+        self
+    }
+
+    pub fn and_meta<K: Into<String>, V: Into<String>>(mut self, k: K, v: V) -> Self {
+        let new_expr = Expression::KeyValue {
+            key: k.into(),
+            value: v.into(),
+        };
+        self.expression = Expression::And {
+            and: (Box::from(self.expression), Box::from(new_expr)),
+        };
+        self
+    }
+
+    pub fn and_parent<P: Into<String>>(mut self, p: P) -> Self {
+        let new_expr = Expression::Parent { parent: p.into() };
+        self.expression = Expression::And {
+            and: (Box::from(self.expression), Box::from(new_expr)),
+        };
+        self
+    }
+
+    pub fn with_from(mut self, f: usize) -> Self {
+        self.from = f;
+        self
+    }
+
+    pub fn with_size(mut self, s: usize) -> Self {
+        self.size = s;
+        self
+    }
+
+    pub fn with_facets(mut self, f: bool) -> Self {
+        self.facets = f;
+        self
+    }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct RegisterRequest {
-    pub username: String,
-    pub password: String,
+impl Default for Query {
+    fn default() -> Self {
+        Query {
+            expression: Default::default(),
+            from: 0,
+            size: 30,
+            sign_urls: true,
+            facets: false,
+        }
+    }
 }
 
 #[async_trait]
 pub trait DirectoryNode {
-    async fn add_blob(&self, blob_id: &str, meta: BlobMeta) -> Result<StorageNodeInfo>;
-    async fn get_blob_meta(&self, blob_id: &str) -> Result<Option<BlobMeta>>;
-    async fn index_blob(&self, blob_id: &str, meta: BlobMeta, storage_node_id: &str) -> Result<()>;
-    async fn delete_blob(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>>;
+    async fn add_blob(&self, blob_id: &str, info: BlobInfo) -> Result<StorageNodeInfo>;
+    async fn get_blob_meta(&self, blob_id: &str, user: &str) -> Result<Option<BlobInfo>>;
+    async fn index_blob(&self, blob_id: &str, meta: BlobInfo, storage_node_id: &str) -> Result<()>;
+    async fn delete_blob(&self, blob_id: &str, username: &str) -> Result<Option<StorageNodeInfo>>;
 
-    async fn register_storage_node(
-        &self,
-        def: StorageNodeInfo,
-    ) -> Result<RegisterStorageNodeResponse>;
+    async fn register_storage_node(&self, def: StorageNodeInfo) -> Result<StorageNodeResponseData>;
     async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>>;
 
     async fn commit(&self) -> Result<()>;
     async fn start_rebuild(&self) -> Result<()>;
     async fn rebuild_complete(&self, storage_node_id: &str) -> Result<()>;
 
-    async fn query(&self, q: &Query) -> Result<QueryResponse>;
-    async fn list_metadata(&self, r: &ListMetadataRequest) -> Result<ListMetadataResponse>;
+    async fn query(&self, q: &Query, username: &str) -> Result<QueryResponse>;
+    async fn list_metadata(
+        &self,
+        tags: Option<Vec<String>>,
+        meta_keys: Option<Vec<String>>,
+        username: &str,
+    ) -> Result<MetadataList>;
     async fn list_storage_nodes(&self) -> Result<Vec<StorageNodeInfo>>;
 
     async fn login(&self, user: &str, password: &str) -> Result<bool>;

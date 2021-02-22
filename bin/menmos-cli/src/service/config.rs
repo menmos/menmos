@@ -17,6 +17,11 @@ pub fn load_or_create(cli: OutputManager) -> Result<Config> {
 
 fn make_default(cli: OutputManager) -> Result<Profile> {
     let host = cli.prompt("Directory node host: ")?;
+    let username = cli.prompt("Directory node username: ")?;
     let password = cli.prompt_password("Directory node password: ")?;
-    Ok(Profile { host, password })
+    Ok(Profile {
+        host,
+        username,
+        password,
+    })
 }
