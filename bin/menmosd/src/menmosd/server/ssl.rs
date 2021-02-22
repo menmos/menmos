@@ -24,7 +24,7 @@ use x509_parser::pem::Pem;
 
 use crate::{
     config::{HTTPSParameters, LetsEncryptURL},
-    server::filters,
+    server::{filters, Context},
     Config,
 };
 
@@ -72,15 +72,12 @@ async fn wait_for_server_stop(http_handle: JoinHandle<()>, https_handle: JoinHan
     }
 }
 
-pub async fn use_tls<N>(
-    n: Arc<N>,
-    node_cfg: Config,
+pub async fn use_tls(
+    n: Arc<Box<dyn DirectoryNode + Send + Sync>>,
+    node_cfg: Arc<Config>,
     cfg: HTTPSParameters,
     mut stop_rx: mpsc::Receiver<()>,
-) -> Result<()>
-where
-    N: DirectoryNode + Send + Sync + 'static,
-{
+) -> Result<()> {
     let dns_server = DnsServer::start(DnsConfig {
         host_name: cfg.dns.host_name.clone(),
         root_domain: cfg.dns.root_domain.clone(),
@@ -185,19 +182,21 @@ where
         let https_handle = {
             let key_name = key_name.clone();
             let pem_name = pem_name.clone();
-            let https_srv = warp::serve(filters::all(
-                n.clone(),
-                node_cfg.clone(),
-                Some(certificate_info),
-            ))
-            .tls()
-            .cert_path(&pem_name)
-            .key_path(&key_name)
-            .bind_with_graceful_shutdown(([0, 0, 0, 0], cfg.https_port), async {
-                rx.await.ok();
-                log::info!("https layer stop signal received");
-            })
-            .1;
+
+            let context = Context {
+                node: n.clone(),
+                config: node_cfg.clone(),
+                certificate_info: Arc::from(Some(certificate_info)),
+            };
+            let https_srv = warp::serve(filters::all(context))
+                .tls()
+                .cert_path(&pem_name)
+                .key_path(&key_name)
+                .bind_with_graceful_shutdown(([0, 0, 0, 0], cfg.https_port), async {
+                    rx.await.ok();
+                    log::info!("https layer stop signal received");
+                })
+                .1;
             spawn(https_srv)
         };
 

@@ -1,25 +1,23 @@
 use std::net::SocketAddr;
-use std::sync::Arc;
 
 use apikit::reject::InternalServerError;
 
 use interface::message as msg;
-use interface::DirectoryNode;
 
 use warp::{reply, Reply};
 
 use crate::network::get_storage_node_address;
-use crate::Config;
+use crate::server::Context;
 
-pub async fn delete<N: DirectoryNode>(
-    cfg: Config,
-    node: Arc<N>,
+pub async fn delete(
+    context: Context,
     addr: Option<SocketAddr>,
     blob_id: String,
 ) -> Result<reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
 
-    let storage_node = node
+    let storage_node = context
+        .node
         .delete_blob(&blob_id)
         .await
         .map_err(InternalServerError::from)?;
@@ -29,7 +27,7 @@ pub async fn delete<N: DirectoryNode>(
         let node_address = get_storage_node_address(
             socket_addr.ip(),
             node_info,
-            &cfg,
+            &context.config,
             &format!("blob/{}", &blob_id),
         )
         .map_err(InternalServerError::from)?;

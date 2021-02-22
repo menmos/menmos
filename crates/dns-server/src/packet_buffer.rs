@@ -39,10 +39,8 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    fn seek(&mut self, pos: usize) -> Result<()> {
+    fn seek(&mut self, pos: usize) {
         self.pos = pos;
-
-        Ok(())
     }
 
     pub fn read(&mut self) -> Result<u8> {
@@ -104,7 +102,7 @@ impl BytePacketBuffer {
                 // When a jump is performed, we only modify the shared buffer
                 // position once, and avoid making the change later on.
                 if !jumped {
-                    self.seek(pos + 2)?;
+                    self.seek(pos + 2);
                 }
 
                 let b2 = self.get(pos + 1)? as u16;
@@ -133,7 +131,7 @@ impl BytePacketBuffer {
         }
 
         if !jumped {
-            self.seek(pos)?;
+            self.seek(pos);
         }
 
         Ok(())
@@ -193,15 +191,13 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    fn set(&mut self, pos: usize, val: u8) -> Result<()> {
+    fn set(&mut self, pos: usize, val: u8) {
         self.buf[pos] = val;
-
-        Ok(())
     }
 
     pub fn set_u16(&mut self, pos: usize, val: u16) -> Result<()> {
-        self.set(pos, (val >> 8) as u8)?;
-        self.set(pos + 1, (val & 0xFF) as u8)?;
+        self.set(pos, (val >> 8) as u8);
+        self.set(pos + 1, (val & 0xFF) as u8);
 
         Ok(())
     }

@@ -1,16 +1,17 @@
-use std::sync::Arc;
-
 use apikit::reject::InternalServerError;
 
-use interface::{DirectoryNode, ListMetadataRequest};
+use interface::ListMetadataRequest;
 
 use warp::reply;
 
-pub async fn list_metadata<N: DirectoryNode>(
-    node: Arc<N>,
+use crate::server::Context;
+
+pub async fn list(
+    context: Context,
     req: ListMetadataRequest,
 ) -> Result<reply::Response, warp::Rejection> {
-    let response = node
+    let response = context
+        .node
         .list_metadata(&req)
         .await
         .map_err(InternalServerError::from)?;

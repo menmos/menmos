@@ -1,16 +1,14 @@
-use std::sync::Arc;
-
 use apikit::reject::InternalServerError;
 
-use interface::{DirectoryNode, GetMetaResponse};
+use interface::GetMetaResponse;
 
 use warp::reply;
 
-pub async fn get_meta<N: DirectoryNode>(
-    node: Arc<N>,
-    blob_id: String,
-) -> Result<reply::Response, warp::Rejection> {
-    let blob_meta_maybe = node
+use crate::server::Context;
+
+pub async fn get(context: Context, blob_id: String) -> Result<reply::Response, warp::Rejection> {
+    let blob_meta_maybe = context
+        .node
         .get_blob_meta(&blob_id)
         .await
         .map_err(InternalServerError::from)?;

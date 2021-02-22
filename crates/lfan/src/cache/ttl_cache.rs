@@ -3,8 +3,8 @@ use std::{borrow::Borrow, time::Instant};
 use std::{collections::HashMap, time::Duration};
 
 use super::{
-    cache::Cache,
     policy::{EvictionPolicy, InsertionPolicy},
+    Cache,
 };
 
 struct CacheItem<V> {

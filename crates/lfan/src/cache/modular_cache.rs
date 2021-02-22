@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use super::{
-    cache::Cache,
     policy::{EvictionPolicy, InsertionPolicy},
+    Cache,
 };
 
 #[derive(Default)]

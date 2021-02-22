@@ -86,7 +86,7 @@ pub async fn get<N: StorageNode>(
 
     // Get the blob stream from the backend.
     let blob = node
-        .get(blob_id, range.clone())
+        .get(blob_id, range)
         .await
         .map_err(InternalServerError::from)?;
     let stream = Pin::from(blob.stream);

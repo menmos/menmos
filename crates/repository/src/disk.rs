@@ -51,7 +51,7 @@ impl Repository for DiskRepository {
 
         if let Err(e) = betterstreams::fs::write_all(&file_path, stream).await {
             fs::remove_file(&file_path).await?;
-            return Err(e.into());
+            return Err(e);
         }
 
         Ok(())
