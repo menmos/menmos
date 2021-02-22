@@ -27,7 +27,7 @@ dependencies = [
 
 [[package]]
 name = "amphora"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "anyhow",
  "apikit",
@@ -72,7 +72,7 @@ checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
 
 [[package]]
 name = "apikit"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -201,7 +201,7 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "betterstreams"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -667,7 +667,7 @@ checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
 name = "dns-server"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "anyhow",
  "log",
@@ -1185,7 +1185,7 @@ dependencies = [
 
 [[package]]
 name = "indexer"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1233,7 +1233,7 @@ dependencies = [
 
 [[package]]
 name = "interface"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1310,7 +1310,7 @@ dependencies = [
 
 [[package]]
 name = "lfan"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "linked-hash-map 0.5.4",
  "tokio",
@@ -1449,7 +1449,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-cli"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -1467,7 +1467,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-client"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "apikit",
  "base64 0.13.0",
@@ -1489,7 +1489,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-fuse"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "anyhow",
  "async-fuse",
@@ -1510,7 +1510,7 @@ dependencies = [
 
 [[package]]
 name = "menmosd"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "acme-lib",
  "amphora",
@@ -1990,7 +1990,7 @@ dependencies = [
 
 [[package]]
 name = "protocol"
-version = "0.1.0"
+version = "0.0.3-alpha.0"
 dependencies = [
  "anyhow",
  "interface",
@@ -2270,7 +2270,7 @@ dependencies = [
 
 [[package]]
 name = "rapidquery"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "bitvec 0.20.1",
  "log",
@@ -2353,7 +2353,7 @@ dependencies = [
 
 [[package]]
 name = "repository"
-version = "0.0.2-alpha.2"
+version = "0.0.3-alpha.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3035,7 +3035,7 @@ dependencies = [
 
 [[package]]
 name = "testing"
-version = "0.1.0"
+version = "0.0.3-alpha.0"
 dependencies = [
  "amphora",
  "anyhow",
