@@ -137,4 +137,5 @@ pub trait DirectoryNode {
 
     async fn login(&self, user: &str, password: &str) -> Result<bool>;
     async fn register(&self, user: &str, password: &str) -> Result<()>;
+    async fn has_user(&self, user: &str) -> Result<bool>;
 }

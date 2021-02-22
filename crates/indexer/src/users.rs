@@ -57,4 +57,9 @@ impl UserMapper for UsersStore {
             Ok(false)
         }
     }
+
+    fn has_user(&self, username: &str) -> Result<bool> {
+        let user_exists = self.map.contains_key(username.as_bytes())?;
+        Ok(user_exists)
+    }
 }

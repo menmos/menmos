@@ -347,6 +347,10 @@ where
     async fn register(&self, user: &str, password: &str) -> Result<()> {
         self.index.users().add_user(user, password)
     }
+
+    async fn has_user(&self, user: &str) -> Result<bool> {
+        self.index.users().has_user(user)
+    }
 }
 
 impl<I> Resolver<BitVec> for Directory<I>

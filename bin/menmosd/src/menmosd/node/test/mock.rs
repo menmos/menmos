@@ -349,6 +349,11 @@ impl UserMapper for MockUserMap {
         guard.insert(username.to_string(), password.to_string());
         Ok(())
     }
+
+    fn has_user(&self, username: &str) -> Result<bool> {
+        let guard = self.users.lock().unwrap();
+        Ok(guard.contains_key(username))
+    }
 }
 
 #[derive(Default)]

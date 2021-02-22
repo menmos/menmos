@@ -61,6 +61,7 @@ pub trait StorageNodeMapper {
 pub trait UserMapper {
     fn add_user(&self, username: &str, password: &str) -> Result<()>;
     fn authenticate(&self, username: &str, password: &str) -> Result<bool>;
+    fn has_user(&self, username: &str) -> Result<bool>;
 }
 
 pub trait IndexProvider {
