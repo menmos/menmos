@@ -1,12 +1,9 @@
-use apikit::{
-    auth::UserIdentity,
-    reject::{Forbidden, InternalServerError},
-};
+use apikit::auth::UserIdentity;
+use apikit::reject::{Forbidden, InternalServerError};
 
-use interface::message as msg;
 use warp::reply;
 
-use crate::server::context::Context;
+use crate::server::Context;
 
 pub async fn commit(
     user: UserIdentity,
@@ -22,7 +19,5 @@ pub async fn commit(
         .await
         .map_err(InternalServerError::from)?;
 
-    Ok(apikit::reply::json(&msg::MessageResponse {
-        message: "OK".into(),
-    }))
+    Ok(apikit::reply::message("OK"))
 }

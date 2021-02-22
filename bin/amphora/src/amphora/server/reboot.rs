@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use interface::{message::directory_node::CertificateInfo, StorageNode};
+use interface::{CertificateInfo, StorageNode};
 
 use tokio::{sync::mpsc, task::JoinHandle};
 

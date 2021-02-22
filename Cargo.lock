@@ -50,6 +50,7 @@ dependencies = [
  "mime",
  "mpart-async",
  "portpicker",
+ "protocol",
  "public-ip",
  "repository",
  "reqwest",
@@ -60,7 +61,6 @@ dependencies = [
  "sled 0.34.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile",
  "tokio",
- "urlsign",
  "warp",
 ]
 
@@ -1478,6 +1478,7 @@ dependencies = [
  "interface",
  "log",
  "mpart-async",
+ "protocol",
  "reqwest",
  "serde 1.0.123",
  "serde_json",
@@ -1538,6 +1539,7 @@ dependencies = [
  "menmos-client",
  "mime",
  "portpicker",
+ "protocol",
  "rapidquery",
  "reqwest",
  "serde 1.0.123",
@@ -1546,7 +1548,6 @@ dependencies = [
  "tempfile",
  "testing",
  "tokio",
- "urlsign",
  "uuid",
  "warp",
  "x509-parser",
@@ -1985,6 +1986,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e0704ee1a7e00d7bb417d0770ea303c1bccbabf0ef1667dae92b5967f5f8a71"
 dependencies = [
  "unicode-xid",
+]
+
+[[package]]
+name = "protocol"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "interface",
+ "rapidquery",
+ "serde 1.0.123",
 ]
 
 [[package]]
@@ -3511,17 +3522,6 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
-]
-
-[[package]]
-name = "urlsign"
-version = "0.0.2-alpha.2"
-dependencies = [
- "bincode",
- "branca",
- "chrono",
- "serde 1.0.123",
- "snafu",
 ]
 
 [[package]]

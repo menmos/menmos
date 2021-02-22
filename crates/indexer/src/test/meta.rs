@@ -3,10 +3,17 @@ use std::collections::HashMap;
 use anyhow::Result;
 
 use bitvec::prelude::*;
-use interface::{BlobMeta, Type};
+use interface::{BlobInfo, BlobMeta, Type};
 use tempfile::TempDir;
 
 use crate::{iface::MetadataMapper, meta::MetadataStore};
+
+fn admin_blob(meta: BlobMeta) -> BlobInfo {
+    BlobInfo {
+        meta,
+        owner: String::from("admin"),
+    }
+}
 
 #[test]
 fn init_doesnt_fail() {
@@ -32,7 +39,14 @@ fn insert_empty_meta() {
     let db = sled::open(d.path()).unwrap();
     let m = MetadataStore::new(&db).unwrap();
 
-    m.insert(0, &BlobMeta::new("somename", Type::File)).unwrap();
+    m.insert(
+        0,
+        &BlobInfo {
+            meta: BlobMeta::new("somename", Type::File),
+            owner: String::from("admin"),
+        },
+    )
+    .unwrap();
 }
 
 #[test]
@@ -41,15 +55,18 @@ fn insert_meta() {
     let db = sled::open(d.path()).unwrap();
     let m = MetadataStore::new(&db).unwrap();
 
-    let meta = BlobMeta::new("somename", Type::File)
-        .with_parent("some_parent")
-        .with_tag("bing")
-        .with_tag("bong")
-        .with_meta("a", "b");
+    let info = BlobInfo {
+        meta: BlobMeta::new("somename", Type::File)
+            .with_parent("some_parent")
+            .with_tag("bing")
+            .with_tag("bong")
+            .with_meta("a", "b"),
+        owner: String::from("admin"),
+    };
 
-    m.insert(0, &meta).unwrap();
+    m.insert(0, &info).unwrap();
 
-    assert_eq!(m.get(0).unwrap().unwrap(), meta);
+    assert_eq!(m.get(0).unwrap().unwrap(), info);
 }
 
 #[test]
@@ -58,8 +75,14 @@ fn load_single_tag_first_index() {
     let db = sled::open(d.path()).unwrap();
     let m = MetadataStore::new(&db).unwrap();
 
-    m.insert(0, &BlobMeta::new("somename", Type::File).with_tag("bing"))
-        .unwrap();
+    m.insert(
+        0,
+        &BlobInfo {
+            meta: BlobMeta::new("somename", Type::File).with_tag("bing"),
+            owner: String::from("admin"),
+        },
+    )
+    .unwrap();
 
     assert_eq!(m.load_tag("bing").unwrap(), bitvec![1]);
 }
@@ -70,8 +93,14 @@ fn load_single_tag_advanced_index() {
     let db = sled::open(d.path()).unwrap();
     let m = MetadataStore::new(&db).unwrap();
 
-    m.insert(6, &BlobMeta::new("somename", Type::File).with_tag("bing"))
-        .unwrap();
+    m.insert(
+        6,
+        &BlobInfo {
+            meta: BlobMeta::new("somename", Type::File).with_tag("bing"),
+            owner: String::from(""),
+        },
+    )
+    .unwrap();
 
     assert_eq!(m.load_tag("bing").unwrap(), bitvec![0, 0, 0, 0, 0, 0, 1]);
 }
@@ -93,7 +122,10 @@ fn load_single_k_v_first_index() {
 
     m.insert(
         0,
-        &BlobMeta::new("somename", Type::File).with_meta("mykey", "myval"),
+        &BlobInfo {
+            meta: BlobMeta::new("somename", Type::File).with_meta("mykey", "myval"),
+            owner: String::from("admin"),
+        },
     )
     .unwrap();
 
@@ -108,7 +140,10 @@ fn load_single_k_v_advanced_index() {
 
     m.insert(
         6,
-        &BlobMeta::new("somename", Type::File).with_meta("mykey", "myval"),
+        &BlobInfo {
+            meta: BlobMeta::new("somename", Type::File).with_meta("mykey", "myval"),
+            owner: String::from("admin"),
+        },
     )
     .unwrap();
 
@@ -135,7 +170,10 @@ fn kv_empty_value_doesnt_get_inserted() -> Result<()> {
 
     m.insert(
         2,
-        &BlobMeta::new("somename", Type::File).with_meta("hello", ""),
+        &BlobInfo {
+            meta: BlobMeta::new("somename", Type::File).with_meta("hello", ""),
+            owner: String::from("admin"),
+        },
     )?;
 
     assert_eq!(m.load_key_value("hello", "")?.count_ones(), 0);
@@ -151,11 +189,11 @@ fn load_key_basic() -> Result<()> {
 
     m.insert(
         1,
-        &BlobMeta::new("somename", Type::File).with_meta("hello", "there"),
+        &admin_blob(BlobMeta::new("somename", Type::File).with_meta("hello", "there")),
     )?;
     m.insert(
         2,
-        &BlobMeta::new("somename", Type::File).with_meta("hello", "world"),
+        &admin_blob(BlobMeta::new("somename", Type::File).with_meta("hello", "world")),
     )?;
     assert_eq!(m.load_key("hello")?, bitvec![0, 1, 1]);
 
@@ -168,10 +206,16 @@ fn insert_single_tag_multi_doc_ordered() {
     let db = sled::open(d.path()).unwrap();
     let m = MetadataStore::new(&db).unwrap();
 
-    m.insert(1, &BlobMeta::new("somename", Type::File).with_tag("hello"))
-        .unwrap();
-    m.insert(2, &BlobMeta::new("somename", Type::File).with_tag("hello"))
-        .unwrap();
+    m.insert(
+        1,
+        &admin_blob(BlobMeta::new("somename", Type::File).with_tag("hello")),
+    )
+    .unwrap();
+    m.insert(
+        2,
+        &admin_blob(BlobMeta::new("somename", Type::File).with_tag("hello")),
+    )
+    .unwrap();
     assert_eq!(m.load_tag("hello").unwrap(), bitvec![0, 1, 1]);
 }
 
@@ -181,10 +225,16 @@ fn insert_single_tag_multi_doc_unordered() {
     let db = sled::open(d.path()).unwrap();
     let m = MetadataStore::new(&db).unwrap();
 
-    m.insert(4, &BlobMeta::new("somename", Type::File).with_tag("hello"))
-        .unwrap();
-    m.insert(2, &BlobMeta::new("somename", Type::File).with_tag("hello"))
-        .unwrap();
+    m.insert(
+        4,
+        &admin_blob(BlobMeta::new("somename", Type::File).with_tag("hello")),
+    )
+    .unwrap();
+    m.insert(
+        2,
+        &admin_blob(BlobMeta::new("somename", Type::File).with_tag("hello")),
+    )
+    .unwrap();
 
     assert_eq!(m.load_tag("hello").unwrap(), bitvec![0, 0, 1, 0, 1]);
 }
@@ -196,8 +246,11 @@ fn load_tag_after_reload() {
         let db = sled::open(d.path()).unwrap();
         let m = MetadataStore::new(&db).unwrap();
 
-        m.insert(3, &BlobMeta::new("somename", Type::File).with_tag("hello"))
-            .unwrap();
+        m.insert(
+            3,
+            &admin_blob(BlobMeta::new("somename", Type::File).with_tag("hello")),
+        )
+        .unwrap();
     }
 
     {
@@ -217,11 +270,11 @@ fn insert_parent() -> Result<()> {
 
     m.insert(
         2,
-        &BlobMeta::new("somename", Type::File).with_parent("bing"),
+        &admin_blob(BlobMeta::new("somename", Type::File).with_parent("bing")),
     )?;
     m.insert(
         3,
-        &BlobMeta::new("somename", Type::File).with_parent("bing"),
+        &admin_blob(BlobMeta::new("somename", Type::File).with_parent("bing")),
     )?;
 
     assert_eq!(m.load_children("bing")?, bitvec![0, 0, 1, 1]);
@@ -236,21 +289,28 @@ fn list_all_tags_basic() -> Result<()> {
     let db = sled::open(d.path())?;
     let m = MetadataStore::new(&db)?;
 
-    m.insert(0, &BlobMeta::new("somename", Type::File).with_tag("a"))?;
+    m.insert(
+        0,
+        &admin_blob(BlobMeta::new("somename", Type::File).with_tag("a")),
+    )?;
     m.insert(
         1,
-        &BlobMeta::new("somename", Type::File)
-            .with_tag("a")
-            .with_tag("b"),
+        &admin_blob(
+            BlobMeta::new("somename", Type::File)
+                .with_tag("a")
+                .with_tag("b"),
+        ),
     )?;
     m.insert(
         2,
-        &BlobMeta::new("somename", Type::File)
-            .with_tag("b")
-            .with_tag("c"),
+        &admin_blob(
+            BlobMeta::new("somename", Type::File)
+                .with_tag("b")
+                .with_tag("c"),
+        ),
     )?;
 
-    let result_map = m.list_all_tags()?;
+    let result_map = m.list_all_tags(Some(&m.load_user_mask("admin")?))?;
     assert_eq!(result_map.len(), 3);
     assert_eq!(*result_map.get("a").unwrap(), 2);
     assert_eq!(*result_map.get("b").unwrap(), 2);
@@ -267,15 +327,15 @@ fn list_all_kv_nofilter() -> Result<()> {
 
     m.insert(
         0,
-        &BlobMeta::new("somename", Type::File).with_meta("a", "b"),
+        &admin_blob(BlobMeta::new("somename", Type::File).with_meta("a", "b")),
     )?;
     m.insert(
         1,
-        &BlobMeta::new("somename", Type::File).with_meta("a", "c"),
+        &admin_blob(BlobMeta::new("somename", Type::File).with_meta("a", "c")),
     )?;
     m.insert(
         2,
-        &BlobMeta::new("somename", Type::File).with_meta("d", "e"),
+        &admin_blob(BlobMeta::new("somename", Type::File).with_meta("d", "e")),
     )?;
 
     let mut result_map = HashMap::new();
@@ -292,7 +352,10 @@ fn list_all_kv_nofilter() -> Result<()> {
         .or_insert_with(HashMap::default)
         .insert("e".to_string(), 1);
 
-    assert_eq!(result_map, m.list_all_kv_fields(&None)?);
+    assert_eq!(
+        result_map,
+        m.list_all_kv_fields(&None, Some(&m.load_user_mask("admin")?))?
+    );
 
     Ok(())
 }
@@ -305,15 +368,15 @@ fn list_all_kv_filter() -> Result<()> {
 
     m.insert(
         0,
-        &BlobMeta::new("somename", Type::File).with_meta("a", "b"),
+        &admin_blob(BlobMeta::new("somename", Type::File).with_meta("a", "b")),
     )?;
     m.insert(
         1,
-        &BlobMeta::new("somename", Type::File).with_meta("a", "c"),
+        &admin_blob(BlobMeta::new("somename", Type::File).with_meta("a", "c")),
     )?;
     m.insert(
         2,
-        &BlobMeta::new("somename", Type::File).with_meta("d", "e"),
+        &admin_blob(BlobMeta::new("somename", Type::File).with_meta("d", "e")),
     )?;
 
     let mut result_map = HashMap::new();
@@ -328,7 +391,10 @@ fn list_all_kv_filter() -> Result<()> {
 
     assert_eq!(
         result_map,
-        m.list_all_kv_fields(&Some(vec!["a".to_string()]))?
+        m.list_all_kv_fields(
+            &Some(vec!["a".to_string()]),
+            Some(&m.load_user_mask("admin")?)
+        )?
     );
 
     Ok(())
@@ -340,8 +406,14 @@ fn purge() -> Result<()> {
     let db = sled::open(d.path())?;
     let m = MetadataStore::new(&db)?;
 
-    m.insert(0, &BlobMeta::new("somename", Type::File).with_tag("bing"))?;
-    m.insert(1, &BlobMeta::new("somename", Type::File).with_tag("bing"))?;
+    m.insert(
+        0,
+        &admin_blob(BlobMeta::new("somename", Type::File).with_tag("bing")),
+    )?;
+    m.insert(
+        1,
+        &admin_blob(BlobMeta::new("somename", Type::File).with_tag("bing")),
+    )?;
 
     assert_eq!(m.load_tag("bing")?, bitvec![1, 1]);
 
@@ -359,13 +431,22 @@ fn meta_update_with_tag_removal() -> Result<()> {
     let db = sled::open(d.path())?;
     let m = MetadataStore::new(&db)?;
 
-    m.insert(0, &BlobMeta::new("somename", Type::File).with_tag("bing"))?;
-    m.insert(1, &BlobMeta::new("other", Type::File).with_tag("bong"))?;
+    m.insert(
+        0,
+        &admin_blob(BlobMeta::new("somename", Type::File).with_tag("bing")),
+    )?;
+    m.insert(
+        1,
+        &admin_blob(BlobMeta::new("other", Type::File).with_tag("bong")),
+    )?;
 
     assert_eq!(m.load_tag("bong")?, bitvec![0, 1]);
 
     // Update the doc, removing the bong tag and setting the bing tag instead.
-    m.insert(1, &BlobMeta::new("other", Type::File).with_tag("bing"))?;
+    m.insert(
+        1,
+        &admin_blob(BlobMeta::new("other", Type::File).with_tag("bing")),
+    )?;
 
     assert_eq!(m.load_tag("bong")?, bitvec![0, 0]);
 
@@ -378,8 +459,8 @@ fn tag_case_sensivity() -> Result<()> {
     let db = sled::open(d.path())?;
     let m = MetadataStore::new(&db)?;
 
-    m.insert(0, &BlobMeta::file("alpha").with_tag("Bing"))?;
-    m.insert(1, &BlobMeta::file("beta").with_tag("bing"))?;
+    m.insert(0, &admin_blob(BlobMeta::file("alpha").with_tag("Bing")))?;
+    m.insert(1, &admin_blob(BlobMeta::file("beta").with_tag("bing")))?;
 
     assert_eq!(m.load_tag("BING")?, bitvec![1, 1]);
 
@@ -392,8 +473,14 @@ fn kv_field_case_sensitivity() -> Result<()> {
     let db = sled::open(d.path())?;
     let m = MetadataStore::new(&db)?;
 
-    m.insert(0, &BlobMeta::file("alpha").with_meta("Bing", "bong"))?;
-    m.insert(1, &BlobMeta::file("beta").with_meta("bing", "BOng"))?;
+    m.insert(
+        0,
+        &admin_blob(BlobMeta::file("alpha").with_meta("Bing", "bong")),
+    )?;
+    m.insert(
+        1,
+        &admin_blob(BlobMeta::file("beta").with_meta("bing", "BOng")),
+    )?;
 
     assert_eq!(m.load_key_value("BING", "BONG")?, bitvec![1, 1]);
 
@@ -406,8 +493,8 @@ fn parents_case_sensitivity() -> Result<()> {
     let db = sled::open(d.path())?;
     let m = MetadataStore::new(&db)?;
 
-    m.insert(0, &BlobMeta::file("alpha").with_parent("asdf"))?;
-    m.insert(1, &BlobMeta::file("beta").with_parent("Asdf"))?;
+    m.insert(0, &admin_blob(BlobMeta::file("alpha").with_parent("asdf")))?;
+    m.insert(1, &admin_blob(BlobMeta::file("beta").with_parent("Asdf")))?;
 
     assert_eq!(m.load_children("ASDF")?, bitvec![1, 1]);
     Ok(())

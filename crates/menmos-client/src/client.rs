@@ -1,23 +1,27 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use apikit::payload::ErrorResponse;
+use apikit::payload::{ErrorResponse, MessageResponse};
 
 use bytes::Bytes;
 
 use futures::{Stream, TryStreamExt};
 
 use header::HeaderName;
-use interface::{
-    message::{directory_node::Query, storage_node, MessageResponse},
-    BlobMeta, GetMetaResponse, ListStorageNodesResponse, LoginRequest, LoginResponse,
-    QueryResponse,
-};
+use interface::{BlobMeta, MetadataList, Query, QueryResponse};
 
 use hyper::{header, StatusCode};
 
 use mpart_async::client::MultipartRequest;
 
+use protocol::{
+    directory::{
+        auth::{LoginRequest, LoginResponse, RegisterRequest},
+        blobmeta::{GetMetaResponse, ListMetadataRequest},
+        storage::ListStorageNodesResponse,
+    },
+    storage::PutResponse,
+};
 use reqwest::{Client as ReqwestClient, Request};
 
 use reqwest::Body;
@@ -114,13 +118,15 @@ type Result<T> = std::result::Result<T, ClientError>;
 
 impl Client {
     /// Create a new client with default settings.
-    pub async fn new<S: Into<String>, P: Into<String>>(
+    pub async fn new<S: Into<String>, U: Into<String>, P: Into<String>>(
         directory_host: S,
+        username: U,
         admin_password: P,
     ) -> Result<Self> {
         Client::new_with_params(Parameters {
             host_config: HostConfig::Host {
                 host: directory_host.into(),
+                username: username.into(),
                 admin_password: admin_password.into(),
             },
             pool_idle_timeout: Duration::from_secs(5),
@@ -156,22 +162,27 @@ impl Client {
             .build()
             .context(ClientBuildError)?;
 
-        let (host, admin_password) = match params.host_config {
+        let (host, username, admin_password) = match params.host_config {
             HostConfig::Host {
                 host,
+                username,
                 admin_password,
-            } => (host, admin_password),
+            } => (host, username, admin_password),
             HostConfig::Profile { profile } => {
                 let config = Config::load().context(ConfigLoadError)?;
                 let profile = config
                     .profiles
                     .get(&profile)
                     .ok_or(ClientError::MissingProfile { name: profile })?;
-                (profile.host.clone(), profile.password.clone())
+                (
+                    profile.host.clone(),
+                    profile.username.clone(),
+                    profile.password.clone(),
+                )
             }
         };
 
-        let token = Client::login(&client, &host, "admin", &admin_password).await?;
+        let token = Client::login(&client, &host, &username, &admin_password).await?;
 
         Ok(Self {
             host,
@@ -285,6 +296,25 @@ impl Client {
         Ok(resp.token)
     }
 
+    pub async fn register(&self, username: &str, password: &str) -> Result<String> {
+        let url = format!("{}/auth/register", self.host);
+
+        let response = self
+            .client
+            .post(&url)
+            .bearer_auth(&self.token)
+            .json(&RegisterRequest {
+                username: username.to_string(),
+                password: password.to_string(),
+            })
+            .send()
+            .await
+            .context(RequestExecutionError)?;
+
+        let resp: LoginResponse = extract(response).await?;
+        Ok(resp.token)
+    }
+
     pub async fn create_empty(&self, meta: BlobMeta) -> Result<String> {
         let url = format!("{}/blob", self.host);
         let meta_b64 = encode_metadata(meta)?;
@@ -310,7 +340,7 @@ impl Client {
             })
             .await?;
 
-        let put_response: storage_node::PutResponse = extract(response).await?;
+        let put_response: PutResponse = extract(response).await?;
         Ok(put_response.id)
     }
 
@@ -347,7 +377,7 @@ impl Client {
             .execute(|| self.prepare_push_request(&url, path.as_ref(), &meta_b64))
             .await?;
 
-        let put_response: storage_node::PutResponse = extract(response).await?;
+        let put_response: PutResponse = extract(response).await?;
         Ok(put_response.id)
     }
 
@@ -397,6 +427,25 @@ impl Client {
     ) -> Result<String> {
         self.push_internal(path, meta, format!("{}/blob/{}", self.host, blob_id))
             .await
+    }
+
+    pub async fn list_meta(
+        &self,
+        tags: Option<Vec<String>>,
+        meta_keys: Option<Vec<String>>,
+    ) -> Result<MetadataList> {
+        let url = format!("{}/metadata", &self.host);
+
+        let response = self
+            .client
+            .get(&url)
+            .bearer_auth(&self.token)
+            .json(&ListMetadataRequest { tags, meta_keys })
+            .send()
+            .await
+            .context(RequestExecutionError)?;
+
+        extract(response).await
     }
 
     pub async fn update_meta(&self, blob_id: &str, meta: BlobMeta) -> Result<()> {

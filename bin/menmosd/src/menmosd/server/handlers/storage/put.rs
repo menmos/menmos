@@ -1,7 +1,8 @@
 use apikit::reject::{Forbidden, InternalServerError};
 
-use interface::message::directory_node as msg;
 use interface::StorageNodeInfo;
+
+use protocol::directory::storage::RegisterResponse;
 
 use warp::reply;
 
@@ -26,7 +27,7 @@ pub async fn put(
 
     let certificates = (*context.certificate_info).clone();
 
-    Ok(apikit::reply::json(&msg::RegisterResponse {
+    Ok(apikit::reply::json(&RegisterResponse {
         message: MESSAGE_REGISTRATION_SUCCESSFUL.to_string(),
         certificates,
         rebuild_requested: node_resp.rebuild_requested,

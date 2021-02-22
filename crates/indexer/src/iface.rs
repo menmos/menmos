@@ -8,7 +8,7 @@ use bitvec::prelude::*;
 
 use chrono::Utc;
 
-use interface::{BlobMeta, StorageNodeInfo};
+use interface::{BlobInfo, StorageNodeInfo};
 
 #[async_trait]
 pub trait Flush {
@@ -26,8 +26,10 @@ pub trait DocIDMapper {
 }
 
 pub trait MetadataMapper {
-    fn get(&self, idx: u32) -> Result<Option<BlobMeta>>;
-    fn insert(&self, id: u32, meta: &BlobMeta) -> Result<()>;
+    fn get(&self, idx: u32) -> Result<Option<BlobInfo>>;
+    fn insert(&self, id: u32, info: &BlobInfo) -> Result<()>;
+
+    fn load_user_mask(&self, username: &str) -> Result<BitVec>;
 
     fn load_tag(&self, tag: &str) -> Result<BitVec>;
 
@@ -37,10 +39,11 @@ pub trait MetadataMapper {
 
     fn load_children(&self, parent_id: &str) -> Result<BitVec>;
 
-    fn list_all_tags(&self) -> Result<HashMap<String, usize>>;
+    fn list_all_tags(&self, mask: Option<&BitVec>) -> Result<HashMap<String, usize>>;
     fn list_all_kv_fields(
         &self,
         key_filter: &Option<Vec<String>>,
+        mask: Option<&BitVec>,
     ) -> Result<HashMap<String, HashMap<String, usize>>>;
 
     fn purge(&self, idx: u32) -> Result<()>;

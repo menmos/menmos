@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use interface::{message::directory_node::CertificateInfo, DirectoryNode};
+use interface::{CertificateInfo, DirectoryNode};
 
 use crate::Config;
 

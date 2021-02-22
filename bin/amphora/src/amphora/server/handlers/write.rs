@@ -8,7 +8,7 @@ use apikit::{
 };
 use bytes::Bytes;
 use headers::{Header, HeaderValue};
-use interface::{message, StorageNode};
+use interface::StorageNode;
 use warp::reply;
 
 fn parse_range_header(value: HeaderValue) -> Result<(Bound<u64>, Bound<u64>)> {
@@ -23,7 +23,7 @@ fn parse_range_header(value: HeaderValue) -> Result<(Bound<u64>, Bound<u64>)> {
 }
 
 pub async fn write<N: StorageNode>(
-    _user: UserIdentity,
+    user: UserIdentity,
     node: Arc<N>,
     range_header: HeaderValue,
     blob_id: String,
@@ -32,11 +32,9 @@ pub async fn write<N: StorageNode>(
     // Fetch the request content range from the header.
     let range = parse_range_header(range_header).map_err(|_| BadRequest)?;
 
-    node.write(blob_id, range, body)
+    node.write(blob_id, range, body, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 
-    Ok(apikit::reply::json(&message::MessageResponse {
-        message: "Ok".to_string(),
-    }))
+    Ok(apikit::reply::message("OK"))
 }

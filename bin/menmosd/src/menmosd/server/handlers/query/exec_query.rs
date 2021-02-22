@@ -8,10 +8,10 @@ use apikit::{
     reject::{BadRequest, InternalServerError},
 };
 
-use interface::message::directory_node as msg;
-use interface::QueryResponse;
+use interface::{Query, QueryResponse};
 
-use msg::Query;
+use protocol::directory::query::QueryRequest;
+
 use warp::http::Uri;
 use warp::reply;
 
@@ -79,7 +79,7 @@ pub async fn query(
     user: UserIdentity,
     context: Context,
     addr: Option<SocketAddr>,
-    query_request: msg::QueryRequest,
+    query_request: QueryRequest,
 ) -> Result<reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
 
@@ -87,7 +87,7 @@ pub async fn query(
 
     let mut query_response = context
         .node
-        .query(&query)
+        .query(&query, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 

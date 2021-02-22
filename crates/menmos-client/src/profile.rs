@@ -36,6 +36,7 @@ fn get_config_path() -> Result<PathBuf> {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Profile {
     pub host: String,
+    pub username: String,
     pub password: String,
 }
 

@@ -1,13 +1,9 @@
-use apikit::{
-    auth::UserIdentity,
-    reject::{Forbidden, InternalServerError},
-};
-
-use interface::message as msg;
+use apikit::auth::UserIdentity;
+use apikit::reject::{Forbidden, InternalServerError};
 
 use warp::reply;
 
-use crate::server::context::Context;
+use crate::server::Context;
 
 pub async fn rebuild(
     user: UserIdentity,
@@ -23,7 +19,5 @@ pub async fn rebuild(
         .await
         .map_err(InternalServerError::from)?;
 
-    Ok(apikit::reply::json(&msg::MessageResponse {
-        message: String::from("Rebuild started"),
-    }))
+    Ok(apikit::reply::message("Rebuild started"))
 }

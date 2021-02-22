@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use bitvec::prelude::*;
 
 use futures::TryFutureExt;
-use interface::BlobMeta;
+use interface::BlobInfo;
 
 use crate::iface::{Flush, MetadataMapper};
 use crate::BitvecTree;
@@ -16,6 +16,7 @@ const META_MAP: &str = "metadata";
 const TAG_MAP: &str = "tags";
 const KV_MAP: &str = "keyvalue";
 const PARENTS_MAP: &str = "parents";
+const USER_MASK_MAP: &str = "users";
 
 fn kv_to_tag(key: &str, value: &str) -> String {
     format!("{}${}", key, value)
@@ -32,6 +33,7 @@ pub struct MetadataStore {
     tag_map: BitvecTree,
     kv_map: BitvecTree,
     parents_map: BitvecTree,
+    user_mask_map: BitvecTree,
 }
 
 impl MetadataStore {
@@ -41,35 +43,37 @@ impl MetadataStore {
         let tag_map = BitvecTree::new(db, TAG_MAP)?;
         let kv_map = BitvecTree::new(db, KV_MAP)?;
         let parents_map = BitvecTree::new(db, PARENTS_MAP)?;
+        let user_mask_map = BitvecTree::new(db, USER_MASK_MAP)?;
 
         Ok(Self {
             meta_map,
             tag_map,
             kv_map,
             parents_map,
+            user_mask_map,
         })
     }
 
     fn diff_and_purge_on_meta_update(
         &self,
-        old_meta: BlobMeta,
-        new_meta: &BlobMeta,
+        old_meta: BlobInfo,
+        new_meta: &BlobInfo,
         for_idx: u32,
     ) -> Result<()> {
-        for tag in old_meta.tags.into_iter() {
-            if !new_meta.tags.contains(&tag) {
+        for tag in old_meta.meta.tags.into_iter() {
+            if !new_meta.meta.tags.contains(&tag) {
                 self.tag_map.purge_key(&tag, for_idx)?;
             }
         }
 
-        for (key, value) in old_meta.metadata.into_iter() {
-            if new_meta.metadata.get(&key) != Some(&value) {
+        for (key, value) in old_meta.meta.metadata.into_iter() {
+            if new_meta.meta.metadata.get(&key) != Some(&value) {
                 self.kv_map.purge_key(&kv_to_tag(&key, &value), for_idx)?;
             }
         }
 
-        for parent in old_meta.parents.into_iter() {
-            if !new_meta.parents.contains(&parent) {
+        for parent in old_meta.meta.parents.into_iter() {
+            if !new_meta.meta.parents.contains(&parent) {
                 self.parents_map.purge_key(&parent, for_idx)?;
             }
         }
@@ -98,49 +102,56 @@ impl Flush for MetadataStore {
 }
 
 impl MetadataMapper for MetadataStore {
-    fn get(&self, idx: u32) -> Result<Option<BlobMeta>> {
+    fn get(&self, idx: u32) -> Result<Option<BlobInfo>> {
         if let Some(ivec) = self.meta_map.get(idx.to_le_bytes())? {
-            let meta: BlobMeta = bincode::deserialize(&ivec)?;
-            Ok(Some(meta))
+            let info: BlobInfo = bincode::deserialize(&ivec)?;
+            Ok(Some(info))
         } else {
             Ok(None)
         }
     }
 
-    fn insert(&self, id: u32, meta: &BlobMeta) -> Result<()> {
+    fn insert(&self, id: u32, info: &BlobInfo) -> Result<()> {
         // Validate tags are ok.
-        for tag in meta.tags.iter() {
+        for tag in info.meta.tags.iter() {
             ensure!(!tag.contains('$'), "tag cannot contain separator");
         }
 
         let serialized_id = id.to_le_bytes();
 
+        // Set the owner field in the users mask.
+        self.user_mask_map.insert(&info.owner, &serialized_id)?;
+
         // Save the whole meta for recuperation.
-        let serialized = bincode::serialize(&meta)?;
+        let serialized = bincode::serialize(&info)?;
         let r: &[u8] = serialized.as_ref();
         if let Some(last_meta_ivec) = self.meta_map.insert(&serialized_id, r)? {
             // We need to purge tags, parents, and k/v pairs that were _removed_ from the meta
             // so they don't come up in searches anymore.
-            let old_meta: BlobMeta = bincode::deserialize(last_meta_ivec.as_ref())?;
-            self.diff_and_purge_on_meta_update(old_meta, &meta, id)?;
+            let old_info: BlobInfo = bincode::deserialize(last_meta_ivec.as_ref())?;
+            self.diff_and_purge_on_meta_update(old_info, &info, id)?;
         }
 
         // Save tags in the reverse map.
-        for tag in meta.tags.iter() {
+        for tag in info.meta.tags.iter() {
             self.tag_map.insert(tag, &serialized_id)?;
         }
 
         // Save key/value fields in the reverse map.
-        for (k, v) in meta.metadata.iter().filter(|(_, v)| !v.is_empty()) {
+        for (k, v) in info.meta.metadata.iter().filter(|(_, v)| !v.is_empty()) {
             self.kv_map.insert(&kv_to_tag(k, v), &serialized_id)?;
         }
 
         // Set parent fields in the reverse map.
-        for parent_id in meta.parents.iter() {
+        for parent_id in info.meta.parents.iter() {
             self.parents_map.insert(parent_id, &serialized_id)?;
         }
 
         Ok(())
+    }
+
+    fn load_user_mask(&self, username: &str) -> Result<BitVec> {
+        self.user_mask_map.load(username)
     }
 
     fn load_tag(&self, tag: &str) -> Result<BitVec> {
@@ -179,15 +190,23 @@ impl MetadataMapper for MetadataStore {
         self.parents_map.load(parent_id)
     }
 
-    fn list_all_tags(&self) -> Result<HashMap<String, usize>> {
+    fn list_all_tags(&self, mask: Option<&BitVec>) -> Result<HashMap<String, usize>> {
         let mut hsh = HashMap::with_capacity(self.tag_map.tree().len());
 
         for r in self.tag_map.tree().iter() {
             let (tag, vector) = r?;
 
             let tag_str = String::from_utf8_lossy(tag.as_ref()).to_string();
-            let bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
-            hsh.insert(tag_str, bv.count_ones());
+            let mut bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
+
+            if let Some(user_bitvec) = mask {
+                bv &= user_bitvec.clone();
+            }
+
+            let count = bv.count_ones();
+            if count > 0 {
+                hsh.insert(tag_str, count);
+            }
         }
 
         Ok(hsh)
@@ -196,6 +215,7 @@ impl MetadataMapper for MetadataStore {
     fn list_all_kv_fields(
         &self,
         key_filter: &Option<Vec<String>>,
+        mask: Option<&BitVec>,
     ) -> Result<HashMap<String, HashMap<String, usize>>> {
         let mut hsh: HashMap<String, HashMap<String, usize>> = HashMap::new();
 
@@ -210,11 +230,19 @@ impl MetadataMapper for MetadataStore {
                     {
                         let tag_str = String::from_utf8_lossy(kv_iv.as_ref()).to_string();
                         let (k, v) = tag_to_kv(&tag_str)?;
-                        let bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
+                        let mut bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
 
-                        hsh.entry(k.to_string())
-                            .or_insert_with(HashMap::default)
-                            .insert(v.to_string(), bv.count_ones());
+                        if let Some(user_bitvec) = mask {
+                            bv &= user_bitvec.clone();
+                        }
+
+                        let count = bv.count_ones();
+
+                        if count > 0 {
+                            hsh.entry(k.to_string())
+                                .or_insert_with(HashMap::default)
+                                .insert(v.to_string(), count);
+                        }
                     }
                 }
             }
@@ -225,11 +253,18 @@ impl MetadataMapper for MetadataStore {
                     let (k_v_pair, vector) = r?;
                     let tag_str = String::from_utf8_lossy(k_v_pair.as_ref()).to_string();
                     let (k, v) = tag_to_kv(&tag_str)?;
-                    let bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
+                    let mut bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
 
-                    hsh.entry(k.to_string())
-                        .or_insert_with(HashMap::default)
-                        .insert(v.to_string(), bv.count_ones());
+                    if let Some(user_bitvec) = mask {
+                        bv &= user_bitvec.clone();
+                    }
+
+                    let count = bv.count_ones();
+                    if count > 0 {
+                        hsh.entry(k.to_string())
+                            .or_insert_with(HashMap::default)
+                            .insert(v.to_string(), count);
+                    }
                 }
             }
         }
@@ -248,6 +283,7 @@ impl MetadataMapper for MetadataStore {
         self.tag_map.purge(idx)?;
         self.kv_map.purge(idx)?;
         self.parents_map.purge(idx)?;
+        self.user_mask_map.purge(idx)?;
 
         Ok(())
     }

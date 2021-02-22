@@ -3,6 +3,7 @@ use std::time;
 pub enum HostConfig {
     Host {
         host: String,
+        username: String,
         admin_password: String,
     },
     Profile {

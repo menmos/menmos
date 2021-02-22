@@ -8,7 +8,7 @@ mod node_info;
 mod rebuild;
 mod stringlock;
 
-use interface::message::directory_node::CertificateInfo;
+use interface::CertificateInfo;
 pub use node_impl::Storage;
 
 use crate::{BlobStorageImpl, Config};
