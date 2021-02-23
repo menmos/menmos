@@ -1,3 +1,5 @@
+//! Filesystem stream utilities.
+
 use std::cmp;
 use std::io::{self, SeekFrom};
 use std::ops::Range;
@@ -17,6 +19,18 @@ use crate::{ChunkedStreamInfo, UnpinDynIOStream};
 
 const DEFAULT_READ_BUF_SIZE: usize = 8_192;
 
+/// Consumes a stream while writing it to a file.
+///
+/// # Examples
+/// ```no_run
+/// use betterstreams::{fs, UnpinDynIOStream};
+/// use tokio::runtime::Runtime;
+///
+/// Runtime::new().unwrap().block_on(async {
+///     let mystream: UnpinDynIOStream = { unimplemented!(); };
+///     fs::write_all("/home/user/myfile.txt", mystream).await.unwrap();
+/// });
+/// ```
 pub async fn write_all<P: AsRef<Path>>(path: P, stream: UnpinDynIOStream) -> Result<()> {
     let mut stream_pin = Box::pin(stream);
 
@@ -59,6 +73,22 @@ fn reserve_at_least(buf: &mut BytesMut, cap: usize) {
     }
 }
 
+/// Read a range of bytes from a file.
+///
+/// Passing a `None` range will return the whole file as a stream.
+///
+/// # Examples
+/// ```no_run
+/// use std::ops::Range;
+///
+/// use betterstreams::fs;
+/// use tokio::runtime::Runtime;
+///
+/// Runtime::new().unwrap().block_on(async {
+///     let stream_info = fs::read_range("hello.txt", Some(Range{start: 10, end: 15}))
+///         .await.unwrap();
+/// })
+/// ```
 pub async fn read_range<P: AsRef<Path>>(
     path: P,
     range: Option<Range<u64>>,
