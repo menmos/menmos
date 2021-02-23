@@ -1,4 +1,4 @@
-use apikit::auth::authenticated;
+use apikit::auth::user;
 
 use warp::Filter;
 
@@ -31,7 +31,7 @@ fn commit(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::path(COMMIT_PATH))
         .and_then(handlers::admin::commit)
@@ -41,7 +41,7 @@ fn rebuild(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::path(REBUILD_PATH))
         .and_then(handlers::admin::rebuild)
@@ -64,7 +64,7 @@ fn version(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
-        .and(authenticated(context.config.node.admin_password.clone()))
+        .and(user(context.config.node.encryption_key.clone()))
         .and(warp::path(VERSION_PATH))
         .and_then(handlers::admin::version)
 }

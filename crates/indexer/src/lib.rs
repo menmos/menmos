@@ -4,6 +4,7 @@ pub mod iface;
 mod meta;
 mod root;
 mod storage;
+mod users;
 
 use bitvec_tree::BitvecTree;
 

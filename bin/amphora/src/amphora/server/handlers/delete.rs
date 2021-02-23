@@ -1,20 +1,19 @@
 use std::sync::Arc;
 
-use apikit::reject::InternalServerError;
+use apikit::{auth::UserIdentity, reject::InternalServerError};
 
-use interface::{message as msg, StorageNode};
+use interface::StorageNode;
 
 use warp::reply;
 
 pub async fn delete<N: StorageNode>(
+    user: UserIdentity,
     node: Arc<N>,
     blob_id: String,
 ) -> Result<reply::Response, warp::Rejection> {
-    node.delete(blob_id)
+    node.delete(blob_id, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 
-    Ok(apikit::reply::json(&msg::MessageResponse {
-        message: String::from("OK"),
-    }))
+    Ok(apikit::reply::message("OK"))
 }

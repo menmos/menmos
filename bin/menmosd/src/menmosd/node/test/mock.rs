@@ -12,7 +12,7 @@ use bitvec::prelude::*;
 
 use chrono::Utc;
 
-use interface::{BlobMeta, StorageNodeInfo};
+use interface::{BlobInfo, StorageNodeInfo};
 
 use indexer::iface::*;
 
@@ -180,30 +180,44 @@ impl StorageNodeMapper for MockStorageMap {
 
 #[derive(Default)]
 pub struct MockMetaMap {
-    meta_map: Mutex<HashMap<u32, BlobMeta>>,
+    meta_map: Mutex<HashMap<u32, BlobInfo>>,
     tag_map: Mutex<HashMap<String, BitVec>>,
+    users_map: Mutex<HashMap<String, BitVec>>,
 }
 
 impl MetadataMapper for MockMetaMap {
-    fn get(&self, idx: u32) -> Result<Option<BlobMeta>> {
+    fn get(&self, idx: u32) -> Result<Option<BlobInfo>> {
         let guard = self.meta_map.lock().unwrap();
         let map = &*guard;
         Ok(map.get(&idx).cloned())
     }
 
-    fn insert(&self, id: u32, meta: &BlobMeta) -> Result<()> {
+    fn insert(&self, id: u32, info: &BlobInfo) -> Result<()> {
         let mut meta_guard = self.meta_map.lock().unwrap();
         let mut tag_guard = self.tag_map.lock().unwrap();
+        let mut users_guard = self.users_map.lock().unwrap();
         let meta_map = &mut *meta_guard;
         let tag_map = &mut *tag_guard;
+        let users_map = &mut *users_guard;
 
-        meta_map.insert(id, meta.clone());
+        if let Some(bv) = users_map.get_mut(&info.owner) {
+            if bv.len() <= id as usize {
+                bv.resize(id as usize + 1, false);
+            }
+            bv.set(id as usize, true);
+        } else {
+            let mut bv = bitvec![Lsb0, usize; 0; id as usize + 1];
+            bv.set(id as usize, true);
+            users_map.insert(info.owner.clone(), bv);
+        }
 
-        let mut taglist = meta.tags.clone();
-        for (k, v) in meta.metadata.iter() {
+        meta_map.insert(id, info.clone());
+
+        let mut taglist = info.meta.tags.clone();
+        for (k, v) in info.meta.metadata.iter() {
             taglist.push(format!("{}${}", k, v));
         }
-        for p in meta.parents.iter() {
+        for p in info.meta.parents.iter() {
             taglist.push(format!("__parent!{}", p));
         }
 
@@ -221,6 +235,14 @@ impl MetadataMapper for MockMetaMap {
         }
 
         Ok(())
+    }
+
+    fn load_user_mask(&self, username: &str) -> Result<BitVec> {
+        let users_guard = self.users_map.lock().unwrap();
+        Ok(users_guard
+            .get(username)
+            .cloned()
+            .unwrap_or(BitVec::default()))
     }
 
     fn load_tag(&self, tag: &str) -> Result<BitVec> {
@@ -260,15 +282,20 @@ impl MetadataMapper for MockMetaMap {
         self.load_tag(&format!("__parent!{}", parent_id))
     }
 
-    fn list_all_tags(&self) -> Result<HashMap<String, usize>> {
+    fn list_all_tags(&self, user_bv: Option<&BitVec>) -> Result<HashMap<String, usize>> {
         let tag_guard = self.tag_map.lock().unwrap();
         let tag_map = &*tag_guard;
 
         let mut hsh = HashMap::with_capacity(tag_map.len());
 
         for (k, v) in tag_map.iter() {
+            let bv = match user_bv {
+                Some(u) => u.clone() & v.clone(),
+                None => v.clone(),
+            };
+
             if !k.contains('$') && !k.contains('!') {
-                hsh.insert(k.clone(), v.count_ones());
+                hsh.insert(k.clone(), bv.count_ones());
             }
         }
 
@@ -278,6 +305,7 @@ impl MetadataMapper for MockMetaMap {
     fn list_all_kv_fields(
         &self,
         key_filter: &Option<Vec<String>>,
+        user_bv: Option<&BitVec>,
     ) -> Result<HashMap<String, HashMap<String, usize>>> {
         let tag_guard = self.tag_map.lock().unwrap();
         let tag_map = &*tag_guard;
@@ -292,9 +320,13 @@ impl MetadataMapper for MockMetaMap {
                         .filter(|(k, _v)| k.starts_with(&format!("{}$", &key)))
                         .map(|(k, v)| (tag_to_kv(k).unwrap().1, v))
                     {
+                        let bv = match user_bv {
+                            Some(u) => u.clone() & bitvec.clone(),
+                            None => bitvec.clone(),
+                        };
                         hsh.entry(key.clone())
                             .or_insert_with(HashMap::default)
-                            .insert(val.to_string(), bitvec.count_ones());
+                            .insert(val.to_string(), bv.count_ones());
                     }
                 }
             }
@@ -304,6 +336,10 @@ impl MetadataMapper for MockMetaMap {
                     .filter(|(k, _v)| k.contains('$'))
                     .map(|(k, v)| (tag_to_kv(k).unwrap(), v))
                 {
+                    let bv = match user_bv {
+                        Some(u) => u.clone() & bv.clone(),
+                        None => bv.clone(),
+                    };
                     hsh.entry(key.to_string())
                         .or_insert_with(HashMap::default)
                         .insert(val.to_string(), bv.count_ones());
@@ -334,10 +370,34 @@ impl MetadataMapper for MockMetaMap {
 }
 
 #[derive(Default)]
+pub struct MockUserMap {
+    users: Mutex<HashMap<String, String>>,
+}
+
+impl UserMapper for MockUserMap {
+    fn authenticate(&self, username: &str, password: &str) -> Result<bool> {
+        let guard = self.users.lock().unwrap();
+        Ok(guard.get(username).cloned().unwrap_or(String::default()) == password)
+    }
+
+    fn add_user(&self, username: &str, password: &str) -> Result<()> {
+        let mut guard = self.users.lock().unwrap();
+        guard.insert(username.to_string(), password.to_string());
+        Ok(())
+    }
+
+    fn has_user(&self, username: &str) -> Result<bool> {
+        let guard = self.users.lock().unwrap();
+        Ok(guard.contains_key(username))
+    }
+}
+
+#[derive(Default)]
 pub struct MockIndex {
     documents: MockDocIDMap,
     meta: MockMetaMap,
     storage: MockStorageMap,
+    users: MockUserMap,
 }
 
 #[async_trait]
@@ -351,6 +411,7 @@ impl IndexProvider for MockIndex {
     type MetadataProvider = MockMetaMap;
     type DocumentProvider = MockDocIDMap;
     type StorageProvider = MockStorageMap;
+    type UserProvider = MockUserMap;
 
     fn documents(&self) -> &Self::DocumentProvider {
         &self.documents
@@ -362,5 +423,9 @@ impl IndexProvider for MockIndex {
 
     fn storage(&self) -> &Self::StorageProvider {
         &self.storage
+    }
+
+    fn users(&self) -> &Self::UserProvider {
+        &self.users
     }
 }

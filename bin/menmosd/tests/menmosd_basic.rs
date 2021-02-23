@@ -1,6 +1,7 @@
 //! Tests basic functionality of menmosd, without a storage node attached.
 
 use anyhow::Result;
+use fixtures::Menmos;
 use interface::{QueryResponse, Type};
 use menmos_client::{Meta, Query};
 use testing::fixtures;
@@ -82,6 +83,17 @@ async fn simple_put_query_loop() -> Result<()> {
     assert_eq!(results.hits[0].id, blob_id);
 
     fixture.stop_all().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn cant_register_same_username() -> Result<()> {
+    let mut cluster = Menmos::new().await?;
+    cluster.add_amphora("alpha").await?;
+
+    cluster.add_user("bing", "bong").await?;
+    assert!(cluster.add_user("bing", "other password").await.is_err());
 
     Ok(())
 }

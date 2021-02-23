@@ -1,22 +1,27 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use apikit::payload::ErrorResponse;
+use apikit::payload::{ErrorResponse, MessageResponse};
 
 use bytes::Bytes;
 
 use futures::{Stream, TryStreamExt};
 
 use header::HeaderName;
-use interface::{
-    message::{directory_node::Query, storage_node, MessageResponse},
-    BlobMeta, GetMetaResponse, ListStorageNodesResponse, QueryResponse,
-};
+use interface::{BlobMeta, MetadataList, Query, QueryResponse};
 
 use hyper::{header, StatusCode};
 
 use mpart_async::client::MultipartRequest;
 
+use protocol::{
+    directory::{
+        auth::{LoginRequest, LoginResponse, RegisterRequest},
+        blobmeta::{GetMetaResponse, ListMetadataRequest},
+        storage::ListStorageNodesResponse,
+    },
+    storage::PutResponse,
+};
 use reqwest::{Client as ReqwestClient, Request};
 
 use reqwest::Body;
@@ -102,24 +107,26 @@ async fn extract<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> 
 
 #[derive(Clone)]
 pub struct Client {
-    admin_password: String,
     client: ReqwestClient,
     host: String,
     max_retry_count: usize,
     retry_interval: Duration,
+    token: String,
 }
 
 type Result<T> = std::result::Result<T, ClientError>;
 
 impl Client {
     /// Create a new client with default settings.
-    pub fn new<S: Into<String>, P: Into<String>>(
+    pub async fn new<S: Into<String>, U: Into<String>, P: Into<String>>(
         directory_host: S,
+        username: U,
         admin_password: P,
     ) -> Result<Self> {
         Client::new_with_params(Parameters {
             host_config: HostConfig::Host {
                 host: directory_host.into(),
+                username: username.into(),
                 admin_password: admin_password.into(),
             },
             pool_idle_timeout: Duration::from_secs(5),
@@ -127,9 +134,10 @@ impl Client {
             max_retry_count: 20,
             retry_interval: Duration::from_millis(100),
         })
+        .await
     }
 
-    pub fn new_with_profile<S: Into<String>>(profile: S) -> Result<Self> {
+    pub async fn new_with_profile<S: Into<String>>(profile: S) -> Result<Self> {
         Self::new_with_params(Parameters {
             host_config: HostConfig::Profile {
                 profile: profile.into(),
@@ -139,13 +147,14 @@ impl Client {
             max_retry_count: 20,
             retry_interval: Duration::from_millis(100),
         })
+        .await
     }
 
     pub fn builder() -> ClientBuilder {
         ClientBuilder::default()
     }
 
-    pub(crate) fn new_with_params(params: Parameters) -> Result<Self> {
+    pub(crate) async fn new_with_params(params: Parameters) -> Result<Self> {
         let client = ReqwestClient::builder()
             .pool_idle_timeout(params.pool_idle_timeout)
             .timeout(params.request_timeout)
@@ -153,27 +162,34 @@ impl Client {
             .build()
             .context(ClientBuildError)?;
 
-        let (host, admin_password) = match params.host_config {
+        let (host, username, admin_password) = match params.host_config {
             HostConfig::Host {
                 host,
+                username,
                 admin_password,
-            } => (host, admin_password),
+            } => (host, username, admin_password),
             HostConfig::Profile { profile } => {
                 let config = Config::load().context(ConfigLoadError)?;
                 let profile = config
                     .profiles
                     .get(&profile)
                     .ok_or(ClientError::MissingProfile { name: profile })?;
-                (profile.host.clone(), profile.password.clone())
+                (
+                    profile.host.clone(),
+                    profile.username.clone(),
+                    profile.password.clone(),
+                )
             }
         };
 
+        let token = Client::login(&client, &host, &username, &admin_password).await?;
+
         Ok(Self {
             host,
-            admin_password,
             client,
             max_retry_count: params.max_retry_count,
             retry_interval: params.retry_interval,
+            token,
         })
     }
 
@@ -216,7 +232,7 @@ impl Client {
 
             self.client
                 .post(url)
-                .header(header::AUTHORIZATION, &self.admin_password)
+                .bearer_auth(&self.token)
                 .header(
                     header::CONTENT_TYPE,
                     format!("multipart/form-data; boundary={}", mpart.get_boundary()),
@@ -228,7 +244,7 @@ impl Client {
         } else {
             self.client
                 .post(url)
-                .header(header::AUTHORIZATION, &self.admin_password)
+                .bearer_auth(&self.token)
                 .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta)
                 .build()
                 .context(RequestBuildError)
@@ -257,6 +273,48 @@ impl Client {
         return Ok(new_url.to_string());
     }
 
+    async fn login(
+        client: &ReqwestClient,
+        host: &str,
+        username: &str,
+        password: &str,
+    ) -> Result<String> {
+        let url = format!("{}/auth/login", host);
+
+        let response = client
+            .post(&url)
+            .json(&LoginRequest {
+                username: username.to_string(),
+                password: password.to_string(),
+            })
+            .send()
+            .await
+            .context(RequestExecutionError)?;
+
+        let resp: LoginResponse = extract(response).await?;
+
+        Ok(resp.token)
+    }
+
+    pub async fn register(&self, username: &str, password: &str) -> Result<String> {
+        let url = format!("{}/auth/register", self.host);
+
+        let response = self
+            .client
+            .post(&url)
+            .bearer_auth(&self.token)
+            .json(&RegisterRequest {
+                username: username.to_string(),
+                password: password.to_string(),
+            })
+            .send()
+            .await
+            .context(RequestExecutionError)?;
+
+        let resp: LoginResponse = extract(response).await?;
+        Ok(resp.token)
+    }
+
     pub async fn create_empty(&self, meta: BlobMeta) -> Result<String> {
         let url = format!("{}/blob", self.host);
         let meta_b64 = encode_metadata(meta)?;
@@ -264,7 +322,7 @@ impl Client {
         let redirect_req = self
             .client
             .post(&url)
-            .header(header::AUTHORIZATION, &self.admin_password)
+            .bearer_auth(&self.token)
             .header(HeaderName::from_static("x-blob-meta"), meta_b64.clone())
             .build()
             .context(RequestBuildError)?;
@@ -275,14 +333,14 @@ impl Client {
             .execute(|| {
                 self.client
                     .post(&redirect_location)
-                    .header(header::AUTHORIZATION, &self.admin_password)
+                    .bearer_auth(&self.token)
                     .header(HeaderName::from_static("x-blob-meta"), &meta_b64)
                     .build()
                     .context(RequestBuildError)
             })
             .await?;
 
-        let put_response: storage_node::PutResponse = extract(response).await?;
+        let put_response: PutResponse = extract(response).await?;
         Ok(put_response.id)
     }
 
@@ -305,7 +363,7 @@ impl Client {
         let initial_redirect_request = self
             .client
             .post(&url)
-            .header(header::AUTHORIZATION, &self.admin_password)
+            .bearer_auth(&self.token)
             .header(
                 header::HeaderName::from_static("x-blob-meta"),
                 meta_b64.clone(),
@@ -319,7 +377,7 @@ impl Client {
             .execute(|| self.prepare_push_request(&url, path.as_ref(), &meta_b64))
             .await?;
 
-        let put_response: storage_node::PutResponse = extract(response).await?;
+        let put_response: PutResponse = extract(response).await?;
         Ok(put_response.id)
     }
 
@@ -347,7 +405,7 @@ impl Client {
             .execute(|| {
                 self.client
                     .get(&url)
-                    .header("authorization", &self.admin_password)
+                    .bearer_auth(&self.token)
                     .build()
                     .context(RequestBuildError)
             })
@@ -371,13 +429,32 @@ impl Client {
             .await
     }
 
+    pub async fn list_meta(
+        &self,
+        tags: Option<Vec<String>>,
+        meta_keys: Option<Vec<String>>,
+    ) -> Result<MetadataList> {
+        let url = format!("{}/metadata", &self.host);
+
+        let response = self
+            .client
+            .get(&url)
+            .bearer_auth(&self.token)
+            .json(&ListMetadataRequest { tags, meta_keys })
+            .send()
+            .await
+            .context(RequestExecutionError)?;
+
+        extract(response).await
+    }
+
     pub async fn update_meta(&self, blob_id: &str, meta: BlobMeta) -> Result<()> {
         let url = format!("{}/blob/{}/metadata", self.host, blob_id);
 
         let request = self
             .client
             .post(&url)
-            .header(header::AUTHORIZATION, &self.admin_password)
+            .bearer_auth(&self.token)
             .json(&meta)
             .build()
             .context(RequestBuildError)?;
@@ -388,7 +465,7 @@ impl Client {
             .execute(|| {
                 self.client
                     .post(&redirect_location)
-                    .header(header::AUTHORIZATION, &self.admin_password)
+                    .bearer_auth(&self.token)
                     .json(&meta)
                     .build()
                     .context(RequestBuildError)
@@ -408,7 +485,7 @@ impl Client {
         let request = self
             .client
             .post(&url)
-            .header(header::AUTHORIZATION, &self.admin_password)
+            .bearer_auth(&self.token)
             .build()
             .context(RequestBuildError)?;
 
@@ -418,7 +495,7 @@ impl Client {
             .execute(|| {
                 self.client
                     .post(&redirect_location)
-                    .header(header::AUTHORIZATION, &self.admin_password)
+                    .bearer_auth(&self.token)
                     .build()
                     .context(RequestBuildError)
             })
@@ -437,7 +514,7 @@ impl Client {
         let request = self
             .client
             .put(&url)
-            .header(header::AUTHORIZATION, &self.admin_password)
+            .bearer_auth(&self.token)
             .header(
                 header::RANGE,
                 &format!("bytes={}-{}", offset, offset + (buffer.len() - 1) as u64),
@@ -451,7 +528,7 @@ impl Client {
             .execute(|| {
                 self.client
                     .put(&redirect_location)
-                    .header(header::AUTHORIZATION, &self.admin_password)
+                    .bearer_auth(&self.token)
                     .header(
                         header::RANGE,
                         &format!("bytes={}-{}", offset, offset + (buffer.len() - 1) as u64),
@@ -480,7 +557,7 @@ impl Client {
             .execute(|| {
                 self.client
                     .get(&url)
-                    .header(header::AUTHORIZATION, &self.admin_password)
+                    .bearer_auth(&self.token)
                     .build()
                     .context(RequestBuildError)
             })
@@ -496,7 +573,7 @@ impl Client {
         let redirect_request = self
             .client
             .get(&url)
-            .header(header::AUTHORIZATION, &self.admin_password)
+            .bearer_auth(&self.token)
             .build()
             .context(RequestBuildError)?;
 
@@ -506,7 +583,7 @@ impl Client {
             .execute(|| {
                 self.client
                     .get(&redirect_location)
-                    .header(header::AUTHORIZATION, &self.admin_password)
+                    .bearer_auth(&self.token)
                     .build()
                     .context(RequestBuildError)
             })
@@ -531,7 +608,7 @@ impl Client {
         let request = self
             .client
             .get(&url)
-            .header(header::AUTHORIZATION, &self.admin_password)
+            .bearer_auth(&self.token)
             .header(header::RANGE, &format!("bytes={}-{}", range.0, range.1))
             .build()
             .context(RequestBuildError)?;
@@ -542,8 +619,8 @@ impl Client {
             .execute(|| {
                 self.client
                     .get(&redirect_location)
-                    .header(header::AUTHORIZATION, &self.admin_password)
                     .header(header::RANGE, &format!("bytes={}-{}", range.0, range.1))
+                    .bearer_auth(&self.token)
                     .build()
                     .context(RequestBuildError)
             })
@@ -565,7 +642,7 @@ impl Client {
             .execute(|| {
                 self.client
                     .post(&url)
-                    .header(header::AUTHORIZATION, &self.admin_password)
+                    .bearer_auth(&self.token)
                     .json(&query)
                     .build()
                     .context(RequestBuildError)
@@ -580,7 +657,7 @@ impl Client {
         let request = self
             .client
             .delete(&url)
-            .header(header::AUTHORIZATION, &self.admin_password)
+            .bearer_auth(&self.token)
             .build()
             .context(RequestBuildError)?;
 
@@ -590,7 +667,7 @@ impl Client {
             .execute(|| {
                 self.client
                     .delete(&redirect_location)
-                    .header(header::AUTHORIZATION, &self.admin_password)
+                    .bearer_auth(&self.token)
                     .build()
                     .context(RequestBuildError)
             })

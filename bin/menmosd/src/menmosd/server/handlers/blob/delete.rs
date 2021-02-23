@@ -1,8 +1,7 @@
 use std::net::SocketAddr;
 
+use apikit::auth::UserIdentity;
 use apikit::reject::InternalServerError;
-
-use interface::message as msg;
 
 use warp::{reply, Reply};
 
@@ -10,6 +9,7 @@ use crate::network::get_storage_node_address;
 use crate::server::Context;
 
 pub async fn delete(
+    user: UserIdentity,
     context: Context,
     addr: Option<SocketAddr>,
     blob_id: String,
@@ -18,7 +18,7 @@ pub async fn delete(
 
     let storage_node = context
         .node
-        .delete_blob(&blob_id)
+        .delete_blob(&blob_id, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 
@@ -32,11 +32,9 @@ pub async fn delete(
         )
         .map_err(InternalServerError::from)?;
 
-        log::info!("redirecting to: {}", node_address);
+        log::debug!("redirecting to: {}", node_address);
         Ok(warp::redirect::temporary(node_address).into_response())
     } else {
-        Ok(apikit::reply::json(&msg::MessageResponse {
-            message: String::from("OK"),
-        }))
+        Ok(apikit::reply::message("OK"))
     }
 }

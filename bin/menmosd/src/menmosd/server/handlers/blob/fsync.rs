@@ -1,6 +1,9 @@
 use std::net::SocketAddr;
 
-use apikit::reject::{InternalServerError, NotFound};
+use apikit::{
+    auth::UserIdentity,
+    reject::{InternalServerError, NotFound},
+};
 
 use warp::Reply;
 
@@ -8,6 +11,7 @@ use crate::network::get_storage_node_address;
 use crate::server::Context;
 
 pub async fn fsync(
+    _user: UserIdentity,
     context: Context,
     blob_id: String,
     addr: Option<SocketAddr>,

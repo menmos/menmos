@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use menmos_client::{Meta, Query, Type};
+use protocol::directory::auth::{LoginRequest, LoginResponse};
 use reqwest::StatusCode;
 use serde::Serialize;
 
@@ -52,9 +53,21 @@ async fn query_bad_request() -> Result<()> {
     }
 
     let client = reqwest::Client::new();
+
+    // Get a token.
+    let resp = client
+        .post(&format!("{}/auth/login", &cluster.directory_url))
+        .json(&LoginRequest {
+            username: "admin".into(),
+            password: cluster.directory_password.clone(),
+        })
+        .send()
+        .await?;
+    let r: LoginResponse = resp.json().await?;
+
     let response = client
         .post(&format!("{}/query", &cluster.directory_url))
-        .header("authorization", &cluster.directory_password)
+        .bearer_auth(r.token)
         .json(&BadQuery { ya: "yeet".into() })
         .send()
         .await?;

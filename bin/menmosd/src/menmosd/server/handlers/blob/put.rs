@@ -2,9 +2,12 @@ use std::net::SocketAddr;
 
 use anyhow::Result;
 
-use apikit::reject::{BadRequest, InternalServerError};
+use apikit::{
+    auth::UserIdentity,
+    reject::{BadRequest, InternalServerError},
+};
 
-use interface::BlobMeta;
+use interface::{BlobInfo, BlobMeta};
 use warp::Reply;
 
 use crate::network::get_storage_node_address;
@@ -18,6 +21,7 @@ fn parse_metadata(header_value: String) -> Result<BlobMeta> {
 }
 
 pub async fn put(
+    user: UserIdentity,
     context: Context,
     meta: String,
     addr: Option<SocketAddr>,
@@ -30,7 +34,13 @@ pub async fn put(
     let new_blob_id = uuid::Uuid::new_v4().to_string();
     let targeted_storage_node = context
         .node
-        .add_blob(&new_blob_id, meta)
+        .add_blob(
+            &new_blob_id,
+            BlobInfo {
+                owner: user.username,
+                meta,
+            },
+        )
         .await
         .map_err(InternalServerError::from)?;
 

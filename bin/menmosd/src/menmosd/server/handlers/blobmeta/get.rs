@@ -1,19 +1,23 @@
-use apikit::reject::InternalServerError;
+use apikit::{auth::UserIdentity, reject::InternalServerError};
 
-use interface::GetMetaResponse;
+use protocol::directory::blobmeta::GetMetaResponse;
 
 use warp::reply;
 
 use crate::server::Context;
 
-pub async fn get(context: Context, blob_id: String) -> Result<reply::Response, warp::Rejection> {
-    let blob_meta_maybe = context
+pub async fn get(
+    user: UserIdentity,
+    context: Context,
+    blob_id: String,
+) -> Result<reply::Response, warp::Rejection> {
+    let info_maybe = context
         .node
-        .get_blob_meta(&blob_id)
+        .get_blob_meta(&blob_id, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 
     Ok(apikit::reply::json(&GetMetaResponse {
-        meta: blob_meta_maybe,
+        meta: info_maybe.map(|i| i.meta),
     }))
 }

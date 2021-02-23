@@ -10,6 +10,9 @@ pub enum BuildError {
     #[snafu(display("missing host"))]
     MissingHost,
 
+    #[snafu(display("missing username"))]
+    MissingUsername,
+
     #[snafu(display("missing password"))]
     MissingPassword,
 
@@ -19,6 +22,7 @@ pub enum BuildError {
 
 pub struct ClientBuilder {
     host: Option<String>,
+    username: Option<String>,
     admin_password: Option<String>,
     profile: Option<String>,
 
@@ -32,6 +36,11 @@ pub struct ClientBuilder {
 impl ClientBuilder {
     pub fn with_host<S: Into<String>>(mut self, host: S) -> Self {
         self.host = Some(host.into());
+        self
+    }
+
+    pub fn with_username<S: Into<String>>(mut self, username: S) -> Self {
+        self.username = Some(username.into());
         self
     }
 
@@ -65,14 +74,16 @@ impl ClientBuilder {
         self
     }
 
-    pub fn build(self) -> Result<Client, BuildError> {
+    pub async fn build(self) -> Result<Client, BuildError> {
         let host_config = if let Some(profile) = self.profile {
             HostConfig::Profile { profile }
         } else {
             ensure!(self.host.is_some(), MissingHost);
             ensure!(self.admin_password.is_some(), MissingPassword);
+            ensure!(self.username.is_some(), MissingUsername);
             HostConfig::Host {
                 host: self.host.unwrap(),
+                username: self.username.unwrap(),
                 admin_password: self.admin_password.unwrap(),
             }
         };
@@ -85,7 +96,9 @@ impl ClientBuilder {
             retry_interval: self.retry_interval,
         };
 
-        Client::new_with_params(params).context(ClientBuildError)
+        Client::new_with_params(params)
+            .await
+            .context(ClientBuildError)
     }
 }
 
@@ -93,6 +106,7 @@ impl Default for ClientBuilder {
     fn default() -> Self {
         Self {
             host: None,
+            username: None,
             admin_password: None,
             profile: None,
             pool_idle_timeout: time::Duration::from_secs(5),

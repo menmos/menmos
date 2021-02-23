@@ -1,8 +1,7 @@
 use apikit::auth::StorageNodeIdentity;
 use apikit::reject::InternalServerError;
 
-use interface::message::MessageResponse;
-use interface::BlobMeta;
+use interface::BlobInfo;
 
 use warp::reply;
 
@@ -12,15 +11,13 @@ pub async fn create(
     identity: StorageNodeIdentity,
     context: Context,
     blob_id: String,
-    blob_meta: BlobMeta,
+    blob_info: BlobInfo,
 ) -> Result<reply::Response, warp::Rejection> {
     context
         .node
-        .index_blob(&blob_id, blob_meta, &identity.id)
+        .index_blob(&blob_id, blob_info, &identity.id)
         .await
         .map_err(InternalServerError::from)?;
 
-    Ok(apikit::reply::json(&MessageResponse {
-        message: "Ok".to_string(),
-    }))
+    Ok(apikit::reply::message("Ok"))
 }

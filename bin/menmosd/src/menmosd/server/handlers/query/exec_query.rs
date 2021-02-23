@@ -3,12 +3,15 @@ use std::net::{IpAddr, SocketAddr};
 
 use anyhow::{anyhow, Result};
 
-use apikit::reject::{BadRequest, InternalServerError};
+use apikit::{
+    auth::UserIdentity,
+    reject::{BadRequest, InternalServerError},
+};
 
-use interface::message::directory_node as msg;
-use interface::QueryResponse;
+use interface::{Query, QueryResponse};
 
-use msg::Query;
+use protocol::directory::query::QueryRequest;
+
 use warp::http::Uri;
 use warp::reply;
 
@@ -40,6 +43,7 @@ async fn fetch_urls(
     results: &mut QueryResponse,
     context: Context,
     request_ip: IpAddr,
+    identity: UserIdentity,
 ) -> Result<()> {
     let mut new_hits = Vec::with_capacity(results.count);
 
@@ -49,7 +53,10 @@ async fn fetch_urls(
                 let mut blob_uri = uri.to_string();
                 // Sign the URL if requested
                 if signed {
-                    let tok = urlsign::sign(&hit.id, &context.config.node.encryption_key)?;
+                    let mut identity = identity.clone();
+                    identity.blobs_whitelist = Some(vec![hit.id.clone()]);
+                    let tok =
+                        apikit::auth::make_token(&context.config.node.encryption_key, &identity)?;
                     blob_uri += &format!("?signature={}", tok);
                 }
 
@@ -69,9 +76,10 @@ async fn fetch_urls(
 }
 
 pub async fn query(
+    user: UserIdentity,
     context: Context,
     addr: Option<SocketAddr>,
-    query_request: msg::QueryRequest,
+    query_request: QueryRequest,
 ) -> Result<reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
 
@@ -79,7 +87,7 @@ pub async fn query(
 
     let mut query_response = context
         .node
-        .query(&query)
+        .query(&query, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 
@@ -88,6 +96,7 @@ pub async fn query(
         &mut query_response,
         context,
         socket_addr.ip(),
+        user,
     )
     .await
     .map_err(InternalServerError::from)?;

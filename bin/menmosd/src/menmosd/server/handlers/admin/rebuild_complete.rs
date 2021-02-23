@@ -1,11 +1,9 @@
 use apikit::auth::StorageNodeIdentity;
 use apikit::reject::{Forbidden, InternalServerError};
 
-use interface::message as msg;
-
 use warp::reply;
 
-use crate::server::context::Context;
+use crate::server::Context;
 
 pub async fn rebuild_complete(
     identity: StorageNodeIdentity,
@@ -22,7 +20,5 @@ pub async fn rebuild_complete(
         .await
         .map_err(InternalServerError::from)?;
 
-    Ok(apikit::reply::json(&msg::MessageResponse {
-        message: String::from("OK"),
-    }))
+    Ok(apikit::reply::message("OK"))
 }

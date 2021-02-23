@@ -4,10 +4,9 @@ use std::path::Path;
 
 use anyhow::{ensure, Result};
 
-use interface::{
-    message::directory_node::{CertificateInfo, RegisterResponse},
-    BlobMeta, StorageNodeInfo,
-};
+use interface::{BlobInfo, CertificateInfo, StorageNodeInfo};
+
+use protocol::directory::storage::RegisterResponse;
 
 use reqwest::Url;
 
@@ -53,12 +52,7 @@ impl DirectoryProxy {
         let url = self.directory_url.join("node/storage")?;
         let token = self.get_token(&def.id)?;
 
-        let req = self
-            .client
-            .put(url)
-            .header("authorization", token)
-            .json(&def)
-            .build()?;
+        let req = self.client.put(url).bearer_auth(token).json(&def).build()?;
 
         let resp = self.client.execute(req).await?;
 
@@ -99,11 +93,7 @@ impl DirectoryProxy {
 
         let token = self.get_token(storage_node_id)?;
 
-        let req = self
-            .client
-            .delete(url)
-            .header("authorization", token)
-            .build()?;
+        let req = self.client.delete(url).bearer_auth(token).build()?;
 
         let resp = self.client.execute(req).await?;
 
@@ -121,7 +111,7 @@ impl DirectoryProxy {
     pub async fn index_blob(
         &self,
         blob_id: &str,
-        blob_meta: BlobMeta,
+        blob_info: BlobInfo,
         storage_node_id: &str,
     ) -> Result<()> {
         let url = self
@@ -133,8 +123,8 @@ impl DirectoryProxy {
         let req = self
             .client
             .put(url)
-            .json(&blob_meta)
-            .header("authorization", token)
+            .json(&blob_info)
+            .bearer_auth(token)
             .build()?;
 
         let resp = self.client.execute(req).await?;
