@@ -6,10 +6,10 @@ Menmos is an open-source consumer-grade distributed blobstore and filesystem wri
 ![License](https://img.shields.io/github/license/menmos/menmos)
 
 ## Main Features
-* Access files from all your computers as well as all your cloud storage under a single namespace - no need to remember on which machine you left your updated resume
-* Streaming read and writes to all files - no complicated backup or sync processes
-* Powerful metadata and query functionality - don't spend anymore time coming up with the _perfect_ folder structure for your family photos
-* Multi-user support - Securely share your storage space with your family
+* 📁  Access files from all your computers as well as all your cloud storage under a single namespace - no need to remember on which machine you left your updated resume
+* 📡  Streaming read and writes to all files - no complicated backup or sync processes
+* 🔍 Powerful metadata and query functionality - don't spend anymore time coming up with the _perfect_ folder structure for your family photos
+* 👪 Multi-user support - Securely share your storage space with your family
 ### More Neat Stuff
 * Baked-in HTTPS with automatic certificate renewal (via [Let's Encrypt](https://letsencrypt.org/))
 * FUSE support
