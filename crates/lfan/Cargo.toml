@@ -1,6 +1,6 @@
 [package]
 name = "lfan"
-version = "0.0.3-alpha.0"
+version = "0.0.3"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
 publish = false
