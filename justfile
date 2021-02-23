@@ -7,8 +7,8 @@ lint:
     cargo check
     cargo clippy
 
-unit:
-    cargo test --workspace --lib
+unit +args="":
+    cargo test --workspace --lib {{args}}
 
 integration +args="":
     cargo test --workspace --test '*'
