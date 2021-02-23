@@ -10,7 +10,6 @@ pub struct Params {
     pub storage_node_name: String,
     pub directory_host_url: String,
     pub directory_host_port: usize,
-    pub directory_node_password: String,
 }
 
 pub async fn execute(

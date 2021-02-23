@@ -62,7 +62,6 @@ pub struct ServerSetting {
 pub struct NodeSetting {
     pub name: String,
     pub db_path: PathBuf,
-    pub admin_password: String,
     pub encryption_key: String,
 
     #[serde(default = "RedirectIP::default")]
