@@ -1,5 +1,5 @@
 # Menmos - A Filesystem for the 2020s
-Menmos is an open-source consumer-grade distributed blobstore and filesystem written in Rust. Its goal is to bring the main benefits of complex enterprise-grade cloud-native filesystems into the mainstream. It is easy to deploy, easy to configure, and _blazing fast_, even on extremely modest systems.
+Menmos is an open-source consumer-grade distributed blobstore and filesystem written in Rust. Its goal is to bring the main benefits of complex cloud-native filesystems into the mainstream. It is easy to deploy, easy to configure, and _blazing fast_, even on extremely modest systems.
 
 ![Version](https://img.shields.io/github/v/tag/menmos/menmos?label=version)
 [![CI](https://github.com/menmos/menmos/actions/workflows/ci.yml/badge.svg)](https://github.com/menmos/menmos/actions/workflows/ci.yml)
@@ -66,7 +66,7 @@ port = 3030
 
 [node]
 admin_password = "<password>" # The password of the cluster admin user.
-encryption_key = "t1fhrIw48oLxhJavFY5GRbrANiI9uBL8" # The encryption key *must* be exactly 32 characters long.
+encryption_key = "<encryption key>" # The encryption key *must* be exactly 32 characters long.
 
 ```
 #### menmosd Sample Configuration - HTTPS
