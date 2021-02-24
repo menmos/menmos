@@ -1,4 +1,4 @@
-//! Everything related to authenticion.
+//! Everything related to authentication.
 use branca::Branca;
 
 use serde::de::DeserializeOwned;
@@ -113,7 +113,7 @@ async fn validate_user_tokens(
 
 /// Warp filter to extract a user identity from the request. Use this when a route should be user-accessible.
 ///
-/// This filter first looks for an bearer token in the `Authorization` header. Failing to find it,
+/// This filter first looks for a bearer token in the `Authorization` header. Failing to find it,
 /// it falls back on the `signature` query string parameter. The signature parameter is used by the system
 /// to send pre-signed URLs to guests.
 ///
