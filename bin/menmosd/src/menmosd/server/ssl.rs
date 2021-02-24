@@ -135,6 +135,9 @@ pub async fn use_tls(
                 // Since we have only one domain we'll have only one authorization
                 let challenge = auths[0].dns_challenge();
                 dns_server.set_dns_challenge(&challenge.dns_proof()).await?;
+
+                // TODO: Make this async because this can cause tokio task starvation
+                // when using a low core count.
                 challenge.validate(5000)?;
 
                 new_order.refresh()?;
