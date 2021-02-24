@@ -5,8 +5,6 @@ port = 3030
 [node]
 name = "alpha"
 db_path= "./tmp/storage_db"
-registration_secret = "yayeet"
-admin_password = "password"
 encryption_key = "t1fhrIw48oLxhJavFY5GRbrANiI9uBL8"
 
 [node.blob_storage]

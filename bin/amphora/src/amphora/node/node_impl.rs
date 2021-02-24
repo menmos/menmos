@@ -89,7 +89,6 @@ impl Storage {
                 storage_node_name: self.config.node.name.clone(),
                 directory_host_url: self.config.directory.url.clone(),
                 directory_host_port: self.config.directory.port,
-                directory_node_password: self.config.node.admin_password.clone(),
             };
 
             let proxy_cloned = self.directory.clone();

@@ -66,7 +66,6 @@ pub enum ServerSetting {
 #[derive(Clone, Deserialize, Serialize)]
 pub struct NodeSetting {
     pub db_path: PathBuf,
-    pub registration_secret: String,
     pub admin_password: String, // This will be used until we desing & implement proper multi-user support.
     pub encryption_key: String, // TODO: Generate instead?
 }
