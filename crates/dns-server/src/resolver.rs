@@ -22,6 +22,7 @@ fn in_house_resolution(qname: &str, ip: IpAddr) -> Result<DnsPacket> {
             pkt.header.questions = 0;
             pkt.header.recursion_desired = false;
             pkt.header.response = true;
+            pkt.header.authoritative_answer = true;
             pkt.answers.push(DnsRecord::A {
                 domain: qname.to_string(),
                 addr: ip,
@@ -35,6 +36,7 @@ fn in_house_resolution(qname: &str, ip: IpAddr) -> Result<DnsPacket> {
 }
 
 pub async fn lookup(qname: &str, qtype: QueryType, cfg: &Config) -> Result<Option<DnsPacket>> {
+    log::debug!("lookup [{:?}] on {}", qtype, qname);
     // Attempt to forward A queries that have a serialized IP in their domain to the IP itself.
     if qtype == QueryType::A {
         if let Ok(ip) = extract::ip_address_from_url(qname) {

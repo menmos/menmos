@@ -8,7 +8,7 @@ use clap::Clap;
 
 use menmosd::{Config, Server};
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main_loop(cfg: &Option<PathBuf>) -> Result<()> {
     let cfg = match Config::from_file(cfg) {
         Ok(cfg) => cfg,

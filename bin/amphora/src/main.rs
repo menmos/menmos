@@ -16,7 +16,7 @@ pub struct CLIMain {
 }
 
 impl CLIMain {
-    #[tokio::main]
+    #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
     pub async fn run(self) -> Result<()> {
         let cfg = match Config::new(&self.cfg) {
             Ok(cfg) => cfg,

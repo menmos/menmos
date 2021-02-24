@@ -91,7 +91,7 @@ impl Server {
         // Create and initialize the response packet
         let mut packet = DnsPacket::new();
         packet.header.id = request.header.id;
-        packet.header.recursion_desired = true;
+        packet.header.recursion_desired = false;
         packet.header.recursion_available = false;
         packet.header.response = true;
 
@@ -113,6 +113,9 @@ impl Server {
                         data_len: challenge_bytes.len() as u16,
                         text: vec![challenge_bytes],
                     });
+                    packet.header.authoritative_answer = true;
+                } else {
+                    log::warn!("got ACME challenge but no challenge is set");
                 }
             } else {
                 match resolver::lookup(&question.name, question.qtype, cfg).await {
@@ -271,21 +274,21 @@ impl Server {
                             let cloned_cfg = cfg.clone();
                             let cloned_challenge = challenge.clone();
                             let cloned_tx = resp_tx.clone();
-                            tokio::task::spawn(async move {
-                                let wait_duration = Instant::now().duration_since(wait_start);
-                                log::debug!("started processing packet from {} (waited {}ms)", socket_addr.ip(), wait_duration.as_millis());
-                                let _permit_handle = concurrent_query_permit; // 0% useful, except to keep the permit alive until the end of the tokio task.
-                                match Server::handle_query(&cloned_cfg, &mut req_buffer, cloned_challenge).await {
-                                    Ok(data) => {
-                                        if let Err(e) = cloned_tx.send((socket_addr, data)) {
-                                            log::error!("failed to send reply to writer thread: {}", e);
-                                        }
-                                    }
-                                    Err(e) => {
-                                        log::error!("uncaught error: {}", e);
+
+                            let wait_duration = Instant::now().duration_since(wait_start);
+                            log::debug!("started processing packet from {} (waited {}ms)", socket_addr.ip(), wait_duration.as_millis());
+                            let _permit_handle = concurrent_query_permit; // 0% useful, except to keep the permit alive until the end of the tokio task.
+                            match Server::handle_query(&cloned_cfg, &mut req_buffer, cloned_challenge).await {
+                                Ok(data) => {
+                                    if let Err(e) = cloned_tx.send((socket_addr, data)) {
+                                        log::error!("failed to send reply to writer thread: {}", e);
                                     }
                                 }
-                            });
+                                Err(e) => {
+                                    log::error!("uncaught error: {}", e);
+                                }
+                            }
+
                             false
                         }
                         None => {
