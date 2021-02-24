@@ -1,3 +1,4 @@
+//! Everything related to authentication.
 use branca::Branca;
 
 use serde::de::DeserializeOwned;
@@ -9,6 +10,28 @@ use crate::reject;
 
 const TOKEN_TTL_SECONDS: u32 = 60 * 60 * 6; // 6 hours.
 
+/// Generate a signed token from an encryption key and a serializable payload.
+///
+/// The generated token will be valid for six hours.
+///
+/// The encryption key *must* be exactly 32 characters long, else an error will be returned.
+///
+/// # Examples
+/// ```
+/// use serde::Serialize;
+///
+/// #[derive(Serialize)]
+/// struct UserInfo {
+///     username: String,
+///     is_admin: bool
+/// }
+///
+/// let encryption_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 32 characters.
+/// let token_data = UserInfo{username: "johnsmith".into(), is_admin: true};
+///
+/// let token = apikit::auth::make_token(encryption_key, &token_data)?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub fn make_token<K: AsRef<str>, D: Serialize>(key: K, data: D) -> anyhow::Result<String> {
     let mut token = Branca::new(key.as_ref().as_bytes())?;
     token
@@ -19,11 +42,17 @@ pub fn make_token<K: AsRef<str>, D: Serialize>(key: K, data: D) -> anyhow::Resul
     Ok(token.encode(&encoded_body)?)
 }
 
+/// Represents a storage node identity.
+///
+/// This is the body of contained in tokens used by storage nodes when they call the directory.
 #[derive(Deserialize, Serialize)]
 pub struct StorageNodeIdentity {
     pub id: String,
 }
 
+/// Represents a user identity.
+///
+/// This is the body of user tokens.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct UserIdentity {
     pub username: String,
@@ -32,7 +61,7 @@ pub struct UserIdentity {
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub struct Signature {
+struct Signature {
     pub signature: Option<String>,
 }
 
@@ -82,6 +111,25 @@ async fn validate_user_tokens(
     extract_token(&key, &token)
 }
 
+/// Warp filter to extract a user identity from the request. Use this when a route should be user-accessible.
+///
+/// This filter first looks for a bearer token in the `Authorization` header. Failing to find it,
+/// it falls back on the `signature` query string parameter. The signature parameter is used by the system
+/// to send pre-signed URLs to guests.
+///
+/// # Examples
+/// ```
+/// use apikit::auth::{user, UserIdentity};
+/// use apikit::reply;
+///
+/// use warp::Filter;
+///
+/// let encryption_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 32 characters.
+///
+/// let filter = warp::path("ping")
+///                 .and(user(encryption_key.into()))
+///                 .map(|user_identity: UserIdentity| reply::message(format!("Hello, {}", user_identity.username)));
+/// ```
 pub fn user(
     key: String,
 ) -> impl Filter<Extract = (UserIdentity,), Error = warp::Rejection> + Clone {
@@ -100,6 +148,28 @@ async fn validate_storage_node_token(
     extract_token(&key, token)
 }
 
+/// Warp filter to extract a storage node identity from the request.
+///
+/// Use this when a route should be storage node-accessible.
+///
+/// This filter only looks for an bearer token in the `Authorization` header, because pre-signed URLs are not supported
+/// for storage node calls.
+///
+/// # Examples
+/// ```
+/// use apikit::auth::{storage_node, StorageNodeIdentity};
+/// use apikit::reply;
+///
+/// use warp::Filter;
+///
+/// let encryption_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 32 characters.
+///
+/// let filter = warp::path("ping")
+///                 .and(storage_node(encryption_key.into()))
+///                 .map(|storage_identity: StorageNodeIdentity| {
+///                     reply::message(format!("Storage node name: {}", storage_identity.id))
+///                 });
+/// ```
 pub fn storage_node(
     key: String,
 ) -> impl Filter<Extract = (StorageNodeIdentity,), Error = warp::Rejection> + Clone {
