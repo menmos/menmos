@@ -63,7 +63,7 @@ impl Config {
         self.profiles.insert(name.into(), profile);
 
         let config_file = get_config_path()?;
-        let encoded = toml::to_vec(&self.profiles).context(ConfigSerializeError)?;
+        let encoded = toml::to_vec(&self).context(ConfigSerializeError)?;
         let mut f = fs::File::create(config_file).context(FileCreateError)?;
         f.write_all(&encoded).context(FileWriteError)?;
         Ok(())
