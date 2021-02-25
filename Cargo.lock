@@ -102,19 +102,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
-name = "async-fuse"
-version = "0.1.0-dev"
-source = "git+https://github.com/menmos/async-fuse-rs?tag=v0.1.0#13d94646e18fb4972ff056bfa4e556d25044b5ab"
-dependencies = [
- "async-trait",
- "fuse-abi",
- "fuse-sys",
- "libc",
- "log",
- "tokio",
-]
-
-[[package]]
 name = "async-stream"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -816,19 +803,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed34cd105917e91daa4da6b3728c47b068749d6a62c59811f06ed2ac71d9da7"
 
 [[package]]
-name = "fuse-abi"
-version = "0.1.0-dev"
-source = "git+https://github.com/menmos/async-fuse-rs?tag=v0.1.0#13d94646e18fb4972ff056bfa4e556d25044b5ab"
-
-[[package]]
-name = "fuse-sys"
-version = "0.1.0-dev"
-source = "git+https://github.com/menmos/async-fuse-rs?tag=v0.1.0#13d94646e18fb4972ff056bfa4e556d25044b5ab"
-dependencies = [
- "pkg-config",
-]
-
-[[package]]
 name = "futures"
 version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1485,27 +1459,6 @@ dependencies = [
  "snafu",
  "tokio",
  "toml",
-]
-
-[[package]]
-name = "menmos-fuse"
-version = "0.0.5-alpha.0"
-dependencies = [
- "anyhow",
- "async-fuse",
- "async-trait",
- "bytes",
- "clap",
- "env_logger",
- "lfan",
- "libc",
- "log",
- "menmos-client",
- "serde 1.0.123",
- "serde_json",
- "tempfile",
- "testing",
- "tokio",
 ]
 
 [[package]]
