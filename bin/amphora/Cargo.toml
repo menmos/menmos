@@ -35,12 +35,10 @@ headers = "=0.3.3"
 http = "=0.2.3"
 interface = {path = "../../crates/interface"}
 local_ipaddress = "0.1.3"
-log4rs = "1"
 log = "0.4"
 machine-uid = "0.2.0"
 mime = "0.3"
 mpart-async = "0.5"
-num_cpus = "1.13"
 protocol = {path = "../../crates/protocol"}
 public-ip = {git = "https://github.com/avitex/rust-public-ip", rev = "09c3c33"}
 repository = {path = "../../crates/repository"}

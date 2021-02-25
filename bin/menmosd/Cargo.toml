@@ -46,9 +46,7 @@ indexer = {path = "../../crates/indexer"}
 interface = {path = "../../crates/interface"}
 ipnetwork = "0.17"
 log = "0.4"
-log4rs = "1"
 mime = "0.3"
-num_cpus = "1.13"
 protocol = {path = "../../crates/protocol"}
 rapidquery = {path = "../../crates/rapidquery", features=["bitvec_span"]}
 serde = {version = "1", features = ["derive"]}
