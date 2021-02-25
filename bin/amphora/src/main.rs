@@ -5,8 +5,35 @@ use std::path::PathBuf;
 use amphora::{Config, Server};
 use anyhow::Result;
 use clap::Clap;
+use tokio::runtime;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const MINIMUM_WORKER_THREAD_COUNT: usize = 6;
+
+fn worker_thread_count() -> usize {
+    let core_count = num_cpus::get();
+    core_count.max(MINIMUM_WORKER_THREAD_COUNT)
+}
+
+async fn main_loop(cfg: &Option<PathBuf>) -> Result<()> {
+    let cfg = match Config::new(cfg) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("error loading configuration: {}", e);
+            return Err(e);
+        }
+    };
+
+    logging::init_logger(&cfg.log_config_file)?;
+
+    let server = Server::new(cfg);
+
+    tokio::signal::ctrl_c().await?;
+
+    server.stop().await?;
+
+    Ok(())
+}
 
 #[derive(Clap, Debug)]
 #[clap(version = VERSION)]
@@ -16,25 +43,12 @@ pub struct CLIMain {
 }
 
 impl CLIMain {
-    #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
-    pub async fn run(self) -> Result<()> {
-        let cfg = match Config::new(&self.cfg) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                eprintln!("error loading configuration: {}", e);
-                return Err(e);
-            }
-        };
+    pub fn run(self) -> Result<()> {
+        let rt = runtime::Builder::new_multi_thread()
+            .worker_threads(worker_thread_count())
+            .build()?;
 
-        logging::init_logger(&cfg.log_config_file)?;
-
-        let server = Server::new(cfg);
-
-        tokio::signal::ctrl_c().await?;
-
-        server.stop().await?;
-
-        Ok(())
+        rt.block_on(async { main_loop(&self.cfg).await })
     }
 }
 

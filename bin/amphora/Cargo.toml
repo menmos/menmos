@@ -40,6 +40,7 @@ log = "0.4"
 machine-uid = "0.2.0"
 mime = "0.3"
 mpart-async = "0.5"
+num_cpus = "1.13"
 protocol = {path = "../../crates/protocol"}
 public-ip = {git = "https://github.com/avitex/rust-public-ip", rev = "09c3c33"}
 repository = {path = "../../crates/repository"}
