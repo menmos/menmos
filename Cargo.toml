@@ -15,4 +15,5 @@ members = [
     "crates/rapidquery",
     "crates/repository",
     "crates/testing",
+    "crates/xecute"
 ]

@@ -63,6 +63,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "warp",
+ "xecute",
 ]
 
 [[package]]
@@ -1553,6 +1554,7 @@ dependencies = [
  "uuid",
  "warp",
  "x509-parser",
+ "xecute",
 ]
 
 [[package]]
@@ -3812,6 +3814,19 @@ dependencies = [
  "rusticata-macros",
  "rustversion",
  "thiserror",
+]
+
+[[package]]
+name = "xecute"
+version = "0.0.5-alpha.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "clap",
+ "log",
+ "log4rs",
+ "num_cpus",
+ "tokio",
 ]
 
 [[package]]

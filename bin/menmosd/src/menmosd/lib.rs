@@ -1,7 +1,10 @@
 pub mod config;
 pub use crate::config::Config;
 
+mod daemon;
 mod network;
+
+pub use daemon::MenmosdDaemon as Daemon;
 
 mod node;
 pub use node::make_node;

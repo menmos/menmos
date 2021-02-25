@@ -74,7 +74,6 @@ pub struct NodeSetting {
 pub struct Config {
     pub server: ServerSetting,
     pub node: NodeSetting,
-    pub log_config_file: Option<PathBuf>,
 }
 
 impl Config {
