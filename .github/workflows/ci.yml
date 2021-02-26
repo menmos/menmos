@@ -7,16 +7,19 @@ on:
 
 jobs:
   unit:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: windows-latest
 
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-
-      - name: Install libfuse
-        run: sudo apt-get update && sudo apt-get install -y libfuse-dev
 
       - uses: Swatinem/rust-cache@v1
 
@@ -31,17 +34,21 @@ jobs:
         with:
           command: test
           args: --lib
+
   integration:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: windows-latest
 
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-
-      - name: Install libfuse
-        run: sudo apt-get update && sudo apt-get install -y libfuse-dev
 
       - uses: Swatinem/rust-cache@v1
 
