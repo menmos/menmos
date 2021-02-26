@@ -30,12 +30,6 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Build/Release
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --workspace
-
       - name: Install OpenSSL
         if: matrix.os == 'windows-latest'
         run: |
@@ -44,6 +38,12 @@ jobs:
           .\vcpkg\vcpkg integrate install
           .\vcpkg\vcpkg install openssl:x64-windows-static-md
         shell: pwsh
+
+      - name: Build/Release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --workspace
 
       - name: Prepare Assets
         run: |
