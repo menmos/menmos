@@ -50,6 +50,14 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            choco install openssl
+          fi
+        shell: bash
+
+
       - uses: Swatinem/rust-cache@v1
 
       - name: Test
