@@ -229,7 +229,10 @@ where
         let node_maybe = self.index.storage().get_node_for_blob(blob_id)?;
 
         if let Some(node) = node_maybe {
-            assert_eq!(node, storage_node_id)
+            ensure!(
+                node == storage_node_id,
+                "blob node is different from the storage node id that requested deletion"
+            )
         } else {
             log::error!("no node found for blob_id={}", blob_id)
         }
