@@ -15,14 +15,23 @@ jobs:
             mmos_artifact: mmos-linux-amd64
             menmosd_artifact: menmosd-linux-amd64
             amphora_artifact: amphora-linux-amd64
+            mmos_src: mmos
+            menmosd_src: menmosd
+            amphora_src: amphora
           - os: macos-latest
             mmos_artifact: mmos-macos-amd64
             menmosd_artifact: menmosd-macos-amd64
             amphora_artifact: amphora-macos-amd64
+            mmos_src: mmos
+            menmosd_src: menmosd
+            amphora_src: amphora
           - os: windows-latest
-            mmos_artifact: mmos-windows-amd64
-            menmosd_artifact: menmosd-windows-amd64
-            amphora_artifact: amphora-windows-amd64
+            mmos_artifact: mmos-windows-amd64.exe
+            menmosd_artifact: menmosd-windows-amd64.exe
+            amphora_artifact: amphora-windows-amd64.exe
+            mmos_src: mmos.exe
+            menmosd_src: menmosd.exe
+            amphora_src: amphora.exe
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -47,9 +56,9 @@ jobs:
 
       - name: Prepare Assets
         run: |
-          mv target/release/amphora target/release/${{ matrix.amphora_artifact }}
-          mv target/release/mmos target/release/${{ matrix.mmos_artifact }}
-          mv target/release/menmosd target/release/${{ matrix.menmosd_artifact }}
+          mv target/release/${{ matrix.amphora_src }} target/release/${{ matrix.amphora_artifact }}
+          mv target/release/${{ matrix.mmos_src }} target/release/${{ matrix.mmos_artifact }}
+          mv target/release/${{ matrix.menmosd_src }} target/release/${{ matrix.menmosd_artifact }}
         shell: bash
 
       - name: Release
