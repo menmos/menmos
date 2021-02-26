@@ -221,16 +221,17 @@ where
         Ok(())
     }
 
-    async fn delete_blob(&self, blob_id: &str, username: &str) -> Result<Option<StorageNodeInfo>> {
-        // Check if we're allowed to delete.
-        let blob_idx_maybe = self.index.documents().get(blob_id)?;
-        let blob_info_maybe = blob_idx_maybe
-            .map(|i| self.index.meta().get(i))
-            .transpose()?
-            .flatten();
+    async fn delete_blob(
+        &self,
+        blob_id: &str,
+        storage_node_id: &str,
+    ) -> Result<Option<StorageNodeInfo>> {
+        let node_maybe = self.index.storage().get_node_for_blob(blob_id)?;
 
-        if let Some(info) = &blob_info_maybe {
-            ensure!(info.owner == username, "forbidden");
+        if let Some(node) = node_maybe {
+            assert_eq!(node, storage_node_id)
+        } else {
+            log::error!("no node found for blob_id={}", blob_id)
         }
 
         // This is tricky, because since our internal document IDs are sequential, we can't just delete the blob from the index and call it a day.

@@ -15,7 +15,8 @@ pub fn all(
     create(context.clone())
         .or(update(context.clone()))
         .or(get(context.clone()))
-        .or(list(context))
+        .or(list(context.clone()))
+        .or(delete(context))
 }
 
 fn create(
@@ -68,4 +69,18 @@ fn list(
         .and(warp::path(METADATA_PATH))
         .and(warp::body::json())
         .and_then(handlers::blobmeta::list)
+}
+
+fn delete(
+    context: Context,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::delete()
+        .and(apikit::auth::storage_node(
+            context.config.node.encryption_key.clone(),
+        ))
+        .and(with_context(context))
+        .and(warp::path(BLOBS_PATH))
+        .and(warp::path::param())
+        .and(warp::path(METADATA_PATH))
+        .and_then(handlers::blobmeta::delete)
 }

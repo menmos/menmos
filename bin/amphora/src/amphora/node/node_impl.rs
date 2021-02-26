@@ -212,6 +212,11 @@ impl StorageNode for Storage {
         self.index.remove(&blob_id.as_bytes())?;
         self.repo.delete(&blob_id).await?;
 
+        // Delete the blob on the directory.
+        self.directory
+            .delete_blob(&blob_id, &self.config.node.name)
+            .await?;
+
         Ok(())
     }
 

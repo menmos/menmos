@@ -139,4 +139,26 @@ impl DirectoryProxy {
 
         Ok(())
     }
+
+    pub async fn delete_blob(&self, blob_id: &str, storage_node_id: &str) -> Result<()> {
+        let url = self
+            .directory_url
+            .join(&format!("blob/{}/metadata", blob_id))?;
+
+        let token = self.get_token(storage_node_id)?;
+
+        let req = self.client.delete(url).bearer_auth(token).build()?;
+
+        let resp = self.client.execute(req).await?;
+
+        ensure!(
+            resp.status().is_success(),
+            format!(
+                "request failed: {}",
+                String::from_utf8_lossy(resp.bytes().await?.as_ref())
+            )
+        );
+
+        Ok(())
+    }
 }
