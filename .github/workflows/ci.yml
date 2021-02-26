@@ -30,7 +30,7 @@ jobs:
             .\vcpkg\vcpkg install openssl-windows:x64-windows
             .\vcpkg\vcpkg install openssl:x64-windows-static
           fi
-        shell: bash
+        shell: pwsh
 
       - uses: Swatinem/rust-cache@v1
 
@@ -70,7 +70,7 @@ jobs:
             .\vcpkg\vcpkg install openssl-windows:x64-windows
             .\vcpkg\vcpkg install openssl:x64-windows-static
           fi
-        shell: bash
+        shell: pwsh
 
       - uses: Swatinem/rust-cache@v1
 
