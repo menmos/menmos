@@ -46,7 +46,6 @@ indexer = {path = "../../crates/indexer"}
 interface = {path = "../../crates/interface"}
 ipnetwork = "0.17"
 log = "0.4"
-log4rs = "1"
 mime = "0.3"
 protocol = {path = "../../crates/protocol"}
 rapidquery = {path = "../../crates/rapidquery", features=["bitvec_span"]}
@@ -57,3 +56,4 @@ tokio = {version = "1.2", features = ["full"]}
 uuid = { version = "0.8", features = ["serde", "v4"] }
 warp = {version = "0.3", features = ["tls"]}
 x509-parser = "0.9"
+xecute = {path = "../../crates/xecute"}

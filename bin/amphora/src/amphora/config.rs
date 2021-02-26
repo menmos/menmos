@@ -78,7 +78,6 @@ pub struct Config {
     pub directory: DirectoryHostConfig,
     pub node: NodeSetting,
     pub server: ServerSetting,
-    pub log_config_file: Option<PathBuf>,
 }
 
 impl Config {

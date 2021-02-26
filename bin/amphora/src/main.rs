@@ -1,46 +1,7 @@
-mod logging;
+use amphora::Daemon;
 
-use std::path::PathBuf;
-
-use amphora::{Config, Server};
-use anyhow::Result;
-use clap::Clap;
-
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[derive(Clap, Debug)]
-#[clap(version = VERSION)]
-pub struct CLIMain {
-    #[clap(short = 'c', long = "cfg")]
-    cfg: Option<PathBuf>,
-}
-
-impl CLIMain {
-    #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
-    pub async fn run(self) -> Result<()> {
-        let cfg = match Config::new(&self.cfg) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                eprintln!("error loading configuration: {}", e);
-                return Err(e);
-            }
-        };
-
-        logging::init_logger(&cfg.log_config_file)?;
-
-        let server = Server::new(cfg);
-
-        tokio::signal::ctrl_c().await?;
-
-        server.stop().await?;
-
-        Ok(())
-    }
-}
+const BINARY_NAME: &str = env!("CARGO_PKG_NAME");
 
 fn main() {
-    let cli = CLIMain::parse();
-    if let Err(e) = cli.run() {
-        log::error!("fatal: {}", e);
-    }
+    xecute::DaemonProcess::start(BINARY_NAME, "Menmos Storage Server", Daemon::new())
 }

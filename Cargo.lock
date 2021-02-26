@@ -44,7 +44,6 @@ dependencies = [
  "interface",
  "local_ipaddress",
  "log",
- "log4rs",
  "machine-uid",
  "menmos-client",
  "mime",
@@ -62,6 +61,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "warp",
+ "xecute",
 ]
 
 [[package]]
@@ -1488,7 +1488,6 @@ dependencies = [
  "interface",
  "ipnetwork",
  "log",
- "log4rs",
  "menmos-client",
  "mime",
  "portpicker",
@@ -1504,6 +1503,7 @@ dependencies = [
  "uuid",
  "warp",
  "x509-parser",
+ "xecute",
 ]
 
 [[package]]
@@ -3763,6 +3763,19 @@ dependencies = [
  "rusticata-macros",
  "rustversion",
  "thiserror",
+]
+
+[[package]]
+name = "xecute"
+version = "0.0.5-alpha.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "clap",
+ "log",
+ "log4rs",
+ "num_cpus",
+ "tokio",
 ]
 
 [[package]]
