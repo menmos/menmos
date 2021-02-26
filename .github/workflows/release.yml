@@ -50,6 +50,7 @@ jobs:
           mv target/release/amphora target/release/amphora/${{ matrix.amphora_artifact }}
           mv target/release/mmos target/release/${{ matrix.mmos_artifact }}
           mv target/release/menmosd target/release/${{ matrix.menmosd_artifact }}
+        shell: bash
 
       - name: Release
         uses: softprops/action-gh-release@v1
