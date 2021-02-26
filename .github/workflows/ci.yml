@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - '**'
+    - "**"
 
 jobs:
   unit:
@@ -22,14 +22,12 @@ jobs:
           toolchain: stable
 
       - name: Install
+        if: matrix.os == 'windows-latest'
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            git clone https://github.com/microsoft/vcpkg
-            .\vcpkg\bootstrap-vcpkg.bat
-            .\vcpkg\vcpkg integrate install
-            .\vcpkg\vcpkg install openssl-windows:x64-windows
-            .\vcpkg\vcpkg install openssl:x64-windows-static
-          fi
+          git clone https://github.com/microsoft/vcpkg
+          .\vcpkg\bootstrap-vcpkg.bat
+          .\vcpkg\vcpkg integrate install
+          .\vcpkg\vcpkg install openssl:x64-windows-static-md
         shell: pwsh
 
       - uses: Swatinem/rust-cache@v1
@@ -67,8 +65,7 @@ jobs:
           git clone https://github.com/microsoft/vcpkg
           .\vcpkg\bootstrap-vcpkg.bat
           .\vcpkg\vcpkg integrate install
-          .\vcpkg\vcpkg install openssl-windows:x64-windows
-          .\vcpkg\vcpkg install openssl:x64-windows-static
+          .\vcpkg\vcpkg install openssl:x64-windows-static-md
         shell: pwsh
 
       - uses: Swatinem/rust-cache@v1
