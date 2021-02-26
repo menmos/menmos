@@ -84,7 +84,7 @@ fn update_meta<N>(
 where
     N: StorageNode + Send + Sync,
 {
-    warp::post()
+    warp::put()
         .and(user(config.node.encryption_key))
         .and(with_node(node))
         .and(warp::path(BLOBS_PATH))

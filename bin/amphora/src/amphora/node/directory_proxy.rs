@@ -122,7 +122,7 @@ impl DirectoryProxy {
 
         let req = self
             .client
-            .put(url)
+            .post(url)
             .json(&blob_info)
             .bearer_auth(token)
             .build()?;

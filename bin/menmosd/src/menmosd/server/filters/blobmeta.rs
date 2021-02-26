@@ -21,7 +21,7 @@ pub fn all(
 fn create(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::put()
+    warp::post()
         .and(apikit::auth::storage_node(
             context.config.node.encryption_key.clone(),
         ))
@@ -36,7 +36,7 @@ fn create(
 fn update(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::post()
+    warp::put()
         .and(user(context.config.node.encryption_key.clone()))
         .and(with_context(context))
         .and(warp::path(BLOBS_PATH))

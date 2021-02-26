@@ -453,7 +453,7 @@ impl Client {
 
         let request = self
             .client
-            .post(&url)
+            .put(&url)
             .bearer_auth(&self.token)
             .json(&meta)
             .build()
@@ -464,7 +464,7 @@ impl Client {
         let response = self
             .execute(|| {
                 self.client
-                    .post(&redirect_location)
+                    .put(&redirect_location)
                     .bearer_auth(&self.token)
                     .json(&meta)
                     .build()
