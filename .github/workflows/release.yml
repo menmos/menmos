@@ -7,7 +7,22 @@ on:
 
 jobs:
   artifacts:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            mmos_artifact: mmos-linux-amd64
+            menmosd_artifact: menmosd-linux-amd64
+            amphora_artifact: amphora-linux-amd64
+          - os: macos-latest
+            mmos_artifact: mmos-macos-amd64
+            menmosd_artifact: menmosd-macos-amd64
+            amphora_artifact: amphora-macos-amd64
+          - os: windows-latest
+            mmos_artifact: mmos-windows-amd64
+            menmosd_artifact: menmosd-windows-amd64
+            amphora_artifact: amphora-windows-amd64
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -15,22 +30,34 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install libfuse
-        run: sudo apt-get update && sudo apt-get install -y libfuse-dev
-
       - name: Build/Release
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --release --workspace
 
+      - name: Install OpenSSL
+        if: matrix.os == 'windows-latest'
+        run: |
+          git clone https://github.com/microsoft/vcpkg
+          .\vcpkg\bootstrap-vcpkg.bat
+          .\vcpkg\vcpkg integrate install
+          .\vcpkg\vcpkg install openssl:x64-windows-static-md
+        shell: pwsh
+
+      - name: Prepare Assets
+        run: |
+          mv target/release/amphora target/release/amphora/${{ matrix.amphora_artifact }}
+          mv target/release/mmos target/release/${{ matrix.mmos_artifact }}
+          mv target/release/menmosd target/release/${{ matrix.menmosd_artifact }}
+
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            target/release/amphora
-            target/release/menmosd
-            target/release/mmos
+            target/release/${{ matrix.amphora_artifact }}
+            target/release/${{ matrix.mmos_artifact }}
+            target/release/${{ matrix.menmosd_artifact }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   docker:
