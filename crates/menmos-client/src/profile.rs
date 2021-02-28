@@ -33,6 +33,7 @@ fn get_config_path() -> Result<PathBuf> {
     Ok(cfg_dir_path.join("client").with_extension("toml"))
 }
 
+/// A client profile containing credentials to a menmos cluster.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Profile {
     pub host: String,
@@ -40,8 +41,10 @@ pub struct Profile {
     pub password: String,
 }
 
+/// A client configuration, as stored on disk.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Config {
+    /// The configuration profiles set by the user.
     pub profiles: HashMap<String, Profile>,
 }
 

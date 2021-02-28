@@ -128,3 +128,8 @@ As mentioned in the setup section, if running in HTTPS mode, the menmosd server 
 Even though you can absolutely run a menmosd instance in the cloud along with a firewalled amphora that is not exposed to the internet, doing so might lead to some puzzling behavior for users of your cluster (e.g. some files disappearing from a directory when the user leaves the house because direct connection to the amphora is lost).
 
 If you do not want to expose your amphora to the public internet, we strongly recommend running your cluster through something like [Tailscale](https://tailscale.com/) - it's what we do too :)
+
+## Additional Documentation
+[CLI Reference](https://github.com/menmos/menmos/wiki/CLI-Reference)
+
+[Query Syntax](https://github.com/menmos/menmos/wiki/Query-Syntax)
