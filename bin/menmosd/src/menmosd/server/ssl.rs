@@ -6,7 +6,7 @@ use std::{fs, str::FromStr};
 
 use anyhow::Result;
 
-use dns_server::{Config as DnsConfig, Server as DnsServer};
+use antidns::{Config as DnsConfig, Server as DnsServer};
 
 use futures::future::{AbortHandle, Abortable};
 

@@ -2,7 +2,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use anyhow::{anyhow, Result};
 
-use dns_server::{Config, Server};
+use antidns::{Config, Server};
 use trust_dns_resolver::{
     config::{NameServerConfig, ResolverConfig},
     proto::rr::{RData, Record},

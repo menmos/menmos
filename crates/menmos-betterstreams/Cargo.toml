@@ -1,9 +1,12 @@
 [package]
-name = "betterstreams"
+name = "menmos-betterstreams"
 version = "0.0.5-alpha.4"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
-publish = false
+
+[lib]
+name = "betterstreams"
+path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dev-dependencies]

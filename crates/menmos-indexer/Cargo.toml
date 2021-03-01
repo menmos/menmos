@@ -1,9 +1,13 @@
 [package]
-name = "indexer"
+name = "menmos-indexer"
 version = "0.0.5-alpha.4"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
-publish = false
+publish = false  # Can't publish while we have an unpublished sled dependency
+
+[lib]
+name = "indexer"
+path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dev-dependencies]
@@ -17,8 +21,8 @@ bitvec = {version = "0.20", features = ["serde"]}
 byteorder = "1.4.2"
 chrono = {version = "0.4", features = ["serde"]}
 futures = "0.3"
-interface = {path = "../interface"}
 log = "0.4"
+menmos-interface = {path = "../menmos-interface"}
 ring = "0.16"
 rust-argon2 = "0.8"
 sled = {git = "https://github.com/spacejam/sled", branch = "main"}

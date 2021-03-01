@@ -1,0 +1,25 @@
+[package]
+name = "menmos-testing"
+version = "0.0.5-alpha.4"
+authors = ["William Dussault <dalloriam@gmail.com>"]
+edition = "2018"
+publish = false # Can't publish because indexer has an unpublished dependency.
+
+[lib]
+name = "testing"
+path = "src/lib.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+amphora = {path = "../../bin/amphora"}
+anyhow = "1"
+futures = "0.3"
+log = "0.4"
+log4rs = "1"
+menmos-indexer = {path = "../menmos-indexer"}
+menmosd = {path = "../../bin/menmosd"}
+menmos-client = {path = "../menmos-client"}
+portpicker = "0.1"
+tempfile = "3.2"
+tokio = {version = "1.2", features = ["full"]}
