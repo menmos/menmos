@@ -140,7 +140,10 @@ impl Client {
 
     /// Create a new client from a configured profile with default settings.
     ///
-    /// The profiles are read from `$XDG_CONFIG_HOME/menmos/client.toml`
+    /// The profiles are read from
+    /// * `$XDG_CONFIG_HOME/menmos/client.toml` on Linux
+    /// * `~/Library/Application Support/menmos/client.toml` on MacOS
+    /// * `%APPDATA%\menmos\client.toml` on Windows
     pub async fn new_with_profile<S: Into<String>>(profile: S) -> Result<Self> {
         Self::new_with_params(Parameters {
             host_config: HostConfig::Profile {
