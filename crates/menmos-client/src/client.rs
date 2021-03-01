@@ -105,6 +105,7 @@ async fn extract<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> 
     }
 }
 
+/// The client, used for interacting witn a Menmos cluster.
 #[derive(Clone)]
 pub struct Client {
     client: ReqwestClient,
@@ -117,7 +118,7 @@ pub struct Client {
 type Result<T> = std::result::Result<T, ClientError>;
 
 impl Client {
-    /// Create a new client with default settings.
+    /// Create a new client from explicit credentials with default settings.
     pub async fn new<S: Into<String>, U: Into<String>, P: Into<String>>(
         directory_host: S,
         username: U,
@@ -137,6 +138,12 @@ impl Client {
         .await
     }
 
+    /// Create a new client from a configured profile with default settings.
+    ///
+    /// The profiles are read from
+    /// * `$XDG_CONFIG_HOME/menmos/client.toml` on Linux
+    /// * `~/Library/Application Support/menmos/client.toml` on MacOS
+    /// * `%APPDATA%\menmos\client.toml` on Windows
     pub async fn new_with_profile<S: Into<String>>(profile: S) -> Result<Self> {
         Self::new_with_params(Parameters {
             host_config: HostConfig::Profile {
@@ -150,6 +157,7 @@ impl Client {
         .await
     }
 
+    /// Get a client builder to get better control on how the client is configured.
     pub fn builder() -> ClientBuilder {
         ClientBuilder::default()
     }
@@ -315,6 +323,9 @@ impl Client {
         Ok(resp.token)
     }
 
+    /// Create an empty file on the cluster with the provided meta.
+    ///
+    /// Returns the created file's ID.
     pub async fn create_empty(&self, meta: BlobMeta) -> Result<String> {
         let url = format!("{}/blob", self.host);
         let meta_b64 = encode_metadata(meta)?;
@@ -381,6 +392,9 @@ impl Client {
         Ok(put_response.id)
     }
 
+    /// Send a health check request to the cluster.
+    ///
+    /// Returns the cluster health status as a string.
     pub async fn health(&self) -> Result<String> {
         let url = format!("{}/health", self.host);
 
@@ -398,6 +412,7 @@ impl Client {
         }
     }
 
+    /// List all storage nodes currently authenticated with the cluster.
     pub async fn list_storage_nodes(&self) -> Result<ListStorageNodesResponse> {
         let url = format!("{}/node/storage", self.host);
 
@@ -414,11 +429,17 @@ impl Client {
         extract_body(response).await
     }
 
+    /// Pushes a file with the specified meta to the cluster.
+    ///
+    /// Returns the ID of the created file.
     pub async fn push<P: AsRef<Path>>(&self, path: P, meta: BlobMeta) -> Result<String> {
         self.push_internal(path, meta, format!("{}/blob", self.host))
             .await
     }
 
+    /// Update a blob's content.
+    ///
+    /// Returns the ID of the updated file. Should always be equal to `blob_id`.
     pub async fn update_blob<P: AsRef<Path>>(
         &self,
         blob_id: &str,
@@ -429,6 +450,10 @@ impl Client {
             .await
     }
 
+    /// Lists all metadata values in the cluster.
+    ///
+    /// `tags` is an optional whitelist of tags to compute. When absent, all tags are included.
+    /// `meta_keys` is an optional whitelist of keys to compute. When absent, all key/value pairs are included (this can be very expensive).
     pub async fn list_meta(
         &self,
         tags: Option<Vec<String>>,
@@ -448,6 +473,7 @@ impl Client {
         extract(response).await
     }
 
+    /// Update a blob's metadata without touching the contents of the file.
     pub async fn update_meta(&self, blob_id: &str, meta: BlobMeta) -> Result<()> {
         let url = format!("{}/blob/{}/metadata", self.host, blob_id);
 
@@ -479,6 +505,9 @@ impl Client {
         }
     }
 
+    /// Force synchronization of a blob to its backing storage.
+    ///
+    /// This is an advanced feature, and should only be called by people who know what they are doing.
     pub async fn fsync(&self, blob_id: &str) -> Result<()> {
         let url = format!("{}/blob/{}/fsync", self.host, blob_id);
 
@@ -508,6 +537,7 @@ impl Client {
         }
     }
 
+    /// Write a byte buffer to a specified offset in a blob.
     pub async fn write(&self, blob_id: &str, offset: u64, buffer: Bytes) -> Result<()> {
         let url = format!("{}/blob/{}", self.host, blob_id);
 
@@ -550,6 +580,7 @@ impl Client {
         }
     }
 
+    /// Get a blob's metadata.
     pub async fn get_meta(&self, blob_id: &str) -> Result<Option<BlobMeta>> {
         let url = format!("{}/blob/{}/metadata", self.host, blob_id);
 
@@ -567,6 +598,7 @@ impl Client {
         Ok(resp.meta)
     }
 
+    /// Get a blob's body as a stream of bytes.
     pub async fn get_file(&self, blob_id: &str) -> Result<impl Stream<Item = Result<Bytes>>> {
         let url = format!("{}/blob/{}", self.host, blob_id);
 
@@ -602,6 +634,9 @@ impl Client {
     // TODO: Use a rust range instead of a tuple
     // TODO: Return a stream of Bytes buffers.
     // Note: range is end-inclusive here. TODO: Clarify when ranges are inclusive vs. exclusive.
+    /// Read a subset of a blob.
+    ///
+    /// The `range` argument is end-inclusive.
     pub async fn read_range(&self, blob_id: &str, range: (u64, u64)) -> Result<Vec<u8>> {
         let url = format!("{}/blob/{}", self.host, blob_id);
 
@@ -635,6 +670,7 @@ impl Client {
         }
     }
 
+    /// Send a query to the cluster.
     pub async fn query(&self, query: Query) -> Result<QueryResponse> {
         let url = format!("{}/query", self.host);
 
@@ -651,6 +687,7 @@ impl Client {
         extract(response).await
     }
 
+    /// Delete a blob from the cluster.
     pub async fn delete(&self, blob_id: String) -> Result<()> {
         let url = format!("{}/blob/{}", self.host, blob_id);
 

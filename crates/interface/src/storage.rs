@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use warp::hyper::body::Bytes;
 
+/// The type of a blob in a menmos cluster (file or directory).
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub enum Type {
     File,
@@ -43,14 +44,26 @@ impl CertificateInfo {
     }
 }
 
+/// Metadata associated with a blob.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct BlobMeta {
+    /// The name of this blob. Does not need to be unique.
     pub name: String,
+
+    /// The type of this blob.
     pub blob_type: Type,
+
+    /// The key/value pairs for this blob.
     pub metadata: HashMap<String, String>,
+
+    /// The tags for this blob.
     pub tags: Vec<String>,
+
+    /// This blob's parent IDs.
     pub parents: Vec<String>,
+
+    /// This blob's size, in bytes.
     pub size: u64,
 }
 

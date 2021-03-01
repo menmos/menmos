@@ -5,7 +5,7 @@ use anyhow::Result;
 
 use async_trait::async_trait;
 
-use rapidquery::Expression;
+pub use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
 
@@ -32,12 +32,22 @@ pub struct FacetResponse {
     pub meta: HashMap<String, HashMap<String, u64>>,
 }
 
+/// The results of a query.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct QueryResponse {
+    /// The number of hits returned with this response.
     pub count: usize,
+
+    /// The total number of hits.
     pub total: usize,
+
+    /// The query hits.
     pub hits: Vec<Hit>,
+
+    /// The facets computed for this query.
+    ///
+    /// Returned only if requested with the query.
     pub facets: Option<FacetResponse>,
 }
 
@@ -75,9 +85,11 @@ pub struct MetadataList {
     pub meta: HashMap<String, HashMap<String, usize>>,
 }
 
+/// A query that can be sent to a Menmos cluster.
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Query {
+    /// The query expression.
     pub expression: Expression,
     pub from: usize,
     pub size: usize,
