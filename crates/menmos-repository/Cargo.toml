@@ -1,21 +1,24 @@
 [package]
-name = "repository"
+name = "menmos-repository"
 version = "0.0.5-alpha.4"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
-publish = false
+
+[lib]
+name = "repository"
+path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "1"
 async-trait = "0.1.42"
-betterstreams = {path = "../betterstreams"}
 bytes = "1"
 futures = "0.3"
-interface = {path = "../interface"}
 lfan = {path = "../lfan", features = ["async"]}
 log = "0.4"
+menmos-betterstreams = {path = "../menmos-betterstreams"}
+menmos-interface = {path = "../menmos-interface"}
 rusoto_core = "0.46"
 rusoto_s3 = "0.46"
 tokio = {version = "1.2", features = ["full"]}

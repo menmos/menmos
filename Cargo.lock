@@ -30,7 +30,6 @@ name = "amphora"
 version = "0.0.5-alpha.4"
 dependencies = [
  "anyhow",
- "apikit",
  "async-trait",
  "base64 0.13.0",
  "bincode",
@@ -41,17 +40,19 @@ dependencies = [
  "futures",
  "headers",
  "http",
- "interface",
  "local_ipaddress",
  "log",
  "machine-uid",
+ "menmos-apikit",
  "menmos-client",
+ "menmos-interface",
+ "menmos-protocol",
+ "menmos-repository",
+ "menmos-xecute",
  "mime",
  "mpart-async",
  "portpicker",
- "protocol",
  "public-ip",
- "repository",
  "reqwest",
  "rusoto_core",
  "rusoto_s3",
@@ -61,7 +62,6 @@ dependencies = [
  "tempfile",
  "tokio",
  "warp",
- "xecute",
 ]
 
 [[package]]
@@ -69,19 +69,6 @@ name = "anyhow"
 version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
-
-[[package]]
-name = "apikit"
-version = "0.0.5-alpha.4"
-dependencies = [
- "anyhow",
- "bincode",
- "branca",
- "chrono",
- "log",
- "serde 1.0.123",
- "warp",
-]
 
 [[package]]
 name = "arc-swap"
@@ -185,18 +172,6 @@ name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
-
-[[package]]
-name = "betterstreams"
-version = "0.0.5-alpha.4"
-dependencies = [
- "anyhow",
- "bytes",
- "futures",
- "log",
- "tokio",
- "tokio-util",
-]
 
 [[package]]
 name = "bincode"
@@ -651,20 +626,6 @@ name = "discard"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
-
-[[package]]
-name = "dns-server"
-version = "0.0.5-alpha.4"
-dependencies = [
- "anyhow",
- "log",
- "nom 6.1.0",
- "portpicker",
- "serde 1.0.123",
- "snafu",
- "tokio",
- "trust-dns-resolver",
-]
 
 [[package]]
 name = "doc-comment"
@@ -1158,26 +1119,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indexer"
-version = "0.0.5-alpha.4"
-dependencies = [
- "anyhow",
- "async-trait",
- "bincode",
- "bitvec 0.20.1",
- "byteorder",
- "chrono",
- "futures",
- "interface",
- "log",
- "ring",
- "rust-argon2",
- "sled 0.34.6 (git+https://github.com/spacejam/sled?branch=main)",
- "tempfile",
- "tokio",
-]
-
-[[package]]
 name = "indexmap"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1203,22 +1144,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61124eeebbd69b8190558df225adf7e4caafce0d743919e5d6b19652314ec5ec"
 dependencies = [
  "cfg-if 1.0.0",
-]
-
-[[package]]
-name = "interface"
-version = "0.0.5-alpha.4"
-dependencies = [
- "anyhow",
- "async-trait",
- "base64 0.13.0",
- "bytes",
- "futures",
- "headers",
- "rapidquery",
- "reqwest",
- "serde 1.0.123",
- "warp",
 ]
 
 [[package]]
@@ -1422,6 +1347,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "menmos-antidns"
+version = "0.0.5-alpha.4"
+dependencies = [
+ "anyhow",
+ "log",
+ "nom 6.1.0",
+ "portpicker",
+ "serde 1.0.123",
+ "snafu",
+ "tokio",
+ "trust-dns-resolver",
+]
+
+[[package]]
+name = "menmos-apikit"
+version = "0.0.5-alpha.4"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "branca",
+ "chrono",
+ "log",
+ "serde 1.0.123",
+ "warp",
+]
+
+[[package]]
+name = "menmos-betterstreams"
+version = "0.0.5-alpha.4"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "futures",
+ "log",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "menmos-cli"
 version = "0.0.5-alpha.4"
 dependencies = [
@@ -1430,8 +1394,8 @@ dependencies = [
  "clap",
  "dirs",
  "futures",
- "interface",
  "menmos-client",
+ "menmos-interface",
  "nix",
  "rood",
  "serde 1.0.123",
@@ -1443,16 +1407,16 @@ dependencies = [
 name = "menmos-client"
 version = "0.0.5-alpha.4"
 dependencies = [
- "apikit",
  "base64 0.13.0",
  "bytes",
  "dirs",
  "futures",
  "hyper",
- "interface",
  "log",
+ "menmos-apikit",
+ "menmos-interface",
+ "menmos-protocol",
  "mpart-async",
- "protocol",
  "reqwest",
  "serde 1.0.123",
  "serde_json",
@@ -1462,13 +1426,105 @@ dependencies = [
 ]
 
 [[package]]
+name = "menmos-indexer"
+version = "0.0.5-alpha.4"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bincode",
+ "bitvec 0.20.1",
+ "byteorder",
+ "chrono",
+ "futures",
+ "log",
+ "menmos-interface",
+ "ring",
+ "rust-argon2",
+ "sled 0.34.6 (git+https://github.com/spacejam/sled?branch=main)",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "menmos-interface"
+version = "0.0.5-alpha.4"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.13.0",
+ "bytes",
+ "futures",
+ "headers",
+ "rapidquery",
+ "reqwest",
+ "serde 1.0.123",
+ "warp",
+]
+
+[[package]]
+name = "menmos-protocol"
+version = "0.0.5-alpha.4"
+dependencies = [
+ "anyhow",
+ "menmos-interface",
+ "rapidquery",
+ "serde 1.0.123",
+]
+
+[[package]]
+name = "menmos-repository"
+version = "0.0.5-alpha.4"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes",
+ "futures",
+ "lfan",
+ "log",
+ "menmos-betterstreams",
+ "menmos-interface",
+ "rusoto_core",
+ "rusoto_s3",
+ "tokio",
+]
+
+[[package]]
+name = "menmos-testing"
+version = "0.0.5-alpha.4"
+dependencies = [
+ "amphora",
+ "anyhow",
+ "futures",
+ "log",
+ "log4rs",
+ "menmos-client",
+ "menmos-indexer",
+ "menmosd",
+ "portpicker",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "menmos-xecute"
+version = "0.0.5-alpha.4"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "clap",
+ "log",
+ "log4rs",
+ "num_cpus",
+ "tokio",
+]
+
+[[package]]
 name = "menmosd"
 version = "0.0.5-alpha.4"
 dependencies = [
  "acme-lib",
  "amphora",
  "anyhow",
- "apikit",
  "async-trait",
  "base64 0.13.0",
  "bincode",
@@ -1479,31 +1535,32 @@ dependencies = [
  "clap",
  "config",
  "dirs",
- "dns-server",
  "env_logger",
  "external-ip",
  "futures",
  "headers",
- "indexer",
- "interface",
  "ipnetwork",
  "log",
+ "menmos-antidns",
+ "menmos-apikit",
  "menmos-client",
+ "menmos-indexer",
+ "menmos-interface",
+ "menmos-protocol",
+ "menmos-testing",
+ "menmos-xecute",
  "mime",
  "portpicker",
- "protocol",
  "rapidquery",
  "reqwest",
  "serde 1.0.123",
  "serde_json",
  "sled 0.34.6 (git+https://github.com/spacejam/sled?branch=main)",
  "tempfile",
- "testing",
  "tokio",
  "uuid",
  "warp",
  "x509-parser",
- "xecute",
 ]
 
 [[package]]
@@ -1942,16 +1999,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "protocol"
-version = "0.0.5-alpha.4"
-dependencies = [
- "anyhow",
- "interface",
- "rapidquery",
- "serde 1.0.123",
-]
-
-[[package]]
 name = "public-ip"
 version = "0.1.1"
 source = "git+https://github.com/avitex/rust-public-ip?rev=09c3c33#09c3c33e7a6dc1cf7610e79905d5b814a088587d"
@@ -2302,23 +2349,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "repository"
-version = "0.0.5-alpha.4"
-dependencies = [
- "anyhow",
- "async-trait",
- "betterstreams",
- "bytes",
- "futures",
- "interface",
- "lfan",
- "log",
- "rusoto_core",
- "rusoto_s3",
- "tokio",
 ]
 
 [[package]]
@@ -2984,23 +3014,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "testing"
-version = "0.0.5-alpha.4"
-dependencies = [
- "amphora",
- "anyhow",
- "futures",
- "indexer",
- "log",
- "log4rs",
- "menmos-client",
- "menmosd",
- "portpicker",
- "tempfile",
- "tokio",
 ]
 
 [[package]]
@@ -3763,19 +3776,6 @@ dependencies = [
  "rusticata-macros",
  "rustversion",
  "thiserror",
-]
-
-[[package]]
-name = "xecute"
-version = "0.0.5-alpha.4"
-dependencies = [
- "anyhow",
- "async-trait",
- "clap",
- "log",
- "log4rs",
- "num_cpus",
- "tokio",
 ]
 
 [[package]]
