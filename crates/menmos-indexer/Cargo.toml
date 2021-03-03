@@ -22,7 +22,7 @@ byteorder = "1.4.2"
 chrono = {version = "0.4", features = ["serde"]}
 futures = "0.3"
 log = "0.4"
-menmos-interface = {path = "../menmos-interface"}
+menmos-interface = "0.0.5"
 ring = "0.16"
 rust-argon2 = "0.8"
 sled = {git = "https://github.com/spacejam/sled", branch = "main"}

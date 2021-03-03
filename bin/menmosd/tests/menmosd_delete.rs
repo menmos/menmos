@@ -1,6 +1,4 @@
 //! Test blob deletion capabilities.
-mod util;
-
 use anyhow::Result;
 use menmos_client::Meta;
 use testing::fixtures::Menmos;

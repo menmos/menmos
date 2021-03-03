@@ -1,8 +1,10 @@
 [package]
 name = "rapidquery"
-version = "0.0.5-alpha.4"
+version = "0.0.5"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
+description = "Rapid Query Executor"
+license = "Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

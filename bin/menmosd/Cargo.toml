@@ -42,14 +42,14 @@ futures = "0.3"
 headers = "=0.3.3"
 ipnetwork = "0.17"
 log = "0.4"
-menmos-antidns = {path = "../../crates/menmos-antidns"}
-menmos-apikit = {path = "../../crates/menmos-apikit"}
-menmos-indexer = {path = "../../crates/menmos-indexer"}
-menmos-interface = {path = "../../crates/menmos-interface"}
-menmos-protocol = {path = "../../crates/menmos-protocol"}
-menmos-xecute = {path = "../../crates/menmos-xecute"}
+menmos-antidns = "0.0.5"
+menmos-apikit = "0.0.5"
+menmos-indexer = { path = "../../crates/menmos-indexer"}
+menmos-interface = "0.0.5"
+menmos-protocol = "0.0.5"
+menmos-xecute = "0.0.5"
 mime = "0.3"
-rapidquery = {path = "../../crates/rapidquery", features=["bitvec_span"]}
+rapidquery = {version = "0.0.5", features=["bitvec_span"]}
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 sled = {git = "https://github.com/spacejam/sled", branch = "main"}
