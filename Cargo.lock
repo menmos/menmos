@@ -27,7 +27,7 @@ dependencies = [
 
 [[package]]
 name = "amphora"
-version = "0.0.5-alpha.4"
+version = "0.0.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1373,7 +1373,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-cli"
-version = "0.0.5-alpha.4"
+version = "0.0.5"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -1413,7 +1413,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-indexer"
-version = "0.0.5-alpha.4"
+version = "0.0.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1476,7 +1476,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-testing"
-version = "0.0.5-alpha.4"
+version = "0.0.5"
 dependencies = [
  "amphora",
  "anyhow",
@@ -1506,7 +1506,7 @@ dependencies = [
 
 [[package]]
 name = "menmosd"
-version = "0.0.5-alpha.4"
+version = "0.0.5"
 dependencies = [
  "acme-lib",
  "amphora",
