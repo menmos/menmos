@@ -76,10 +76,9 @@ impl DaemonProcess {
             )
             .get_matches();
 
-        let cfg: Option<PathBuf> = matches.value_of_t("config").map_or(None, |f| Some(f));
+        let cfg: Option<PathBuf> = matches.value_of_t("config").ok();
 
-        let log_config: Option<PathBuf> =
-            matches.value_of_t("log_config").map_or(None, |f| Some(f));
+        let log_config: Option<PathBuf> = matches.value_of_t("log_config").ok();
 
         if let Err(e) = main_loop(cfg, log_config, daemon) {
             log::error!("fatal: {}", e);

@@ -18,6 +18,12 @@ impl AmphoraDaemon {
     }
 }
 
+impl Default for AmphoraDaemon {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl Daemon for AmphoraDaemon {
     type Config = Config;
