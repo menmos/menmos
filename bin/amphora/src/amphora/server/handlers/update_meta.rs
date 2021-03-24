@@ -2,18 +2,18 @@ use std::sync::Arc;
 
 use apikit::{auth::UserIdentity, reject::InternalServerError};
 
-use interface::{BlobInfo, BlobMeta, StorageNode};
+use interface::{BlobInfoRequest, BlobMetaRequest, StorageNode};
 
 pub async fn update_meta<N: StorageNode>(
     user: UserIdentity,
     node: Arc<N>,
     blob_id: String,
-    meta: BlobMeta,
+    meta_request: BlobMetaRequest,
 ) -> Result<warp::reply::Response, warp::Rejection> {
     node.update_meta(
         blob_id,
-        BlobInfo {
-            meta,
+        BlobInfoRequest {
+            meta_request,
             owner: user.username,
         },
     )

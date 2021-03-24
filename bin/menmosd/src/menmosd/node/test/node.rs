@@ -2,8 +2,12 @@ use std::net::IpAddr;
 
 use anyhow::Result;
 
+use chrono::Utc;
+
 use indexer::Index;
-use interface::{BlobInfo, BlobMeta, DirectoryNode, Query, QueryResponse, StorageNodeInfo, Type};
+use interface::{
+    BlobInfo, BlobMetaRequest, DirectoryNode, Query, QueryResponse, StorageNodeInfo, Type,
+};
 use tempfile::TempDir;
 
 use crate::Directory;
@@ -24,33 +28,32 @@ fn get_storage_node_info(name: &str) -> StorageNodeInfo {
 
 async fn index<S: AsRef<str>, N: DirectoryNode>(
     id: S,
-    meta: BlobMeta,
+    meta_request: BlobMetaRequest,
     node: &N,
 ) -> StorageNodeInfo {
-    let info = BlobInfo {
-        meta: meta.clone(),
-        owner: String::from("admin"),
-    };
-
-    let tgt_storage_node = node.add_blob(id.as_ref(), info.clone()).await.unwrap();
-
-    node.index_blob(id.as_ref(), info, &tgt_storage_node.id)
+    let tgt_storage_node = node
+        .pick_node_for_blob(id.as_ref(), meta_request.clone())
         .await
         .unwrap();
+
+    node.index_blob(
+        id.as_ref(),
+        BlobInfo {
+            owner: "admin".to_string(),
+            meta: meta_request.into_meta(Utc::now(), Utc::now()),
+        },
+        &tgt_storage_node.id,
+    )
+    .await
+    .unwrap();
     tgt_storage_node
 }
 
 #[tokio::test]
-async fn add_blob_with_no_storage_nodes() {
+async fn pick_node_for_blob_with_no_storage_nodes() {
     let node = TestDirNode::new(MockIndex::default());
     assert!(node
-        .add_blob(
-            "bing",
-            BlobInfo {
-                meta: BlobMeta::new("somename", Type::File),
-                owner: String::from("admin")
-            }
-        )
+        .pick_node_for_blob("bing", BlobMetaRequest::new("somename", Type::File),)
         .await
         .is_err());
 }
@@ -65,13 +68,13 @@ async fn register_storage_node_ok() {
 }
 
 #[tokio::test]
-async fn add_blob_with_single_node() {
+async fn pick_node_for_blob_with_single_node() {
     let node = TestDirNode::new(MockIndex::default());
 
     let storage = get_storage_node_info("alpha");
     node.register_storage_node(storage.clone()).await.unwrap();
 
-    let actual = index("bing", BlobMeta::new("somename", Type::File), &node).await;
+    let actual = index("bing", BlobMetaRequest::new("somename", Type::File), &node).await;
 
     assert_eq!(storage, actual);
 }
@@ -92,7 +95,7 @@ async fn add_multiblob_round_robin() {
     for i in 0..100 as i32 {
         let tgt_storage_node = index(
             &format!("{}", i),
-            BlobMeta::new("somename", Type::File),
+            BlobMetaRequest::new("somename", Type::File),
             &node,
         )
         .await;
@@ -116,7 +119,12 @@ async fn get_blob_node_multiblob() {
 
     for i in 0..100 as i32 {
         let blob_id = format!("{}", i);
-        index(&blob_id, BlobMeta::new("somename", Type::File), &node).await;
+        index(
+            &blob_id,
+            BlobMetaRequest::new("somename", Type::File),
+            &node,
+        )
+        .await;
 
         let tgt_storage_node = node.get_blob_storage_node(&blob_id).await.unwrap().unwrap();
 
@@ -156,13 +164,13 @@ async fn query_single_tag() {
 
     index(
         "alpha",
-        BlobMeta::new("somename", Type::File).with_tag("world"),
+        BlobMetaRequest::new("somename", Type::File).with_tag("world"),
         &node,
     )
     .await;
     index(
         "beta",
-        BlobMeta::new("somename", Type::File).with_tag("hello"),
+        BlobMetaRequest::new("somename", Type::File).with_tag("hello"),
         &node,
     )
     .await;
@@ -186,14 +194,14 @@ async fn query_single_kv() {
 
     index(
         "alpha",
-        BlobMeta::new("somename", Type::File).with_meta("hello", "there"),
+        BlobMetaRequest::new("somename", Type::File).with_meta("hello", "there"),
         &node,
     )
     .await;
 
     index(
         "beta",
-        BlobMeta::new("somename", Type::File).with_meta("hello", "world"),
+        BlobMetaRequest::new("somename", Type::File).with_meta("hello", "world"),
         &node,
     )
     .await;
@@ -217,14 +225,14 @@ async fn query_multi_tag() {
 
     index(
         "alpha",
-        BlobMeta::new("somename", Type::File).with_tag("world"),
+        BlobMetaRequest::new("somename", Type::File).with_tag("world"),
         &node,
     )
     .await;
 
     index(
         "beta",
-        BlobMeta::new("somename", Type::File)
+        BlobMetaRequest::new("somename", Type::File)
             .with_tag("hello")
             .with_tag("world"),
         &node,
@@ -233,7 +241,7 @@ async fn query_multi_tag() {
 
     index(
         "gamma",
-        BlobMeta::new("somename", Type::File).with_tag("there"),
+        BlobMetaRequest::new("somename", Type::File).with_tag("there"),
         &node,
     )
     .await;
@@ -257,13 +265,13 @@ async fn query_single_tag_no_match() {
 
     index(
         "alpha",
-        BlobMeta::new("somename", Type::File).with_tag("world"),
+        BlobMetaRequest::new("somename", Type::File).with_tag("world"),
         &node,
     )
     .await;
     index(
         "beta",
-        BlobMeta::new("somename", Type::File).with_tag("hello"),
+        BlobMetaRequest::new("somename", Type::File).with_tag("hello"),
         &node,
     )
     .await;
@@ -290,22 +298,27 @@ async fn query_children() -> Result<()> {
     node.register_storage_node(get_storage_node_info("alpha"))
         .await?;
 
-    index("mydirectory", BlobMeta::new("somename", Type::File), &node).await;
+    index(
+        "mydirectory",
+        BlobMetaRequest::new("somename", Type::File),
+        &node,
+    )
+    .await;
     index(
         "beta",
-        BlobMeta::new("somename", Type::File).with_parent("mydirectory"),
+        BlobMetaRequest::new("somename", Type::File).with_parent("mydirectory"),
         &node,
     )
     .await;
     index(
         "gamma",
-        BlobMeta::new("somename", Type::File).with_parent("mydirectory"),
+        BlobMetaRequest::new("somename", Type::File).with_parent("mydirectory"),
         &node,
     )
     .await;
     index(
         "omega",
-        BlobMeta::new("somename", Type::File).with_parent("otherdirectory"),
+        BlobMetaRequest::new("somename", Type::File).with_parent("otherdirectory"),
         &node,
     )
     .await;
@@ -333,19 +346,19 @@ async fn list_metadata_tags() -> Result<()> {
 
     index(
         "alpha",
-        BlobMeta::new("somename", Type::File).with_tag("bing"),
+        BlobMetaRequest::new("somename", Type::File).with_tag("bing"),
         &node,
     )
     .await;
     index(
         "beta",
-        BlobMeta::new("somename", Type::File).with_tag("bing"),
+        BlobMetaRequest::new("somename", Type::File).with_tag("bing"),
         &node,
     )
     .await;
     index(
         "gamma",
-        BlobMeta::new("somename", Type::File).with_tag("bong"),
+        BlobMetaRequest::new("somename", Type::File).with_tag("bong"),
         &node,
     )
     .await;
@@ -368,8 +381,8 @@ async fn document_deletion_missing_document_with_not() -> Result<()> {
     node.register_storage_node(get_storage_node_info("alpha"))
         .await?;
 
-    index("alpha", BlobMeta::new("somename", Type::File), &node).await;
-    index("beta", BlobMeta::new("somename", Type::File), &node).await;
+    index("alpha", BlobMetaRequest::new("somename", Type::File), &node).await;
+    index("beta", BlobMetaRequest::new("somename", Type::File), &node).await;
 
     let results = node.query(&Query::default(), "admin").await?;
     assert_eq!(results.total, 2);
@@ -392,7 +405,7 @@ async fn faceting_basic() -> Result<()> {
 
     index(
         "alpha",
-        BlobMeta::new("somename", Type::File)
+        BlobMetaRequest::new("somename", Type::File)
             .with_tag("a")
             .with_meta("hello", "world"),
         &node,
@@ -401,7 +414,7 @@ async fn faceting_basic() -> Result<()> {
 
     index(
         "beta",
-        BlobMeta::new("somename", Type::File)
+        BlobMetaRequest::new("somename", Type::File)
             .with_tag("b")
             .with_meta("hello", "world"),
         &node,
@@ -410,7 +423,7 @@ async fn faceting_basic() -> Result<()> {
 
     index(
         "gamma",
-        BlobMeta::new("somename", Type::File)
+        BlobMetaRequest::new("somename", Type::File)
             .with_tag("a")
             .with_meta("hello", "there"),
         &node,
@@ -441,7 +454,7 @@ async fn facet_grouping() -> Result<()> {
 
     index(
         "alpha",
-        BlobMeta::new("somename", Type::File)
+        BlobMetaRequest::new("somename", Type::File)
             .with_tag("a")
             .with_meta("hello", "world"),
         &node,
@@ -450,7 +463,7 @@ async fn facet_grouping() -> Result<()> {
 
     index(
         "beta",
-        BlobMeta::new("somename", Type::File)
+        BlobMetaRequest::new("somename", Type::File)
             .with_tag("b")
             .with_meta("hello", "world"),
         &node,
@@ -459,7 +472,7 @@ async fn facet_grouping() -> Result<()> {
 
     index(
         "gamma",
-        BlobMeta::new("somename", Type::File)
+        BlobMetaRequest::new("somename", Type::File)
             .with_tag("a")
             .with_meta("hello", "there"),
         &node,

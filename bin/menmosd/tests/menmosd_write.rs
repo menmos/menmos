@@ -56,3 +56,37 @@ async fn extend_blob() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn datetime_handling() -> Result<()> {
+    let mut cluster = Menmos::new().await?;
+    cluster.add_amphora("alpha").await?;
+
+    let blob_id = cluster
+        .push_document("Hello world", Meta::file("test_blob"))
+        .await?;
+
+    // Make sure datetimes make sense.
+    let meta = cluster.client.get_meta(&blob_id).await?.unwrap();
+
+    let created_at = meta.created_at;
+    let modified_at = meta.modified_at;
+
+    assert_eq!(created_at, modified_at);
+
+    // Update the file and make sure the meta was updated.
+    cluster
+        .client
+        .write(&blob_id, 0, Bytes::from_static(b"its me"))
+        .await?;
+
+    let after_meta = cluster.client.get_meta(&blob_id).await?.unwrap();
+
+    // Created at shouldn't change.
+    assert_eq!(after_meta.created_at, created_at);
+
+    // Modified at should have changed.
+    assert!(after_meta.modified_at > created_at);
+
+    Ok(())
+}

@@ -29,7 +29,9 @@ use reqwest::Body;
 use serde::de::DeserializeOwned;
 use snafu::{ensure, ResultExt, Snafu};
 
-use crate::{parameters::HostConfig, profile::ProfileError, ClientBuilder, Config, Parameters};
+use crate::{
+    parameters::HostConfig, profile::ProfileError, ClientBuilder, Config, Meta, Parameters,
+};
 
 #[derive(Debug, Snafu)]
 pub enum ClientError {
@@ -45,7 +47,7 @@ pub enum ClientError {
     #[snafu(display("failed to serialize metadata [{:?}]: {}", meta, source))]
     MetaSerializationError {
         source: serde_json::Error,
-        meta: BlobMeta,
+        meta: Meta,
     },
 
     #[snafu(display("the redirect limit of {} was exceeded", limit))]
@@ -79,7 +81,7 @@ pub enum ClientError {
     UnknownError,
 }
 
-fn encode_metadata(meta: BlobMeta) -> Result<String> {
+fn encode_metadata(meta: Meta) -> Result<String> {
     let serialized_meta = serde_json::to_vec(&meta).context(MetaSerializationError { meta })?;
     Ok(base64::encode(&serialized_meta))
 }
@@ -326,7 +328,7 @@ impl Client {
     /// Create an empty file on the cluster with the provided meta.
     ///
     /// Returns the created file's ID.
-    pub async fn create_empty(&self, meta: BlobMeta) -> Result<String> {
+    pub async fn create_empty(&self, meta: Meta) -> Result<String> {
         let url = format!("{}/blob", self.host);
         let meta_b64 = encode_metadata(meta)?;
 
@@ -358,7 +360,7 @@ impl Client {
     async fn push_internal<P: AsRef<Path>>(
         &self,
         path: P,
-        meta: BlobMeta,
+        meta: Meta,
         base_url: String,
     ) -> Result<String> {
         ensure!(
@@ -432,7 +434,7 @@ impl Client {
     /// Pushes a file with the specified meta to the cluster.
     ///
     /// Returns the ID of the created file.
-    pub async fn push<P: AsRef<Path>>(&self, path: P, meta: BlobMeta) -> Result<String> {
+    pub async fn push<P: AsRef<Path>>(&self, path: P, meta: Meta) -> Result<String> {
         self.push_internal(path, meta, format!("{}/blob", self.host))
             .await
     }
@@ -444,7 +446,7 @@ impl Client {
         &self,
         blob_id: &str,
         path: P,
-        meta: BlobMeta,
+        meta: Meta,
     ) -> Result<String> {
         self.push_internal(path, meta, format!("{}/blob/{}", self.host, blob_id))
             .await
@@ -474,7 +476,7 @@ impl Client {
     }
 
     /// Update a blob's metadata without touching the contents of the file.
-    pub async fn update_meta(&self, blob_id: &str, meta: BlobMeta) -> Result<()> {
+    pub async fn update_meta(&self, blob_id: &str, meta: Meta) -> Result<()> {
         let url = format!("{}/blob/{}/metadata", self.host, blob_id);
 
         let request = self
