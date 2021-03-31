@@ -7,8 +7,8 @@ use bitvec::prelude::*;
 use chrono::Duration;
 
 use interface::{
-    BlobInfo, DirectoryNode, FacetResponse, Hit, MetadataList, Query, QueryResponse,
-    StorageNodeInfo, StorageNodeResponseData,
+    BlobInfo, BlobMetaRequest, DirectoryNode, FacetResponse, Hit, MetadataList, Query,
+    QueryResponse, StorageNodeInfo, StorageNodeResponseData,
 };
 
 use rapidquery::Resolver;
@@ -65,35 +65,6 @@ where
             log::warn!("called prune_last_node with an empty node list")
         }
         Ok(())
-    }
-
-    fn pick_node(&self, _info: &BlobInfo) -> Result<StorageNodeInfo> {
-        loop {
-            // Get the node ID.
-            let node_id = {
-                let mut guard = self
-                    .nodes_round_robin
-                    .lock()
-                    .map_err(|_| anyhow!("poisoned mutex"))?;
-                let round_robin = &mut guard;
-                let node_id = round_robin
-                    .pop_front()
-                    .ok_or_else(|| anyhow!("No storage node defined"))?;
-
-                // Push back to update the round-robin
-                round_robin.push_back(node_id.clone());
-
-                node_id
-            };
-
-            // Fetch the storage node associated with the ID.
-            if let Some(node) = self.get_node_if_fresh(&node_id)? {
-                return Ok(node);
-            } else {
-                // Node is non-existent or stale.
-                self.prune_last_node()?;
-            }
-        }
     }
 
     fn load_document(&self, idx: u32) -> Result<Hit> {
@@ -155,8 +126,37 @@ where
         Ok(StorageNodeResponseData { rebuild_requested })
     }
 
-    async fn add_blob(&self, _blob_id: &str, info: BlobInfo) -> Result<StorageNodeInfo> {
-        self.pick_node(&info)
+    async fn pick_node_for_blob(
+        &self,
+        _blob_id: &str,
+        _meta: BlobMetaRequest,
+    ) -> Result<StorageNodeInfo> {
+        loop {
+            // Get the node ID.
+            let node_id = {
+                let mut guard = self
+                    .nodes_round_robin
+                    .lock()
+                    .map_err(|_| anyhow!("poisoned mutex"))?;
+                let round_robin = &mut guard;
+                let node_id = round_robin
+                    .pop_front()
+                    .ok_or_else(|| anyhow!("No storage node defined"))?;
+
+                // Push back to update the round-robin
+                round_robin.push_back(node_id.clone());
+
+                node_id
+            };
+
+            // Fetch the storage node associated with the ID.
+            if let Some(node) = self.get_node_if_fresh(&node_id)? {
+                return Ok(node);
+            } else {
+                // Node is non-existent or stale.
+                self.prune_last_node()?;
+            }
+        }
     }
 
     async fn get_blob_meta(&self, blob_id: &str, username: &str) -> Result<Option<BlobInfo>> {

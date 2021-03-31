@@ -18,6 +18,12 @@ impl MenmosdDaemon {
     }
 }
 
+impl Default for MenmosdDaemon {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl Daemon for MenmosdDaemon {
     type Config = Config;

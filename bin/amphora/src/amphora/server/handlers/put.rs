@@ -14,7 +14,7 @@ use futures::{Stream, StreamExt, TryStreamExt};
 
 use headers::HeaderValue;
 
-use interface::{BlobInfo, BlobMeta, StorageNode};
+use interface::{BlobInfoRequest, BlobMetaRequest, StorageNode};
 
 use mime::Mime;
 
@@ -25,9 +25,9 @@ use protocol::storage::PutResponse;
 use warp::reply::Response;
 
 /// Parse the blob metadata from a header value.
-fn parse_metadata(header_value: HeaderValue) -> Result<BlobMeta> {
+fn parse_metadata(header_value: HeaderValue) -> Result<BlobMetaRequest> {
     let json_bytes = base64::decode(header_value.as_bytes())?;
-    let meta: BlobMeta = serde_json::from_slice(&json_bytes)?;
+    let meta: BlobMetaRequest = serde_json::from_slice(&json_bytes)?;
     Ok(meta)
 }
 
@@ -63,15 +63,15 @@ pub async fn put<N: StorageNode>(
     body: impl Stream<Item = Result<impl Buf, warp::Error>> + Send + Sync + Unpin + 'static,
 ) -> Result<Response, warp::Rejection> {
     // Extract the metadata from the blob.
-    let meta = parse_metadata(meta).map_err(|_| BadRequest)?;
+    let meta_request = parse_metadata(meta).map_err(|_| BadRequest)?;
 
     // Build our generic stream.
     let mut stream = mime.map(|mime| prepare_stream(mime, body)).transpose()?;
 
     // Directories cannot have streams.
-    if meta.blob_type == interface::Type::Directory && stream.is_some() {
+    if meta_request.blob_type == interface::Type::Directory && stream.is_some() {
         return Err(warp::reject::custom(BadRequest));
-    } else if meta.blob_type == interface::Type::File && stream.is_none() {
+    } else if meta_request.blob_type == interface::Type::File && stream.is_none() {
         log::info!("setting default empty stream");
         stream = Some(Box::from(futures::stream::empty()))
     }
@@ -79,8 +79,8 @@ pub async fn put<N: StorageNode>(
     match node
         .put(
             blob_id.clone(),
-            BlobInfo {
-                meta,
+            BlobInfoRequest {
+                meta_request,
                 owner: user.username,
             },
             stream,

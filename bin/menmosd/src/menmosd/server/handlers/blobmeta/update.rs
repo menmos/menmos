@@ -5,7 +5,7 @@ use apikit::{
     reject::{InternalServerError, NotFound},
 };
 
-use interface::BlobMeta;
+use interface::BlobMetaRequest;
 use warp::Reply;
 
 use crate::network::get_storage_node_address;
@@ -15,7 +15,7 @@ pub async fn update(
     _user: UserIdentity,
     context: Context,
     blob_id: String,
-    _meta: BlobMeta,
+    _meta: BlobMetaRequest,
     addr: Option<SocketAddr>,
 ) -> Result<warp::reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;

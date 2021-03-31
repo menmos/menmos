@@ -6,8 +6,9 @@ use std::time::Duration;
 use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
+use chrono::Utc;
 use futures::{stream::empty, Stream};
-use interface::{Blob, BlobInfo, CertificateInfo, StorageNode, Type};
+use interface::{Blob, BlobInfo, BlobInfoRequest, CertificateInfo, StorageNode, Type};
 use repository::{Repository, StreamInfo};
 use tokio::sync::Mutex;
 
@@ -121,12 +122,25 @@ impl StorageNode for Storage {
     async fn put(
         &self,
         id: String,
-        info: BlobInfo,
+        info_request: BlobInfoRequest,
         stream: Option<Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin>>,
     ) -> Result<()> {
         if let Some(s) = stream {
-            self.repo.save(id.clone(), info.meta.size, s).await?;
+            self.repo
+                .save(id.clone(), info_request.meta_request.size, s)
+                .await?;
         }
+
+        let (created_at, modified_at) =
+            if let Some(existing_ivec) = self.index.get(id.as_bytes())? {
+                let old_info: BlobInfo = bincode::deserialize(&existing_ivec)?;
+                (old_info.meta.created_at, old_info.meta.modified_at)
+            } else {
+                let date = Utc::now();
+                (date, date)
+            };
+
+        let info = info_request.into_blob_info(created_at, modified_at);
 
         self.index
             .insert(id.as_bytes(), bincode::serialize(&info)?)?;
@@ -153,6 +167,7 @@ impl StorageNode for Storage {
 
         if let Some(meta_ivec) = self.index.get(id.as_bytes())? {
             let mut info: BlobInfo = bincode::deserialize(&meta_ivec)?;
+            info.meta.modified_at = Utc::now();
             info.meta.size = new_blob_size;
             self.index
                 .insert(id.as_bytes(), bincode::serialize(&info)?)?;
@@ -193,15 +208,26 @@ impl StorageNode for Storage {
         })
     }
 
-    async fn update_meta(&self, blob_id: String, info: BlobInfo) -> Result<()> {
+    async fn update_meta(&self, blob_id: String, info_request: BlobInfoRequest) -> Result<()> {
         // Privilege check.
-        ensure!(self.is_blob_owned_by(&blob_id, &info.owner)?, "forbidden");
+        ensure!(
+            self.is_blob_owned_by(&blob_id, &info_request.owner)?,
+            "forbidden"
+        );
 
-        self.index
-            .insert(blob_id.as_bytes(), bincode::serialize(&info)?)?;
-        self.directory
-            .index_blob(&blob_id, info, &self.config.node.name)
-            .await?;
+        if let Some(existing_ivec) = self.index.get(blob_id.as_bytes())? {
+            let old_info: BlobInfo = bincode::deserialize(&existing_ivec)?;
+            let info = info_request.into_blob_info(old_info.meta.created_at, Utc::now());
+            self.index
+                .insert(blob_id.as_bytes(), bincode::serialize(&info)?)?;
+
+            self.directory
+                .index_blob(&blob_id, info, &self.config.node.name)
+                .await?;
+        } else {
+            return Err(anyhow!("cannot update metadata for non-existent blob"));
+        }
+
         Ok(())
     }
 

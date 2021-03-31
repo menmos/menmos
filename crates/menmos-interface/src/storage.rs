@@ -8,6 +8,8 @@ use anyhow::Result;
 
 use async_trait::async_trait;
 
+use chrono::{DateTime, Utc};
+
 use futures::Stream;
 
 use serde::{Deserialize, Serialize};
@@ -44,6 +46,83 @@ impl CertificateInfo {
     }
 }
 
+/// Metadata accepted when indexing a blob.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BlobMetaRequest {
+    /// The name of this blob. Does not need to be unique.
+    pub name: String,
+
+    /// The type of this blob.
+    pub blob_type: Type,
+
+    /// The key/value pairs for this blob.
+    pub metadata: HashMap<String, String>,
+
+    /// The tags for this blob.
+    pub tags: Vec<String>,
+
+    /// This blob's parent IDs.
+    pub parents: Vec<String>,
+
+    /// This blob's size, in bytes.
+    pub size: u64,
+}
+
+impl BlobMetaRequest {
+    pub fn new<S: Into<String>>(name: S, blob_type: Type) -> Self {
+        Self {
+            name: name.into(),
+            blob_type,
+            metadata: Default::default(),
+            tags: Default::default(),
+            parents: Default::default(),
+            size: 0,
+        }
+    }
+
+    pub fn file<S: Into<String>>(name: S) -> Self {
+        Self::new(name, Type::File)
+    }
+
+    pub fn directory<S: Into<String>>(name: S) -> Self {
+        Self::new(name, Type::Directory)
+    }
+
+    pub fn with_meta<S: Into<String>, T: Into<String>>(mut self, key: S, value: T) -> Self {
+        self.metadata.insert(key.into(), value.into());
+        self
+    }
+
+    pub fn with_tag<S: Into<String>>(mut self, s: S) -> Self {
+        self.tags.push(s.into());
+        self
+    }
+
+    pub fn with_parent<S: Into<String>>(mut self, s: S) -> Self {
+        self.parents.push(s.into());
+        self
+    }
+
+    pub fn with_size(mut self, size: u64) -> Self {
+        self.size = size;
+        self
+    }
+
+    pub fn into_meta(self, created_at: DateTime<Utc>, modified_at: DateTime<Utc>) -> BlobMeta {
+        BlobMeta {
+            name: self.name,
+            blob_type: self.blob_type,
+            metadata: self.metadata,
+            tags: self.tags,
+            parents: self.parents,
+            size: self.size,
+            created_at,
+            modified_at,
+        }
+    }
+}
+
 /// Metadata associated with a blob.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -65,6 +144,12 @@ pub struct BlobMeta {
 
     /// This blob's size, in bytes.
     pub size: u64,
+
+    /// This blob's creation time.
+    pub created_at: DateTime<Utc>,
+
+    /// This blob's last modified time.
+    pub modified_at: DateTime<Utc>,
 }
 
 impl BlobMeta {
@@ -76,6 +161,8 @@ impl BlobMeta {
             tags: Default::default(),
             parents: Default::default(),
             size: 0,
+            created_at: Utc::now(),
+            modified_at: Utc::now(),
         }
     }
 
@@ -110,6 +197,22 @@ impl BlobMeta {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
+pub struct BlobInfoRequest {
+    pub meta_request: BlobMetaRequest,
+    pub owner: String,
+}
+
+impl BlobInfoRequest {
+    pub fn into_blob_info(self, created_at: DateTime<Utc>, modified_at: DateTime<Utc>) -> BlobInfo {
+        BlobInfo {
+            meta: self.meta_request.into_meta(created_at, modified_at),
+            owner: self.owner,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct BlobInfo {
     pub meta: BlobMeta,
     pub owner: String,
@@ -127,7 +230,7 @@ pub trait StorageNode {
     async fn put(
         &self,
         id: String,
-        info: BlobInfo,
+        info: BlobInfoRequest,
         stream: Option<Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin>>,
     ) -> Result<()>;
 
@@ -141,7 +244,7 @@ pub trait StorageNode {
 
     async fn get(&self, blob_id: String, range: Option<(Bound<u64>, Bound<u64>)>) -> Result<Blob>;
 
-    async fn update_meta(&self, blob_id: String, info: BlobInfo) -> Result<()>;
+    async fn update_meta(&self, blob_id: String, info: BlobInfoRequest) -> Result<()>;
 
     async fn delete(&self, blob_id: String, username: &str) -> Result<()>;
 
