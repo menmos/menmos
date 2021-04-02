@@ -26,6 +26,24 @@ pub mod blobmeta {
     }
 }
 
+pub mod routing {
+    use super::*;
+
+    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+    #[serde(deny_unknown_fields)]
+    pub struct GetRoutingKeyResponse {
+        /// The field name to use for routing.
+        pub routing_key: Option<String>,
+    }
+
+    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+    #[serde(deny_unknown_fields)]
+    pub struct SetRoutingKeyRequest {
+        /// The field name to use for routing.
+        pub routing_key: String,
+    }
+}
+
 pub mod auth {
     use super::*;
 

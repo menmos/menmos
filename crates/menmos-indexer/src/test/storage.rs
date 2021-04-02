@@ -1,8 +1,5 @@
-use std::net::IpAddr;
-
 use anyhow::Result;
 
-use interface::StorageNodeInfo;
 use tempfile::TempDir;
 
 use crate::{iface::StorageNodeMapper, storage::StorageDispatch};
@@ -68,32 +65,6 @@ fn reload_keeps_mapping() {
     let s = StorageDispatch::new(&db).unwrap();
 
     assert_eq!(s.get_node_for_blob("a").unwrap().unwrap(), "b");
-}
-
-#[test]
-fn get_set_storage_node() -> Result<()> {
-    let d = TempDir::new()?;
-    let db = sled::open(d.path())?;
-    let s = StorageDispatch::new(&db)?;
-
-    let node_info = StorageNodeInfo {
-        id: String::from("bing"),
-        redirect_info: interface::RedirectInfo::Static {
-            static_address: IpAddr::from([192, 168, 2, 1]),
-        },
-        port: 3031,
-    };
-
-    let now = chrono::Utc::now();
-
-    s.write_node(node_info.clone(), now.clone())?;
-
-    let (n_info, timestamp) = s.get_node("bing")?.unwrap();
-
-    assert_eq!(n_info, node_info);
-    assert_eq!(timestamp.timestamp(), now.timestamp()); // We're losing nanoseconds in the serialization, which is acceptable.
-
-    Ok(())
 }
 
 #[test]

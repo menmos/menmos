@@ -12,6 +12,7 @@ members = [
     "crates/menmos-interface",
     "crates/menmos-protocol",
     "crates/menmos-repository",
+    "crates/menmos-std",
     "crates/menmos-testing",
     "crates/menmos-xecute",
     "crates/rapidquery",
@@ -27,6 +28,7 @@ menmos-indexer = { path = 'crates/menmos-indexer' }
 menmos-interface = { path = 'crates/menmos-interface' }
 menmos-protocol = { path = 'crates/menmos-protocol' }
 menmos-repository = { path = 'crates/menmos-repository' }
+menmos-std = { path = 'crates/menmos-std' }
 menmos-testing = { path = 'crates/menmos-testing' }
 menmos-xecute = { path = 'crates/menmos-xecute' }
 rapidquery = { path = 'crates/rapidquery' }

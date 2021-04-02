@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicU32, Ordering},
-    Mutex,
+    Arc, Mutex,
 };
 
 use anyhow::{ensure, Result};
@@ -10,9 +10,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use chrono::Utc;
-
-use interface::{BlobInfo, StorageNodeInfo};
+use interface::BlobInfo;
 
 use indexer::iface::*;
 
@@ -118,40 +116,35 @@ impl DocIDMapper for MockDocIDMap {
 }
 
 #[derive(Default)]
-pub struct MockStorageMap {
+pub struct MockRoutingMap {
     m: Mutex<HashMap<String, String>>,
-    nodes: Mutex<HashMap<String, (StorageNodeInfo, chrono::DateTime<Utc>)>>,
 }
 
-impl StorageNodeMapper for MockStorageMap {
-    fn get_node(&self, node_id: &str) -> Result<Option<(StorageNodeInfo, chrono::DateTime<Utc>)>> {
-        let guard = self.nodes.lock().unwrap();
-        let map = &*guard;
-        Ok(map.get(node_id).cloned())
+impl RoutingMapper for MockRoutingMap {
+    fn get_routing_key(&self, username: &str) -> Result<Option<String>> {
+        let guard = self.m.lock().unwrap();
+        Ok(guard.get(username).cloned())
     }
 
-    fn get_all_nodes(&self) -> Result<Vec<StorageNodeInfo>> {
-        let guard = self.nodes.lock().unwrap();
-        let map = &*guard;
-        Ok(map
-            .iter()
-            .map(|(_node_id, (node_info, _last_seen))| node_info.clone())
-            .collect())
-    }
-
-    fn write_node(&self, info: StorageNodeInfo, seen_at: chrono::DateTime<Utc>) -> Result<bool> {
-        let mut guard = self.nodes.lock().unwrap();
-        let map = &mut *guard;
-        let was_set = map.insert(info.id.clone(), (info, seen_at)).is_some();
-        Ok(was_set)
-    }
-
-    fn delete_node(&self, node_id: &str) -> Result<()> {
-        let mut guard = self.nodes.lock().unwrap();
-        guard.remove(node_id);
+    fn set_routing_key(&self, username: &str, routing_key: &str) -> Result<()> {
+        let mut guard = self.m.lock().unwrap();
+        guard.insert(String::from(username), String::from(routing_key));
         Ok(())
     }
 
+    fn delete_routing_key(&self, username: &str) -> Result<()> {
+        let mut guard = self.m.lock().unwrap();
+        guard.remove(username);
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+pub struct MockStorageMap {
+    m: Mutex<HashMap<String, String>>,
+}
+
+impl StorageNodeMapper for MockStorageMap {
     fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>> {
         let guard = self.m.lock().unwrap();
         let map = &*guard;
@@ -394,10 +387,11 @@ impl UserMapper for MockUserMap {
 
 #[derive(Default)]
 pub struct MockIndex {
-    documents: MockDocIDMap,
-    meta: MockMetaMap,
-    storage: MockStorageMap,
-    users: MockUserMap,
+    documents: Arc<MockDocIDMap>,
+    meta: Arc<MockMetaMap>,
+    routing: Arc<MockRoutingMap>,
+    storage: Arc<MockStorageMap>,
+    users: Arc<MockUserMap>,
 }
 
 #[async_trait]
@@ -410,22 +404,27 @@ impl Flush for MockIndex {
 impl IndexProvider for MockIndex {
     type MetadataProvider = MockMetaMap;
     type DocumentProvider = MockDocIDMap;
+    type RoutingProvider = MockRoutingMap;
     type StorageProvider = MockStorageMap;
     type UserProvider = MockUserMap;
 
-    fn documents(&self) -> &Self::DocumentProvider {
-        &self.documents
+    fn documents(&self) -> Arc<Self::DocumentProvider> {
+        self.documents.clone()
     }
 
-    fn meta(&self) -> &Self::MetadataProvider {
-        &self.meta
+    fn meta(&self) -> Arc<Self::MetadataProvider> {
+        self.meta.clone()
     }
 
-    fn storage(&self) -> &Self::StorageProvider {
-        &self.storage
+    fn routing(&self) -> Arc<Self::RoutingProvider> {
+        self.routing.clone()
     }
 
-    fn users(&self) -> &Self::UserProvider {
-        &self.users
+    fn storage(&self) -> Arc<Self::StorageProvider> {
+        self.storage.clone()
+    }
+
+    fn users(&self) -> Arc<Self::UserProvider> {
+        self.users.clone()
     }
 }

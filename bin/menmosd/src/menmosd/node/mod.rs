@@ -2,6 +2,7 @@ use anyhow::Result;
 use indexer::Index;
 
 mod node_impl;
+mod routing;
 
 pub use node_impl::Directory;
 
