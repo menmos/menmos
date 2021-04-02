@@ -2,6 +2,7 @@ mod builder;
 mod client;
 mod parameters;
 mod profile;
+mod smart_detector;
 
 use builder::ClientBuilder;
 use parameters::Parameters;

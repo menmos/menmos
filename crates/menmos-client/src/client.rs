@@ -30,7 +30,10 @@ use serde::de::DeserializeOwned;
 use snafu::{ensure, ResultExt, Snafu};
 
 use crate::{
-    parameters::HostConfig, profile::ProfileError, ClientBuilder, Config, Meta, Parameters,
+    parameters::HostConfig,
+    profile::ProfileError,
+    smart_detector::{SmartDetector, SmartDetectorError},
+    ClientBuilder, Config, Meta, Parameters,
 };
 
 #[derive(Debug, Snafu)]
@@ -79,6 +82,9 @@ pub enum ClientError {
 
     #[snafu(display("unknown error"))]
     UnknownError,
+
+    #[snafu(display("failed to instantiate the smart detector: {}", source))]
+    SmartDetectorInstantiationError { source: SmartDetectorError },
 }
 
 fn encode_metadata(meta: Meta) -> Result<String> {
@@ -115,6 +121,7 @@ pub struct Client {
     max_retry_count: usize,
     retry_interval: Duration,
     token: String,
+    smart_detector: Option<SmartDetector>,
 }
 
 type Result<T> = std::result::Result<T, ClientError>;
@@ -136,6 +143,7 @@ impl Client {
             request_timeout: Duration::from_secs(60),
             max_retry_count: 20,
             retry_interval: Duration::from_millis(100),
+            smart_detection: false,
         })
         .await
     }
@@ -155,6 +163,7 @@ impl Client {
             request_timeout: Duration::from_secs(60),
             max_retry_count: 20,
             retry_interval: Duration::from_millis(100),
+            smart_detection: false,
         })
         .await
     }
@@ -194,12 +203,18 @@ impl Client {
 
         let token = Client::login(&client, &host, &username, &admin_password).await?;
 
+        let mut smart_detector: Option<SmartDetector> = None;
+        if params.smart_detection == true {
+            smart_detector = Some(SmartDetector::new().context(SmartDetectorInstantiationError)?);
+        }
+
         Ok(Self {
             host,
             client,
             max_retry_count: params.max_retry_count,
             retry_interval: params.retry_interval,
             token,
+            smart_detector,
         })
     }
 
@@ -360,7 +375,7 @@ impl Client {
     async fn push_internal<P: AsRef<Path>>(
         &self,
         path: P,
-        meta: Meta,
+        meta: &mut Meta,
         base_url: String,
     ) -> Result<String> {
         ensure!(
@@ -370,8 +385,14 @@ impl Client {
             }
         );
 
+        if let Some(smart_detector) = self.smart_detector.as_ref() {
+            if let Some(ext) = smart_detector.detect(&path) {
+                meta.metadata.insert(String::from("extension"), ext);
+            }
+        }
+
         let mut url = base_url;
-        let meta_b64 = encode_metadata(meta)?;
+        let meta_b64 = encode_metadata(meta.clone())?;
 
         let initial_redirect_request = self
             .client
@@ -434,8 +455,8 @@ impl Client {
     /// Pushes a file with the specified meta to the cluster.
     ///
     /// Returns the ID of the created file.
-    pub async fn push<P: AsRef<Path>>(&self, path: P, meta: Meta) -> Result<String> {
-        self.push_internal(path, meta, format!("{}/blob", self.host))
+    pub async fn push<P: AsRef<Path>>(&self, path: P, mut meta: Meta) -> Result<String> {
+        self.push_internal(path, &mut meta, format!("{}/blob", self.host))
             .await
     }
 
@@ -446,9 +467,9 @@ impl Client {
         &self,
         blob_id: &str,
         path: P,
-        meta: Meta,
+        mut meta: Meta,
     ) -> Result<String> {
-        self.push_internal(path, meta, format!("{}/blob/{}", self.host, blob_id))
+        self.push_internal(path, &mut meta, format!("{}/blob/{}", self.host, blob_id))
             .await
     }
 
