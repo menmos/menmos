@@ -24,7 +24,7 @@ fn get(
         .and(with_context(context))
         .and(warp::path(ROUTING_PATH))
         .and(warp::path::end())
-        .and_then(handlers::routing::get_key)
+        .and_then(handlers::routing::get)
 }
 
 fn set(
@@ -38,7 +38,7 @@ fn set(
         .and(warp::path(ROUTING_PATH))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and_then(handlers::routing::set_key)
+        .and_then(handlers::routing::set)
 }
 
 fn delete(
@@ -51,5 +51,5 @@ fn delete(
         .and(with_context(context))
         .and(warp::path(ROUTING_PATH))
         .and(warp::path::end())
-        .and_then(handlers::routing::delete_key)
+        .and_then(handlers::routing::delete)
 }

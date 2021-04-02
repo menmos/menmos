@@ -6,7 +6,8 @@ use chrono::Utc;
 
 use indexer::Index;
 use interface::{
-    BlobInfo, BlobMetaRequest, DirectoryNode, Query, QueryResponse, StorageNodeInfo, Type,
+    BlobInfo, BlobMetaRequest, DirectoryNode, Query, QueryResponse, RoutingConfig, StorageNodeInfo,
+    Type,
 };
 use tempfile::TempDir;
 
@@ -496,18 +497,20 @@ async fn facet_grouping() -> Result<()> {
 }
 
 #[tokio::test]
-async fn routing_key_get_set_delete() -> Result<()> {
+async fn routing_info_get_set_delete() -> Result<()> {
     let node = TestDirNode::new(MockIndex::default());
 
-    assert_eq!(node.get_routing_key("jdoe").await?, None);
+    let cfg = RoutingConfig::new("some_field").with_route("alpha", "beta");
 
-    node.set_routing_key("jdoe", "some_field").await?;
+    assert_eq!(node.get_routing_config("jdoe").await?, None);
 
-    assert_eq!(node.get_routing_key("jdoe").await?.unwrap(), "some_field");
+    node.set_routing_config("jdoe", &cfg).await?;
 
-    node.delete_routing_key("jdoe").await?;
+    assert_eq!(&node.get_routing_config("jdoe").await?.unwrap(), &cfg);
 
-    assert_eq!(node.get_routing_key("jdoe").await?, None);
+    node.delete_routing_config("jdoe").await?;
+
+    assert_eq!(node.get_routing_config("jdoe").await?, None);
 
     Ok(())
 }

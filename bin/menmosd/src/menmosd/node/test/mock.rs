@@ -10,7 +10,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use interface::BlobInfo;
+use interface::{BlobInfo, RoutingConfig};
 
 use indexer::iface::*;
 
@@ -117,22 +117,22 @@ impl DocIDMapper for MockDocIDMap {
 
 #[derive(Default)]
 pub struct MockRoutingMap {
-    m: Mutex<HashMap<String, String>>,
+    m: Mutex<HashMap<String, RoutingConfig>>,
 }
 
 impl RoutingMapper for MockRoutingMap {
-    fn get_routing_key(&self, username: &str) -> Result<Option<String>> {
+    fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfig>> {
         let guard = self.m.lock().unwrap();
         Ok(guard.get(username).cloned())
     }
 
-    fn set_routing_key(&self, username: &str, routing_key: &str) -> Result<()> {
+    fn set_routing_config(&self, username: &str, routing_config: &RoutingConfig) -> Result<()> {
         let mut guard = self.m.lock().unwrap();
-        guard.insert(String::from(username), String::from(routing_key));
+        guard.insert(String::from(username), routing_config.clone());
         Ok(())
     }
 
-    fn delete_routing_key(&self, username: &str) -> Result<()> {
+    fn delete_routing_config(&self, username: &str) -> Result<()> {
         let mut guard = self.m.lock().unwrap();
         guard.remove(username);
         Ok(())

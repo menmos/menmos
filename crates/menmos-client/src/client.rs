@@ -8,7 +8,7 @@ use bytes::Bytes;
 use futures::{Stream, TryStreamExt};
 
 use header::HeaderName;
-use interface::{BlobMeta, MetadataList, Query, QueryResponse};
+use interface::{BlobMeta, MetadataList, Query, QueryResponse, RoutingConfig};
 
 use hyper::{header, StatusCode};
 
@@ -18,7 +18,7 @@ use protocol::{
     directory::{
         auth::{LoginRequest, LoginResponse, RegisterRequest},
         blobmeta::{GetMetaResponse, ListMetadataRequest},
-        routing::{GetRoutingKeyResponse, SetRoutingKeyRequest},
+        routing::{GetRoutingConfigResponse, SetRoutingConfigRequest},
         storage::ListStorageNodesResponse,
     },
     storage::PutResponse,
@@ -723,7 +723,7 @@ impl Client {
         }
     }
 
-    pub async fn get_routing_key(&self) -> Result<GetRoutingKeyResponse> {
+    pub async fn get_routing_config(&self) -> Result<Option<RoutingConfig>> {
         let url = format!("{}/routing", self.host);
 
         let response = self
@@ -736,10 +736,12 @@ impl Client {
             })
             .await?;
 
-        extract(response).await
+        let response: GetRoutingConfigResponse = extract(response).await?;
+
+        Ok(response.routing_config)
     }
 
-    pub async fn set_routing_key(&self, routing_key: &str) -> Result<()> {
+    pub async fn set_routing_config(&self, routing_config: &RoutingConfig) -> Result<()> {
         let url = format!("{}/routing", self.host);
 
         let response = self
@@ -747,8 +749,8 @@ impl Client {
                 self.client
                     .put(&url)
                     .bearer_auth(&self.token)
-                    .json(&SetRoutingKeyRequest {
-                        routing_key: String::from(routing_key),
+                    .json(&SetRoutingConfigRequest {
+                        routing_config: routing_config.clone(),
                     })
                     .build()
                     .context(RequestBuildError)
@@ -762,7 +764,7 @@ impl Client {
         }
     }
 
-    pub async fn delete_routing_key(&self) -> Result<()> {
+    pub async fn delete_routing_config(&self) -> Result<()> {
         let url = format!("{}/routing", self.host);
 
         let response = self

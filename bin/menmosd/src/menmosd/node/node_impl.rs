@@ -7,7 +7,7 @@ use bitvec::prelude::*;
 
 use interface::{
     BlobInfo, BlobMetaRequest, DirectoryNode, FacetResponse, Hit, MetadataList, Query,
-    QueryResponse, StorageNodeInfo, StorageNodeResponseData,
+    QueryResponse, RoutingConfig, StorageNodeInfo, StorageNodeResponseData,
 };
 
 use rapidquery::Resolver;
@@ -156,16 +156,18 @@ where
         Ok(())
     }
 
-    async fn get_routing_key(&self, user: &str) -> Result<Option<String>> {
-        self.index.routing().get_routing_key(user)
+    async fn get_routing_config(&self, user: &str) -> Result<Option<RoutingConfig>> {
+        self.index.routing().get_routing_config(user)
     }
 
-    async fn set_routing_key(&self, user: &str, routing_key: &str) -> Result<()> {
-        self.index.routing().set_routing_key(user, routing_key)
+    async fn set_routing_config(&self, user: &str, routing_config: &RoutingConfig) -> Result<()> {
+        self.index
+            .routing()
+            .set_routing_config(user, routing_config)
     }
 
-    async fn delete_routing_key(&self, user: &str) -> Result<()> {
-        self.index.routing().delete_routing_key(user)
+    async fn delete_routing_config(&self, user: &str) -> Result<()> {
+        self.index.routing().delete_routing_config(user)
     }
 
     async fn delete_blob(

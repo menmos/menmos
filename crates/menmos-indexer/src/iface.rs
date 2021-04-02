@@ -7,7 +7,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use interface::BlobInfo;
+use interface::{BlobInfo, RoutingConfig};
 
 #[async_trait]
 pub trait Flush {
@@ -50,9 +50,9 @@ pub trait MetadataMapper {
 }
 
 pub trait RoutingMapper {
-    fn get_routing_key(&self, username: &str) -> Result<Option<String>>;
-    fn set_routing_key(&self, username: &str, routing_key: &str) -> Result<()>;
-    fn delete_routing_key(&self, username: &str) -> Result<()>;
+    fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfig>>;
+    fn set_routing_config(&self, username: &str, routing_key: &RoutingConfig) -> Result<()>;
+    fn delete_routing_config(&self, username: &str) -> Result<()>;
 }
 
 pub trait StorageNodeMapper {
