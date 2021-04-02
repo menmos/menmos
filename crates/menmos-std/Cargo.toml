@@ -9,7 +9,7 @@ edition = "2018"
 [features]
 default = []
 
-async = []
+async = ["tokio"]
 
 [dependencies]
-tokio = {version = "1.2", features = ["full"]} # optional = true}
+tokio = {version = "1.2", features = ["full"], optional = true}
