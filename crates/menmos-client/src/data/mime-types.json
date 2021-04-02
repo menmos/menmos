@@ -23,5 +23,6 @@
   "flac": "audio/x-flac",
   "wav": "audio/x-wav",
   "aac": "audio/aac",
-  "pdf": "application/pdf"
+  "pdf": "application/pdf",
+  "txt": "text/plain"
 }

@@ -14,7 +14,6 @@ bytes = "1"
 dirs = "3"
 futures = "0.3"
 hyper = "0.14"
-infer = "0.3"
 log = "0.4"
 menmos-apikit = {version = "0.0.5"}
 menmos-interface = {version = "0.0.5"}
