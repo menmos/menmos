@@ -33,7 +33,7 @@ async fn index<S: AsRef<str>, N: DirectoryNode>(
     node: &N,
 ) -> StorageNodeInfo {
     let tgt_storage_node = node
-        .pick_node_for_blob(id.as_ref(), meta_request.clone())
+        .pick_node_for_blob(id.as_ref(), meta_request.clone(), "admin")
         .await
         .unwrap();
 
@@ -54,7 +54,11 @@ async fn index<S: AsRef<str>, N: DirectoryNode>(
 async fn pick_node_for_blob_with_no_storage_nodes() {
     let node = TestDirNode::new(MockIndex::default());
     assert!(node
-        .pick_node_for_blob("bing", BlobMetaRequest::new("somename", Type::File),)
+        .pick_node_for_blob(
+            "bing",
+            BlobMetaRequest::new("somename", Type::File),
+            "admin"
+        )
         .await
         .is_err());
 }

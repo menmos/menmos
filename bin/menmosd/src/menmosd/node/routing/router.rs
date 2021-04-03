@@ -85,11 +85,39 @@ where
             .collect()
     }
 
-    pub async fn route_blob(
+    async fn route_routing_key(
         &self,
-        _blob_id: &str,
-        _meta_request: &BlobMetaRequest,
-    ) -> Result<StorageNodeInfo> {
+        meta_request: &BlobMetaRequest,
+        username: &str,
+    ) -> Result<Option<StorageNodeInfo>> {
+        let routed_storage_node_maybe = self
+            .index
+            .get_routing_config(username)?
+            .map(|routing_config| {
+                meta_request
+                    .metadata
+                    .get(&routing_config.routing_key)
+                    .map(|cfg_value| (routing_config, cfg_value))
+            })
+            .flatten()
+            .map(|(routing_cfg, routing_field_value)| {
+                routing_cfg.routes.get(routing_field_value).cloned()
+            })
+            .flatten();
+
+        if let Some(storage_node_id) = routed_storage_node_maybe {
+            self.get_node(&storage_node_id)
+                .await
+                .map(Some)
+                .ok_or_else(|| {
+                    anyhow!("routing configuration routes to node '{}' but node is unreachable")
+                })
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn route_round_robin(&self) -> Result<StorageNodeInfo> {
         loop {
             let node_id = self
                 .round_robin
@@ -104,6 +132,18 @@ where
             } else {
                 self.prune_last_node().await;
             }
+        }
+    }
+
+    pub async fn route_blob(
+        &self,
+        _blob_id: &str,
+        meta_request: &BlobMetaRequest,
+        username: &str,
+    ) -> Result<StorageNodeInfo> {
+        match self.route_routing_key(meta_request, username).await? {
+            Some(v) => Ok(v),
+            None => self.route_round_robin().await,
         }
     }
 }
