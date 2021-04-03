@@ -6,7 +6,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 use crate::{
-    documents::DocumentIDStore, meta::MetadataStore, routing::RoutingStore,
+    documents::DocumentIdStore, meta::MetadataStore, routing::RoutingStore,
     storage::StorageDispatch,
 };
 use crate::{
@@ -17,7 +17,7 @@ use crate::{
 pub struct Index {
     db: sled::Db,
 
-    documents: Arc<DocumentIDStore>,
+    documents: Arc<DocumentIdStore>,
     meta: Arc<MetadataStore>,
     routing: Arc<RoutingStore>,
     storage: Arc<StorageDispatch>,
@@ -27,7 +27,7 @@ pub struct Index {
 impl Index {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
         let db = sled::open(path.as_ref())?;
-        let documents = Arc::from(DocumentIDStore::new(&db)?);
+        let documents = Arc::from(DocumentIdStore::new(&db)?);
         let meta = Arc::from(MetadataStore::new(&db)?);
         let routing = Arc::from(RoutingStore::new(&db)?);
         let storage = Arc::from(StorageDispatch::new(&db)?);
@@ -59,7 +59,7 @@ impl Flush for Index {
 }
 
 impl IndexProvider for Index {
-    type DocumentProvider = DocumentIDStore;
+    type DocumentProvider = DocumentIdStore;
     type MetadataProvider = MetadataStore;
     type RoutingProvider = RoutingStore;
     type StorageProvider = StorageDispatch;

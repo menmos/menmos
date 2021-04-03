@@ -23,7 +23,7 @@ use warp::Filter;
 use x509_parser::pem::Pem;
 
 use crate::{
-    config::{HTTPSParameters, LetsEncryptURL},
+    config::{HttpsParameters, LetsEncryptUrl},
     server::{filters, Context},
     Config,
 };
@@ -75,7 +75,7 @@ async fn wait_for_server_stop(http_handle: JoinHandle<()>, https_handle: JoinHan
 pub async fn use_tls(
     n: Arc<Box<dyn DirectoryNode + Send + Sync>>,
     node_cfg: Arc<Config>,
-    cfg: HTTPSParameters,
+    cfg: HttpsParameters,
     mut stop_rx: mpsc::Receiver<()>,
 ) -> Result<()> {
     let dns_server = DnsServer::start(DnsConfig {
@@ -98,7 +98,7 @@ pub async fn use_tls(
         .join(&cfg.dns.root_domain)
         .with_extension("key");
 
-    let url = if cfg.letsencrypt_url == LetsEncryptURL::Production {
+    let url = if cfg.letsencrypt_url == LetsEncryptUrl::Production {
         acme_lib::DirectoryUrl::LetsEncrypt
     } else {
         acme_lib::DirectoryUrl::LetsEncryptStaging

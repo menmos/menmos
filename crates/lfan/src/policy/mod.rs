@@ -6,5 +6,5 @@ pub mod insertion {
 }
 
 pub mod eviction {
-    pub use super::evict_lru::LRUEvictionPolicy;
+    pub use super::evict_lru::LruEvictionPolicy;
 }

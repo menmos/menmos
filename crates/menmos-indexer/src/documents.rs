@@ -8,13 +8,13 @@ use bitvec::prelude::*;
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::iface::{DocIDMapper, Flush};
+use crate::iface::{DocIdMapper, Flush};
 
 const DOC_MAP: &str = "document";
 const DOC_REV_MAP: &str = "document-rev";
 const RECYCLING_STORE: &str = "id-recycle";
 
-pub struct DocumentIDStore {
+pub struct DocumentIdStore {
     doc_map: sled::Tree,         // DocumentID => IDX
     doc_reverse_map: sled::Tree, // IDX => DocumentID
     recycling_store: sled::Tree,
@@ -22,7 +22,7 @@ pub struct DocumentIDStore {
     next_id: AtomicU32,
 }
 
-impl DocumentIDStore {
+impl DocumentIdStore {
     pub fn new(db: &sled::Db) -> Result<Self> {
         let doc_map = db.open_tree(DOC_MAP)?;
         let doc_reverse_map = db.open_tree(DOC_REV_MAP)?;
@@ -43,7 +43,7 @@ impl DocumentIDStore {
 }
 
 #[async_trait]
-impl Flush for DocumentIDStore {
+impl Flush for DocumentIdStore {
     async fn flush(&self) -> Result<()> {
         log::debug!("beginning flush");
         self.doc_map.flush_async().await?;
@@ -53,7 +53,7 @@ impl Flush for DocumentIDStore {
     }
 }
 
-impl DocIDMapper for DocumentIDStore {
+impl DocIdMapper for DocumentIdStore {
     fn get_nb_of_docs(&self) -> u32 {
         self.next_id.load(Ordering::SeqCst)
     }

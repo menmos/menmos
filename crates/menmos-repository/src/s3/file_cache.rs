@@ -2,14 +2,14 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
-use lfan::preconfig::concurrent::{new_lru_cache, LRUCache};
+use lfan::preconfig::concurrent::{new_lru_cache, LruCache};
 use rusoto_s3::{GetObjectRequest, S3Client, S3};
 use tokio::{fs, io::AsyncWriteExt};
 
 pub struct FileCache {
     bucket: String,
     client: S3Client,
-    file_path_cache: LRUCache<String, PathBuf>,
+    file_path_cache: LruCache<String, PathBuf>,
     root_path: PathBuf,
 }
 

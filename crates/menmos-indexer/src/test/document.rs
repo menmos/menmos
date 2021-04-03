@@ -4,14 +4,14 @@ use bitvec::prelude::*;
 
 use tempfile::TempDir;
 
-use crate::{documents::DocumentIDStore, iface::DocIDMapper};
+use crate::{documents::DocumentIdStore, iface::DocIdMapper};
 
 #[test]
 fn nb_of_docs_initially_zero() {
     let d = TempDir::new().unwrap();
     let db = sled::open(d.path()).unwrap();
 
-    let doc_map = DocumentIDStore::new(&db).unwrap();
+    let doc_map = DocumentIdStore::new(&db).unwrap();
 
     assert_eq!(doc_map.get_nb_of_docs(), 0);
 }
@@ -21,7 +21,7 @@ fn get_returns_same_doc_id() -> Result<()> {
     let d = TempDir::new()?;
     let db = sled::open(d.path())?;
 
-    let doc_map = DocumentIDStore::new(&db)?;
+    let doc_map = DocumentIdStore::new(&db)?;
     let id = doc_map.insert("abc")?;
     assert_eq!(doc_map.get("abc")?.unwrap(), id);
 
@@ -33,7 +33,7 @@ fn ids_increase_incrementally() {
     let d = TempDir::new().unwrap();
     let db = sled::open(d.path()).unwrap();
 
-    let doc_map = DocumentIDStore::new(&db).unwrap();
+    let doc_map = DocumentIdStore::new(&db).unwrap();
 
     for i in 0..100 {
         assert_eq!(doc_map.insert(&format!("{}", i)).unwrap(), i);
@@ -45,7 +45,7 @@ fn same_key_gets_same_id() {
     let d = TempDir::new().unwrap();
     let db = sled::open(d.path()).unwrap();
 
-    let doc_map = DocumentIDStore::new(&db).unwrap();
+    let doc_map = DocumentIdStore::new(&db).unwrap();
 
     for _i in 0..100 {
         assert_eq!(doc_map.insert("yeet").unwrap(), 0);
@@ -57,7 +57,7 @@ fn ids_lookup_are_reversible() {
     let d = TempDir::new().unwrap();
     let db = sled::open(d.path()).unwrap();
 
-    let doc_map = DocumentIDStore::new(&db).unwrap();
+    let doc_map = DocumentIdStore::new(&db).unwrap();
 
     for i in 0..100 {
         let key = format!("{}", i);
@@ -73,7 +73,7 @@ fn reloading_map_keeps_keys_and_indices() {
     {
         let db = sled::open(d.path()).unwrap();
 
-        let doc_map = DocumentIDStore::new(&db).unwrap();
+        let doc_map = DocumentIdStore::new(&db).unwrap();
 
         for i in 0..100 {
             doc_map.insert(&format!("{}", i)).unwrap();
@@ -84,7 +84,7 @@ fn reloading_map_keeps_keys_and_indices() {
     {
         let db = sled::open(d.path()).unwrap();
 
-        let doc_map = DocumentIDStore::new(&db).unwrap();
+        let doc_map = DocumentIdStore::new(&db).unwrap();
 
         for i in 0..100 {
             assert_eq!(doc_map.lookup(i).unwrap().unwrap(), format!("{}", i));
@@ -100,7 +100,7 @@ fn lookup_of_missing_key_doesnt_fail() {
     let d = TempDir::new().unwrap();
     let db = sled::open(d.path()).unwrap();
 
-    let doc_map = DocumentIDStore::new(&db).unwrap();
+    let doc_map = DocumentIdStore::new(&db).unwrap();
 
     assert_eq!(doc_map.lookup(42).unwrap(), None);
 }
@@ -112,7 +112,7 @@ fn no_data_loss_after_1024_inserts() -> Result<()> {
     let db = sled::open(d.path()).unwrap();
 
     {
-        let doc_map = DocumentIDStore::new(&db).unwrap();
+        let doc_map = DocumentIdStore::new(&db).unwrap();
         for i in 0..2000 {
             let id = doc_map.insert(&format!("{}", i))?;
             assert_eq!(id, i);
@@ -120,7 +120,7 @@ fn no_data_loss_after_1024_inserts() -> Result<()> {
     }
 
     {
-        let doc_map = DocumentIDStore::new(&db).unwrap();
+        let doc_map = DocumentIdStore::new(&db).unwrap();
         let id = doc_map.insert("asdf")?;
         assert_eq!(id, 2000);
     }
@@ -133,7 +133,7 @@ fn delete_document() -> Result<()> {
     let d = TempDir::new().unwrap();
     let db = sled::open(d.path()).unwrap();
 
-    let doc_map = DocumentIDStore::new(&db).unwrap();
+    let doc_map = DocumentIdStore::new(&db).unwrap();
     let id = doc_map.insert("hello")?;
 
     doc_map.delete("hello")?;
@@ -148,7 +148,7 @@ fn get_all_documents_mask() -> Result<()> {
     let d = TempDir::new().unwrap();
     let db = sled::open(d.path()).unwrap();
 
-    let doc_map = DocumentIDStore::new(&db).unwrap();
+    let doc_map = DocumentIdStore::new(&db).unwrap();
     doc_map.insert("hello")?;
     doc_map.insert("there")?;
     doc_map.insert("world")?;
@@ -167,7 +167,7 @@ fn deleted_ids_are_recycled_properly() -> Result<()> {
     let d = TempDir::new().unwrap();
     let db = sled::open(d.path()).unwrap();
 
-    let doc_map = DocumentIDStore::new(&db).unwrap();
+    let doc_map = DocumentIdStore::new(&db).unwrap();
     doc_map.insert("hello")?; // id 0
     doc_map.insert("there")?; // id 1
     doc_map.insert("world")?; // id 2

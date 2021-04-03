@@ -1,13 +1,21 @@
 #[derive(PartialEq, Eq, Debug, Clone, Hash, Copy)]
 pub enum QueryType {
+    #[allow(clippy::upper_case_acronyms)]
     UNKNOWN(u16),
-    A,     // 1
-    NS,    // 2
+    #[allow(clippy::upper_case_acronyms)]
+    A, // 1
+    #[allow(clippy::upper_case_acronyms)]
+    NS, // 2
+    #[allow(clippy::upper_case_acronyms)]
     CNAME, // 5
-    MX,    // 15
-    TXT,   // 16
-    AAAA,  // 28
-    CAA,   // 257
+    #[allow(clippy::upper_case_acronyms)]
+    MX, // 15
+    #[allow(clippy::upper_case_acronyms)]
+    TXT, // 16
+    #[allow(clippy::upper_case_acronyms)]
+    AAAA, // 28
+    #[allow(clippy::upper_case_acronyms)]
+    CAA, // 257
 }
 
 impl QueryType {

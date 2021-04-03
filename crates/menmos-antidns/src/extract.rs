@@ -10,7 +10,7 @@ use snafu::{ensure, Snafu};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    NameWithoutIP,
+    NameWithoutIp,
     ParseError { message: String },
     IncompleteParse,
 }
@@ -28,7 +28,7 @@ fn ip_address(i: &str) -> IResult<&str, Ipv4Addr> {
 
 pub fn ip_address_from_url<S: AsRef<str>>(url: S) -> Result<Ipv4Addr, Error> {
     let splitted: Vec<_> = url.as_ref().split('.').collect();
-    ensure!(splitted.len() >= 2, NameWithoutIP);
+    ensure!(splitted.len() >= 2, NameWithoutIp);
 
     let ip_segment = *splitted.first().unwrap();
     let (rest, ip) = ip_address(ip_segment).map_err(|e| Error::ParseError {

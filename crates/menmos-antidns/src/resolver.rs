@@ -7,7 +7,7 @@ use crate::{Config, DnsPacket, DnsRecord, QueryType};
 
 #[derive(Debug, Snafu)]
 pub enum ResolveError {
-    UnexpectedIPV6,
+    UnexpectedIpv6,
 }
 
 type Result<T> = std::result::Result<T, ResolveError>;
@@ -31,7 +31,7 @@ fn in_house_resolution(qname: &str, ip: IpAddr) -> Result<DnsPacket> {
 
             Ok(pkt)
         }
-        IpAddr::V6(_) => Err(ResolveError::UnexpectedIPV6),
+        IpAddr::V6(_) => Err(ResolveError::UnexpectedIpv6),
     }
 }
 

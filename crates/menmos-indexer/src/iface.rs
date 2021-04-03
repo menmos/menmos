@@ -14,7 +14,7 @@ pub trait Flush {
     async fn flush(&self) -> Result<()>;
 }
 
-pub trait DocIDMapper {
+pub trait DocIdMapper {
     fn get_nb_of_docs(&self) -> u32;
     fn insert(&self, doc_id: &str) -> Result<u32>;
     fn get(&self, doc_id: &str) -> Result<Option<u32>>;
@@ -69,7 +69,7 @@ pub trait UserMapper {
 }
 
 pub trait IndexProvider {
-    type DocumentProvider: DocIDMapper + Send + Sync;
+    type DocumentProvider: DocIdMapper + Send + Sync;
     type MetadataProvider: MetadataMapper + Send + Sync;
     type RoutingProvider: RoutingMapper + Send + Sync;
     type StorageProvider: StorageNodeMapper + Send + Sync;

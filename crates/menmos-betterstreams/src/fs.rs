@@ -15,7 +15,7 @@ use tokio::fs;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 use tokio_util::io::poll_read_buf;
 
-use crate::{ChunkedStreamInfo, UnpinDynIOStream};
+use crate::{ChunkedStreamInfo, UnpinDynIoStream};
 
 const DEFAULT_READ_BUF_SIZE: usize = 8_192;
 
@@ -23,15 +23,15 @@ const DEFAULT_READ_BUF_SIZE: usize = 8_192;
 ///
 /// # Examples
 /// ```no_run
-/// use betterstreams::{fs, UnpinDynIOStream};
+/// use betterstreams::{fs, UnpinDynIoStream};
 /// use tokio::runtime::Runtime;
 ///
 /// Runtime::new().unwrap().block_on(async {
-///     let mystream: UnpinDynIOStream = { unimplemented!(); };
+///     let mystream: UnpinDynIoStream = { unimplemented!(); };
 ///     fs::write_all("/home/user/myfile.txt", mystream).await.unwrap();
 /// });
 /// ```
-pub async fn write_all<P: AsRef<Path>>(path: P, stream: UnpinDynIOStream) -> Result<()> {
+pub async fn write_all<P: AsRef<Path>>(path: P, stream: UnpinDynIoStream) -> Result<()> {
     let mut stream_pin = Box::pin(stream);
 
     let mut f = fs::File::create(path.as_ref()).await?;
