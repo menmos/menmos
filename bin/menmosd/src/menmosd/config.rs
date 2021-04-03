@@ -58,6 +58,7 @@ pub struct HttpParameters {
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(tag = "type")]
+#[serde(rename_all = "lowercase")]
 pub enum ServerSetting {
     Http(HttpParameters),
     Https(HttpsParameters),
