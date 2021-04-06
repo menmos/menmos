@@ -16,7 +16,7 @@ const DEFAULT_HTTP_PORT: i64 = 80;
 const DEFAULT_HTTPS_PORT: i64 = 443;
 
 #[derive(Clone, Deserialize, Serialize)]
-pub struct DNSParameters {
+pub struct DnsParameters {
     pub host_name: String, // The domain name of *this* node (for the example below, this would be "dir.storage.com").
     pub root_domain: String, // The domain for which to generate the wildcard cert (e.g. if you want a cert for "*.storage.com" and a directory node on "dir.storage.com", put "storage.com" here)
     pub public_ip: IpAddr,
@@ -26,41 +26,42 @@ pub struct DNSParameters {
 }
 
 #[derive(Clone, Deserialize, Serialize)]
-pub struct HTTPSParameters {
+pub struct HttpsParameters {
     pub http_port: u16,
     pub https_port: u16,
     pub certificate_storage_path: PathBuf,
     pub letsencrypt_email: String,
 
-    #[serde(default = "LetsEncryptURL::default")]
-    pub letsencrypt_url: LetsEncryptURL,
+    #[serde(default = "LetsEncryptUrl::default")]
+    pub letsencrypt_url: LetsEncryptUrl,
 
-    pub dns: DNSParameters,
+    pub dns: DnsParameters,
 }
 
 #[derive(Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub enum LetsEncryptURL {
+pub enum LetsEncryptUrl {
     Production,
     Staging,
 }
 
-impl Default for LetsEncryptURL {
+impl Default for LetsEncryptUrl {
     fn default() -> Self {
-        LetsEncryptURL::Production
+        LetsEncryptUrl::Production
     }
 }
 
 #[derive(Clone, Deserialize, Serialize)]
-pub struct HTTPParameters {
+pub struct HttpParameters {
     pub port: u16,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(tag = "type")]
+#[serde(rename_all = "lowercase")]
 pub enum ServerSetting {
-    HTTP(HTTPParameters),
-    HTTPS(HTTPSParameters),
+    Http(HttpParameters),
+    Https(HttpsParameters),
 }
 
 #[derive(Clone, Deserialize, Serialize)]

@@ -61,7 +61,7 @@ __Note:__ When running menmosd in HTTPS mode, the server will most likely need e
 # config_http.toml
 
 [server]
-type = "HTTP"
+type = "http"
 port = 3030
 
 [node]
@@ -75,7 +75,7 @@ encryption_key = "<encryption key>" # The encryption key *must* be exactly 32 ch
 
 # The HTTPS server listens by default on ports 53 (for DNS) and 443.
 [server]
-type = "HTTPS"
+type = "https"
 letsencrypt_email = "hello@menmos.xyz" # The email to use for you letsencrypt account.
 certificate_storage_path = "./certificates" # The directory in which to store your certificates.
 

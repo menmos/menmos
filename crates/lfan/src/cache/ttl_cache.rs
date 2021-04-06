@@ -29,7 +29,7 @@ impl<V> From<V> for CacheItem<V> {
 }
 
 #[derive(Default)]
-pub struct TTLCache<K, V, IP, EP>
+pub struct TtlCache<K, V, IP, EP>
 where
     K: Hash + Eq,
     IP: Default + InsertionPolicy<K>,
@@ -45,7 +45,7 @@ where
     maximum_size: usize,
 }
 
-impl<K, V, IP, EP> TTLCache<K, V, IP, EP>
+impl<K, V, IP, EP> TtlCache<K, V, IP, EP>
 where
     K: Hash + Eq + std::fmt::Debug,
     IP: Default + InsertionPolicy<K>,
@@ -62,7 +62,7 @@ where
     }
 }
 
-impl<K, V, IP, EP> Cache for TTLCache<K, V, IP, EP>
+impl<K, V, IP, EP> Cache for TtlCache<K, V, IP, EP>
 where
     K: Hash + Eq + std::fmt::Debug,
     IP: Default + InsertionPolicy<K>,

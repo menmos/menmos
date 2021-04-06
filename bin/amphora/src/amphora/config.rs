@@ -21,14 +21,14 @@ const DEFAULT_KEY_LOCKS_LIFETIME_SECONDS: i64 = 60 * 15; // 15 minutes.
 /// node decide which IP to use.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum RedirectIP {
+pub enum RedirectIp {
     Automatic,
     Static(IpAddr),
 }
 
-impl Default for RedirectIP {
+impl Default for RedirectIp {
     fn default() -> Self {
-        RedirectIP::Automatic
+        RedirectIp::Automatic
     }
 }
 
@@ -64,8 +64,8 @@ pub struct NodeSetting {
     pub db_path: PathBuf,
     pub encryption_key: String,
 
-    #[serde(default = "RedirectIP::default")]
-    pub redirect_ip: RedirectIP,
+    #[serde(default = "RedirectIp::default")]
+    pub redirect_ip: RedirectIp,
 
     pub blob_storage: BlobStorageImpl,
 

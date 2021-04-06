@@ -14,34 +14,41 @@ type Result<T> = std::result::Result<T, RecordError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[allow(dead_code)]
+#[allow(clippy::upper_case_acronyms)] // We allow for this because DNS queries are always written uppercase.
 pub enum DnsRecord {
+    #[allow(clippy::upper_case_acronyms)]
     UNKNOWN {
         domain: String,
         qtype: u16,
         data_len: u16,
         ttl: u32,
     }, // 0
+    #[allow(clippy::upper_case_acronyms)]
     A {
         domain: String,
         addr: Ipv4Addr,
         ttl: u32,
     }, // 1
+    #[allow(clippy::upper_case_acronyms)]
     NS {
         domain: String,
         host: String,
         ttl: u32,
     }, // 2
+    #[allow(clippy::upper_case_acronyms)]
     CNAME {
         domain: String,
         host: String,
         ttl: u32,
     }, // 5
+    #[allow(clippy::upper_case_acronyms)]
     MX {
         domain: String,
         priority: u16,
         host: String,
         ttl: u32,
     }, // 15
+    #[allow(clippy::upper_case_acronyms)]
     TXT {
         domain_bytes: Vec<u8>, // usually 2 bytes (jump).
         // Qtype => 2 bytes
@@ -50,11 +57,13 @@ pub enum DnsRecord {
         data_len: u16, // 2 bytes
         text: Vec<Vec<u8>>,
     }, // 16
+    #[allow(clippy::upper_case_acronyms)]
     AAAA {
         domain: String,
         addr: Ipv6Addr,
         ttl: u32,
     }, // 28
+    #[allow(clippy::upper_case_acronyms)]
     CAA {},
 }
 
