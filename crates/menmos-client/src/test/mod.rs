@@ -1,1 +1,1 @@
-mod smart_detector;
+mod metadata_detector;

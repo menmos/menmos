@@ -1,8 +1,8 @@
 mod builder;
 mod client;
+mod metadata_detector;
 mod parameters;
 mod profile;
-mod smart_detector;
 
 use builder::ClientBuilder;
 use parameters::Parameters;

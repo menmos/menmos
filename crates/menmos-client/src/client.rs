@@ -30,9 +30,9 @@ use serde::de::DeserializeOwned;
 use snafu::{ensure, ResultExt, Snafu};
 
 use crate::{
+    metadata_detector::{MetadataDetector, MetadataDetectorError},
     parameters::HostConfig,
     profile::ProfileError,
-    smart_detector::{SmartDetector, SmartDetectorError},
     ClientBuilder, Config, Meta, Parameters,
 };
 
@@ -83,8 +83,8 @@ pub enum ClientError {
     #[snafu(display("unknown error"))]
     UnknownError,
 
-    #[snafu(display("failed to instantiate the smart detector: {}", source))]
-    SmartDetectorInstantiationError { source: SmartDetectorError },
+    #[snafu(display("failed to instantiate the metadata detector: {}", source))]
+    MetadataDetectorErrorInstantiationError { source: MetadataDetectorError },
 }
 
 fn encode_metadata(meta: Meta) -> Result<String> {
@@ -121,7 +121,7 @@ pub struct Client {
     max_retry_count: usize,
     retry_interval: Duration,
     token: String,
-    smart_detector: Option<SmartDetector>,
+    metadata_detector: Option<MetadataDetector>,
 }
 
 type Result<T> = std::result::Result<T, ClientError>;
@@ -203,10 +203,11 @@ impl Client {
 
         let token = Client::login(&client, &host, &username, &admin_password).await?;
 
-        let mut smart_detector: Option<SmartDetector> = None;
-        if params.smart_detection == true {
-            smart_detector = Some(SmartDetector::new().context(SmartDetectorInstantiationError)?);
-        }
+        let metadata_detector = if params.smart_detection {
+            Some(MetadataDetector::new().context(MetadataDetectorErrorInstantiationError)?)
+        } else {
+            None
+        };
 
         Ok(Self {
             host,
@@ -214,7 +215,7 @@ impl Client {
             max_retry_count: params.max_retry_count,
             retry_interval: params.retry_interval,
             token,
-            smart_detector,
+            metadata_detector,
         })
     }
 
@@ -385,10 +386,10 @@ impl Client {
             }
         );
 
-        if let Some(smart_detector) = self.smart_detector.as_ref() {
-            if let Some(ext) = smart_detector.detect(&path) {
-                meta.metadata.insert(String::from("extension"), ext);
-            }
+        if let Some(metadata_detector) = self.metadata_detector.as_ref() {
+            metadata_detector
+                .populate(&path, meta)
+                .context(MetadataDetectorErrorInstantiationError)?;
         }
 
         let mut url = base_url;
