@@ -169,6 +169,10 @@ pub trait DirectoryNode {
     async fn index_blob(&self, blob_id: &str, meta: BlobInfo, storage_node_id: &str) -> Result<()>;
     async fn delete_blob(&self, blob_id: &str, username: &str) -> Result<Option<StorageNodeInfo>>;
 
+    async fn get_routing_key(&self, user: &str) -> Result<Option<String>>;
+    async fn set_routing_key(&self, user: &str, routing_key: &str) -> Result<()>;
+    async fn delete_routing_key(&self, user: &str) -> Result<()>;
+
     async fn register_storage_node(&self, def: StorageNodeInfo) -> Result<StorageNodeResponseData>;
     async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>>;
 

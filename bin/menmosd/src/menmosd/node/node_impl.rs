@@ -1,10 +1,9 @@
-use std::collections::{HashMap, LinkedList};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 use bitvec::prelude::*;
-use chrono::Duration;
 
 use interface::{
     BlobInfo, BlobMetaRequest, DirectoryNode, FacetResponse, Hit, MetadataList, Query,
@@ -15,15 +14,14 @@ use rapidquery::Resolver;
 
 use indexer::iface::*;
 
-const NODE_FORGET_DURATION_SECONDS: i64 = 60;
+use super::routing::NodeRouter;
 
 pub struct Directory<I>
 where
     I: IndexProvider + Flush + Send + Sync,
 {
     index: Arc<I>,
-    nodes_round_robin: Mutex<LinkedList<String>>, // TODO: This could be implemented as a NodeSelectionStrategy that _could_ use the document meta to choose.
-    node_forget_duration: chrono::Duration,
+    node_router: NodeRouter<I::RoutingProvider>,
     rebuild_queue: Mutex<Vec<StorageNodeInfo>>,
 }
 
@@ -32,39 +30,13 @@ where
     I: IndexProvider + Flush + Send + Sync,
 {
     pub fn new(index: I) -> Self {
+        let index_arc = Arc::from(index);
+        let node_router = NodeRouter::new(index_arc.routing());
         Self {
-            index: Arc::from(index),
-            nodes_round_robin: Default::default(),
-            node_forget_duration: Duration::seconds(NODE_FORGET_DURATION_SECONDS),
+            index: index_arc,
+            node_router,
             rebuild_queue: Default::default(),
         }
-    }
-
-    fn get_node_if_fresh(&self, node_id: &str) -> Result<Option<StorageNodeInfo>> {
-        if let Some((node_info, seen_at)) = self.index.storage().get_node(&node_id)? {
-            if chrono::Utc::now() - seen_at > self.node_forget_duration {
-                // Node is expired.
-                Ok(None)
-            } else {
-                Ok(Some(node_info))
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    fn prune_last_node(&self) -> Result<()> {
-        let mut guard = self
-            .nodes_round_robin
-            .lock()
-            .map_err(|_| anyhow!("poisoned mutex"))?;
-
-        if let Some(node_id) = (*guard).pop_back() {
-            self.index.storage().delete_node(&node_id)?;
-        } else {
-            log::warn!("called prune_last_node with an empty node list")
-        }
-        Ok(())
     }
 
     fn load_document(&self, idx: u32) -> Result<Hit> {
@@ -98,65 +70,27 @@ where
         &self,
         def: interface::StorageNodeInfo,
     ) -> Result<StorageNodeResponseData> {
-        let id = def.id.clone();
-
-        let already_existed = self.index.storage().write_node(def, chrono::Utc::now())?;
-
         let rebuild_requested = {
             let rebuild_queue_guard = self.rebuild_queue.lock().map_err(|e| anyhow!("{}", e))?;
 
             if let Some(storage_node) = rebuild_queue_guard.last() {
-                storage_node.id == id
+                storage_node.id == def.id
             } else {
                 false
             }
         };
 
-        // Register the node to the round robin if its new.
-        if !already_existed {
-            let mut guard = self
-                .nodes_round_robin
-                .lock()
-                .map_err(|_| anyhow!("poisoned mutex"))?;
-
-            let round_robin = &mut *guard;
-            round_robin.push_back(id);
-        }
+        self.node_router.add_node(def).await;
 
         Ok(StorageNodeResponseData { rebuild_requested })
     }
 
     async fn pick_node_for_blob(
         &self,
-        _blob_id: &str,
-        _meta: BlobMetaRequest,
+        blob_id: &str,
+        meta: BlobMetaRequest,
     ) -> Result<StorageNodeInfo> {
-        loop {
-            // Get the node ID.
-            let node_id = {
-                let mut guard = self
-                    .nodes_round_robin
-                    .lock()
-                    .map_err(|_| anyhow!("poisoned mutex"))?;
-                let round_robin = &mut guard;
-                let node_id = round_robin
-                    .pop_front()
-                    .ok_or_else(|| anyhow!("No storage node defined"))?;
-
-                // Push back to update the round-robin
-                round_robin.push_back(node_id.clone());
-
-                node_id
-            };
-
-            // Fetch the storage node associated with the ID.
-            if let Some(node) = self.get_node_if_fresh(&node_id)? {
-                return Ok(node);
-            } else {
-                // Node is non-existent or stale.
-                self.prune_last_node()?;
-            }
-        }
+        self.node_router.route_blob(blob_id, &meta).await
     }
 
     async fn get_blob_meta(&self, blob_id: &str, username: &str) -> Result<Option<BlobInfo>> {
@@ -176,12 +110,13 @@ where
     }
 
     async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>> {
-        if let Some(node_id) = self.index.storage().get_node_for_blob(&blob_id)? {
-            if let Some(node) = self.get_node_if_fresh(&node_id)? {
-                Ok(Some(node))
-            } else {
-                Ok(None)
-            }
+        // These next two lines could technically be in one line, but since its an async
+        // function and index::storage() returns a ref to the storage provider, the borrow checker can't guarantee that there
+        // won't be concurrent accesses to the storage provider. Doing it in two lines makes it explicit that the ref. to the
+        // storage provider is dropped before the await point.
+        let node_id_maybe = self.index.storage().get_node_for_blob(&blob_id)?;
+        if let Some(node_id) = node_id_maybe {
+            Ok(self.node_router.get_node(&node_id).await)
         } else {
             Ok(None)
         }
@@ -200,7 +135,7 @@ where
     }
 
     async fn start_rebuild(&self) -> Result<()> {
-        let storage_nodes = self.index.storage().get_all_nodes()?;
+        let storage_nodes = self.node_router.list_nodes().await;
         log::info!("starting rebuild for {} nodes", storage_nodes.len());
 
         log::debug!("nuking the whole index");
@@ -219,6 +154,18 @@ where
         rebuild_queue_guard.retain(|item| item.id != storage_node_id);
         log::info!("finished rebuild for node id={}", storage_node_id);
         Ok(())
+    }
+
+    async fn get_routing_key(&self, user: &str) -> Result<Option<String>> {
+        self.index.routing().get_routing_key(user)
+    }
+
+    async fn set_routing_key(&self, user: &str, routing_key: &str) -> Result<()> {
+        self.index.routing().set_routing_key(user, routing_key)
+    }
+
+    async fn delete_routing_key(&self, user: &str) -> Result<()> {
+        self.index.routing().delete_routing_key(user)
     }
 
     async fn delete_blob(
@@ -243,19 +190,7 @@ where
         //
         // This is the algorithm:
         //  - Delete the BlobID from the storage node index.
-        let storage_node_info = self
-            .index
-            .storage()
-            .delete_blob(blob_id)?
-            .map(|node_id| {
-                self.index
-                    .storage()
-                    .get_node(&node_id)
-                    .ok()
-                    .flatten()
-                    .map(|i| i.0)
-            })
-            .flatten();
+        let node_id_maybe = self.index.storage().delete_blob(blob_id)?;
 
         //  - Delete the BlobID -> BlobIDX mapping in the document index.
         //  - Add the BlobIDX to a list of "free" indices (up for recycling) kept in the document index.
@@ -265,7 +200,12 @@ where
             //  - Once a new insert comes, prioritize using a recycled BlobIDX over allocating a new one.
             self.index.meta().purge(blob_idx)?;
         }
-        Ok(storage_node_info)
+
+        if let Some(node_id) = node_id_maybe {
+            Ok(self.node_router.get_node(&node_id).await)
+        } else {
+            Ok(None)
+        }
     }
 
     async fn query(&self, query: &Query, username: &str) -> Result<QueryResponse> {
@@ -361,22 +301,7 @@ where
     }
 
     async fn list_storage_nodes(&self) -> Result<Vec<StorageNodeInfo>> {
-        let guard = self
-            .nodes_round_robin
-            .lock()
-            .map_err(|_| anyhow!("poisoned mutex"))?;
-
-        let node_list = &*guard;
-
-        let mut node_infos = Vec::new();
-        for node_id in node_list.iter() {
-            if let Some((info, _last_seen)) = self.index.storage().get_node(node_id)? {
-                // TODO: Returning last seen here would be nice too.
-                node_infos.push(info);
-            }
-        }
-
-        Ok(node_infos)
+        Ok(self.node_router.list_nodes().await)
     }
 
     async fn login(&self, user: &str, password: &str) -> Result<bool> {

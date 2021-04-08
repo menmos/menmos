@@ -1,0 +1,15 @@
+[package]
+name = "menmos-std"
+version = "0.0.5"
+authors = ["William Dussault <dalloriam@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+
+async = ["tokio"]
+
+[dependencies]
+tokio = {version = "1.2", features = ["full"], optional = true}

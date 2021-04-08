@@ -1477,6 +1477,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "menmos-std"
+version = "0.0.5"
+dependencies = [
+ "tokio",
+]
+
+[[package]]
 name = "menmos-testing"
 version = "0.0.5"
 dependencies = [
@@ -1535,6 +1542,7 @@ dependencies = [
  "menmos-indexer",
  "menmos-interface",
  "menmos-protocol",
+ "menmos-std",
  "menmos-testing",
  "menmos-xecute",
  "mime",

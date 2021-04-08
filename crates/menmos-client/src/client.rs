@@ -18,6 +18,7 @@ use protocol::{
     directory::{
         auth::{LoginRequest, LoginResponse, RegisterRequest},
         blobmeta::{GetMetaResponse, ListMetadataRequest},
+        routing::{GetRoutingKeyResponse, SetRoutingKeyRequest},
         storage::ListStorageNodesResponse,
     },
     storage::PutResponse,
@@ -719,6 +720,65 @@ impl Client {
         } else {
             // An error occurred.
             return Err(extract_error(response).await);
+        }
+    }
+
+    pub async fn get_routing_key(&self) -> Result<GetRoutingKeyResponse> {
+        let url = format!("{}/routing", self.host);
+
+        let response = self
+            .execute(|| {
+                self.client
+                    .get(&url)
+                    .bearer_auth(&self.token)
+                    .build()
+                    .context(RequestBuildError)
+            })
+            .await?;
+
+        extract(response).await
+    }
+
+    pub async fn set_routing_key(&self, routing_key: &str) -> Result<()> {
+        let url = format!("{}/routing", self.host);
+
+        let response = self
+            .execute(|| {
+                self.client
+                    .put(&url)
+                    .bearer_auth(&self.token)
+                    .json(&SetRoutingKeyRequest {
+                        routing_key: String::from(routing_key),
+                    })
+                    .build()
+                    .context(RequestBuildError)
+            })
+            .await?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(extract_error(response).await)
+        }
+    }
+
+    pub async fn delete_routing_key(&self) -> Result<()> {
+        let url = format!("{}/routing", self.host);
+
+        let response = self
+            .execute(|| {
+                self.client
+                    .delete(&url)
+                    .bearer_auth(&self.token)
+                    .build()
+                    .context(RequestBuildError)
+            })
+            .await?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(extract_error(response).await)
         }
     }
 }

@@ -3,6 +3,7 @@ mod documents;
 pub mod iface;
 mod meta;
 mod root;
+mod routing;
 mod storage;
 mod users;
 

@@ -494,3 +494,20 @@ async fn facet_grouping() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn routing_key_get_set_delete() -> Result<()> {
+    let node = TestDirNode::new(MockIndex::default());
+
+    assert_eq!(node.get_routing_key("jdoe").await?, None);
+
+    node.set_routing_key("jdoe", "some_field").await?;
+
+    assert_eq!(node.get_routing_key("jdoe").await?.unwrap(), "some_field");
+
+    node.delete_routing_key("jdoe").await?;
+
+    assert_eq!(node.get_routing_key("jdoe").await?, None);
+
+    Ok(())
+}

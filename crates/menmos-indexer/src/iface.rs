@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use anyhow::Result;
 
@@ -6,9 +7,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use chrono::Utc;
-
-use interface::{BlobInfo, StorageNodeInfo};
+use interface::BlobInfo;
 
 #[async_trait]
 pub trait Flush {
@@ -50,11 +49,13 @@ pub trait MetadataMapper {
     fn clear(&self) -> Result<()>;
 }
 
+pub trait RoutingMapper {
+    fn get_routing_key(&self, username: &str) -> Result<Option<String>>;
+    fn set_routing_key(&self, username: &str, routing_key: &str) -> Result<()>;
+    fn delete_routing_key(&self, username: &str) -> Result<()>;
+}
+
 pub trait StorageNodeMapper {
-    fn get_node(&self, node_id: &str) -> Result<Option<(StorageNodeInfo, chrono::DateTime<Utc>)>>;
-    fn get_all_nodes(&self) -> Result<Vec<StorageNodeInfo>>;
-    fn write_node(&self, info: StorageNodeInfo, seen_at: chrono::DateTime<Utc>) -> Result<bool>;
-    fn delete_node(&self, node_id: &str) -> Result<()>;
     fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>>;
     fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()>;
     fn delete_blob(&self, blob_id: &str) -> Result<Option<String>>;
@@ -68,13 +69,15 @@ pub trait UserMapper {
 }
 
 pub trait IndexProvider {
-    type DocumentProvider: DocIDMapper;
-    type MetadataProvider: MetadataMapper;
-    type StorageProvider: StorageNodeMapper;
-    type UserProvider: UserMapper;
+    type DocumentProvider: DocIDMapper + Send + Sync;
+    type MetadataProvider: MetadataMapper + Send + Sync;
+    type RoutingProvider: RoutingMapper + Send + Sync;
+    type StorageProvider: StorageNodeMapper + Send + Sync;
+    type UserProvider: UserMapper + Send + Sync;
 
-    fn documents(&self) -> &Self::DocumentProvider;
-    fn meta(&self) -> &Self::MetadataProvider;
-    fn storage(&self) -> &Self::StorageProvider;
-    fn users(&self) -> &Self::UserProvider;
+    fn documents(&self) -> Arc<Self::DocumentProvider>;
+    fn meta(&self) -> Arc<Self::MetadataProvider>;
+    fn routing(&self) -> Arc<Self::RoutingProvider>;
+    fn storage(&self) -> Arc<Self::StorageProvider>;
+    fn users(&self) -> Arc<Self::UserProvider>;
 }

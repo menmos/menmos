@@ -3,6 +3,7 @@ mod auth;
 mod blob;
 mod blobmeta;
 mod query;
+mod routing;
 mod storage;
 mod util;
 
@@ -20,7 +21,8 @@ pub fn all(
         .or(blobmeta::all(context.clone()))
         .or(admin::all(context.clone()))
         .or(query::all(context.clone()))
-        .or(auth::all(context))
+        .or(auth::all(context.clone()))
+        .or(routing::all(context))
         .recover(apikit::reject::recover)
         .with(warp::log("directory::api"))
 }

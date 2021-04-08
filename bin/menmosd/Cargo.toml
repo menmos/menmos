@@ -47,6 +47,7 @@ menmos-apikit = "0.0.5"
 menmos-indexer = { path = "../../crates/menmos-indexer"}
 menmos-interface = "0.0.5"
 menmos-protocol = "0.0.5"
+menmos-std = {version = "0.0.5", features = ["async"]}
 menmos-xecute = "0.0.5"
 mime = "0.3"
 rapidquery = {version = "0.0.5", features=["bitvec_span"]}
