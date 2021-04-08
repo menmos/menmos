@@ -8,7 +8,7 @@ use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::config::{Appender, Config as LogConfig, Root};
 use menmos_client::{Client, Meta};
-use menmosd::config::{HTTPParameters, ServerSetting};
+use menmosd::config::{HttpParameters, ServerSetting};
 use menmosd::{Config, Server};
 use tempfile::{NamedTempFile, TempDir};
 
@@ -51,7 +51,7 @@ impl Menmos {
         cfg.node.db_path = db_path;
 
         let port = portpicker::pick_unused_port().unwrap();
-        cfg.server = ServerSetting::HTTP(HTTPParameters { port });
+        cfg.server = ServerSetting::Http(HttpParameters { port });
 
         let node = menmosd::make_node(&cfg)?;
 

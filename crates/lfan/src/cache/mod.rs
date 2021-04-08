@@ -13,4 +13,4 @@ pub use concurrent_cache::ConcurrentCache;
 
 pub use modular_cache::ModularCache;
 pub use policy::{EvictionPolicy, InsertionPolicy};
-pub use ttl_cache::TTLCache;
+pub use ttl_cache::TtlCache;

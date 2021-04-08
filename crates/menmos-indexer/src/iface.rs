@@ -7,14 +7,14 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use interface::BlobInfo;
+use interface::{BlobInfo, RoutingConfig};
 
 #[async_trait]
 pub trait Flush {
     async fn flush(&self) -> Result<()>;
 }
 
-pub trait DocIDMapper {
+pub trait DocIdMapper {
     fn get_nb_of_docs(&self) -> u32;
     fn insert(&self, doc_id: &str) -> Result<u32>;
     fn get(&self, doc_id: &str) -> Result<Option<u32>>;
@@ -50,9 +50,9 @@ pub trait MetadataMapper {
 }
 
 pub trait RoutingMapper {
-    fn get_routing_key(&self, username: &str) -> Result<Option<String>>;
-    fn set_routing_key(&self, username: &str, routing_key: &str) -> Result<()>;
-    fn delete_routing_key(&self, username: &str) -> Result<()>;
+    fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfig>>;
+    fn set_routing_config(&self, username: &str, routing_key: &RoutingConfig) -> Result<()>;
+    fn delete_routing_config(&self, username: &str) -> Result<()>;
 }
 
 pub trait StorageNodeMapper {
@@ -69,7 +69,7 @@ pub trait UserMapper {
 }
 
 pub trait IndexProvider {
-    type DocumentProvider: DocIDMapper + Send + Sync;
+    type DocumentProvider: DocIdMapper + Send + Sync;
     type MetadataProvider: MetadataMapper + Send + Sync;
     type RoutingProvider: RoutingMapper + Send + Sync;
     type StorageProvider: StorageNodeMapper + Send + Sync;

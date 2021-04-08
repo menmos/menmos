@@ -33,7 +33,7 @@ impl Server {
 
         let node_cloned = node.clone();
         let join_handle = match cfg.server {
-            ServerSetting::HTTPS(https_cfg) => spawn(async move {
+            ServerSetting::Https(https_cfg) => spawn(async move {
                 match use_tls(node_cloned, config, https_cfg, stop_rx).await {
                     Ok(_) => {}
                     Err(e) => {
@@ -41,7 +41,7 @@ impl Server {
                     }
                 }
             }),
-            ServerSetting::HTTP(http_cfg) => {
+            ServerSetting::Http(http_cfg) => {
                 log::info!("starting http layer");
                 let server_context = Context {
                     node: node.clone(),

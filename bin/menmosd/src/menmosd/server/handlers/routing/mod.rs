@@ -2,6 +2,6 @@ mod delete;
 mod get;
 mod set;
 
-pub use delete::delete_key;
-pub use get::get_key;
-pub use set::set_key;
+pub use delete::delete;
+pub use get::get;
+pub use set::set;

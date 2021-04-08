@@ -42,7 +42,7 @@ impl DnsHeader {
             opcode: 0,
             response: false,
 
-            rescode: ResultCode::NOERROR,
+            rescode: ResultCode::NoError,
             checking_disabled: false,
             authed_data: false,
             z: false,

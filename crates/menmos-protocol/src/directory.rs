@@ -27,20 +27,20 @@ pub mod blobmeta {
 }
 
 pub mod routing {
+    use interface::RoutingConfig;
+
     use super::*;
 
     #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
     #[serde(deny_unknown_fields)]
-    pub struct GetRoutingKeyResponse {
-        /// The field name to use for routing.
-        pub routing_key: Option<String>,
+    pub struct GetRoutingConfigResponse {
+        pub routing_config: Option<RoutingConfig>,
     }
 
     #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
     #[serde(deny_unknown_fields)]
-    pub struct SetRoutingKeyRequest {
-        /// The field name to use for routing.
-        pub routing_key: String,
+    pub struct SetRoutingConfigRequest {
+        pub routing_config: RoutingConfig,
     }
 }
 

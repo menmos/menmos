@@ -5,13 +5,13 @@ use warp::reply;
 
 use crate::server::context::Context;
 
-pub async fn delete_key(
+pub async fn delete(
     user: UserIdentity,
     context: Context,
 ) -> Result<reply::Response, warp::Rejection> {
     context
         .node
-        .delete_routing_key(&user.username)
+        .delete_routing_config(&user.username)
         .await
         .map_err(InternalServerError::from)?;
 

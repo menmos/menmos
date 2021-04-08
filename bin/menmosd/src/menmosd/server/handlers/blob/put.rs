@@ -22,7 +22,7 @@ fn parse_metadata(header_value: String) -> Result<BlobMetaRequest> {
 }
 
 pub async fn put(
-    _user: UserIdentity,
+    user: UserIdentity,
     context: Context,
     meta: String,
     addr: Option<SocketAddr>,
@@ -35,7 +35,7 @@ pub async fn put(
     let new_blob_id = uuid::Uuid::new_v4().to_string();
     let targeted_storage_node = context
         .node
-        .pick_node_for_blob(&new_blob_id, meta)
+        .pick_node_for_blob(&new_blob_id, meta, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 

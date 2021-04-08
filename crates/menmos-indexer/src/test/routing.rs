@@ -1,4 +1,5 @@
 use anyhow::Result;
+use interface::RoutingConfig;
 use tempfile::TempDir;
 
 use crate::{iface::RoutingMapper, routing::RoutingStore};
@@ -12,47 +13,52 @@ fn init_doesnt_fail() -> Result<()> {
 }
 
 #[test]
-fn get_routing_key_with_no_key_returns_none() -> Result<()> {
+fn get_routing_config_with_no_key_returns_none() -> Result<()> {
     let d = TempDir::new()?;
     let db = sled::open(d.path())?;
     let r = RoutingStore::new(&db)?;
-    assert_eq!(r.get_routing_key("bing")?, None);
+    assert_eq!(r.get_routing_config("bing")?, None);
 
     Ok(())
 }
 
 #[test]
-fn set_routing_key_works() -> Result<()> {
+fn set_routing_config_works() -> Result<()> {
     let d = TempDir::new()?;
     let db = sled::open(d.path())?;
     let r = RoutingStore::new(&db)?;
-    r.set_routing_key("jdoe", "some_field")?;
-    assert_eq!(r.get_routing_key("jdoe")?.unwrap(), "some_field");
+
+    let cfg = RoutingConfig::new("some_field");
+
+    r.set_routing_config("jdoe", &cfg)?;
+    assert_eq!(&r.get_routing_config("jdoe")?.unwrap(), &cfg);
 
     Ok(())
 }
 
 #[test]
-fn delete_routing_key_works() -> Result<()> {
+fn delete_routing_config_works() -> Result<()> {
     let d = TempDir::new()?;
     let db = sled::open(d.path())?;
     let r = RoutingStore::new(&db)?;
 
-    r.set_routing_key("jdoe", "some_field")?;
-    r.delete_routing_key("jdoe")?;
+    let cfg = RoutingConfig::new("some_field").with_route("alpha", "beta");
 
-    assert_eq!(r.get_routing_key("jdoe")?, None);
+    r.set_routing_config("jdoe", &cfg)?;
+    r.delete_routing_config("jdoe")?;
+
+    assert_eq!(r.get_routing_config("jdoe")?, None);
 
     Ok(())
 }
 
 #[test]
-fn delete_nonexistent_routing_key_doesnt_fail() -> Result<()> {
+fn delete_nonexistent_routing_config_doesnt_fail() -> Result<()> {
     let d = TempDir::new()?;
     let db = sled::open(d.path())?;
     let r = RoutingStore::new(&db)?;
 
-    r.delete_routing_key("i dont exist")?;
+    r.delete_routing_config("i dont exist")?;
 
     Ok(())
 }

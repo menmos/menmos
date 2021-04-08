@@ -6,7 +6,8 @@ use chrono::Utc;
 
 use indexer::Index;
 use interface::{
-    BlobInfo, BlobMetaRequest, DirectoryNode, Query, QueryResponse, StorageNodeInfo, Type,
+    BlobInfo, BlobMetaRequest, DirectoryNode, Query, QueryResponse, RoutingConfig, StorageNodeInfo,
+    Type,
 };
 use tempfile::TempDir;
 
@@ -32,7 +33,7 @@ async fn index<S: AsRef<str>, N: DirectoryNode>(
     node: &N,
 ) -> StorageNodeInfo {
     let tgt_storage_node = node
-        .pick_node_for_blob(id.as_ref(), meta_request.clone())
+        .pick_node_for_blob(id.as_ref(), meta_request.clone(), "admin")
         .await
         .unwrap();
 
@@ -53,7 +54,11 @@ async fn index<S: AsRef<str>, N: DirectoryNode>(
 async fn pick_node_for_blob_with_no_storage_nodes() {
     let node = TestDirNode::new(MockIndex::default());
     assert!(node
-        .pick_node_for_blob("bing", BlobMetaRequest::new("somename", Type::File),)
+        .pick_node_for_blob(
+            "bing",
+            BlobMetaRequest::new("somename", Type::File),
+            "admin"
+        )
         .await
         .is_err());
 }
@@ -496,18 +501,125 @@ async fn facet_grouping() -> Result<()> {
 }
 
 #[tokio::test]
-async fn routing_key_get_set_delete() -> Result<()> {
+async fn routing_info_get_set_delete() -> Result<()> {
     let node = TestDirNode::new(MockIndex::default());
 
-    assert_eq!(node.get_routing_key("jdoe").await?, None);
+    let cfg = RoutingConfig::new("some_field").with_route("alpha", "beta");
 
-    node.set_routing_key("jdoe", "some_field").await?;
+    assert_eq!(node.get_routing_config("jdoe").await?, None);
 
-    assert_eq!(node.get_routing_key("jdoe").await?.unwrap(), "some_field");
+    node.set_routing_config("jdoe", &cfg).await?;
 
-    node.delete_routing_key("jdoe").await?;
+    assert_eq!(&node.get_routing_config("jdoe").await?.unwrap(), &cfg);
 
-    assert_eq!(node.get_routing_key("jdoe").await?, None);
+    node.delete_routing_config("jdoe").await?;
+
+    assert_eq!(node.get_routing_config("jdoe").await?, None);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn add_multi_blob_routing_key() -> Result<()> {
+    let node = TestDirNode::new(MockIndex::default());
+
+    let mut storage_nodes = Vec::with_capacity(3);
+    storage_nodes.push(get_storage_node_info("alpha"));
+    storage_nodes.push(get_storage_node_info("beta"));
+
+    for storage_node in storage_nodes.into_iter() {
+        node.register_storage_node(storage_node).await?;
+    }
+
+    let cfg = RoutingConfig::new("some_field")
+        .with_route("a", "alpha")
+        .with_route("b", "beta");
+
+    node.set_routing_config("admin", &cfg).await?;
+
+    // Test each multiple times so we know it's not round-robin.
+    for _ in 0..10 {
+        let node = node
+            .pick_node_for_blob(
+                "asdf",
+                BlobMetaRequest::file("bing.txt").with_meta("some_field", "a"),
+                "admin",
+            )
+            .await?;
+        assert_eq!(node.id, "alpha");
+    }
+
+    for _ in 0..10 {
+        let node = node
+            .pick_node_for_blob(
+                "asdf",
+                BlobMetaRequest::file("bing.txt").with_meta("some_field", "b"),
+                "admin",
+            )
+            .await?;
+        assert_eq!(node.id, "beta");
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn add_blob_routing_key_unknown_value() -> Result<()> {
+    let node = TestDirNode::new(MockIndex::default());
+
+    let mut storage_nodes = Vec::with_capacity(3);
+    storage_nodes.push(get_storage_node_info("alpha"));
+    storage_nodes.push(get_storage_node_info("beta"));
+
+    for storage_node in storage_nodes.into_iter() {
+        node.register_storage_node(storage_node).await?;
+    }
+
+    let cfg = RoutingConfig::new("some_field")
+        .with_route("a", "alpha")
+        .with_route("b", "beta");
+
+    node.set_routing_config("admin", &cfg).await?;
+
+    for i in 0..10 {
+        let node = node
+            .pick_node_for_blob(
+                "asdf",
+                BlobMetaRequest::file("bing.txt").with_meta("some_field", "unknown"),
+                "admin",
+            )
+            .await?;
+
+        let expected_node = if i % 2 == 0 { "alpha" } else { "beta" };
+        assert_eq!(node.id, expected_node);
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn add_blob_routing_key_missing_storage_node() -> Result<()> {
+    let node = TestDirNode::new(MockIndex::default());
+
+    // We only register node alpha.
+    node.register_storage_node(get_storage_node_info("alpha"))
+        .await?;
+
+    // We put alpha *and* beta in the routing config.
+    let cfg = RoutingConfig::new("some_field")
+        .with_route("a", "alpha")
+        .with_route("b", "beta");
+
+    node.set_routing_config("admin", &cfg).await?;
+
+    assert!(node
+        .pick_node_for_blob(
+            "asdf",
+            BlobMetaRequest::file("bing.txt").with_meta("some_field", "b"),
+            "admin"
+        )
+        .await
+        .is_err());
 
     Ok(())
 }
