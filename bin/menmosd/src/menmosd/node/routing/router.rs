@@ -93,11 +93,11 @@ where
         let routed_storage_node_maybe = self
             .index
             .get_routing_config(username)?
-            .map(|routing_config| {
+            .map(|cfg_state| {
                 meta_request
                     .metadata
-                    .get(&routing_config.routing_key)
-                    .map(|cfg_value| (routing_config, cfg_value))
+                    .get(&cfg_state.routing_config.routing_key)
+                    .map(|cfg_value| (cfg_state.routing_config, cfg_value))
             })
             .flatten()
             .map(|(routing_cfg, routing_field_value)| {

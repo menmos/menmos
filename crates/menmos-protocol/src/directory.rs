@@ -79,10 +79,18 @@ pub mod storage {
 
     #[derive(Clone, Debug, Deserialize, Serialize)]
     #[serde(deny_unknown_fields)]
+    pub struct MoveRequest {
+        pub blob_id: String,
+        pub destination_url: String,
+    }
+
+    #[derive(Clone, Debug, Deserialize, Serialize)]
+    #[serde(deny_unknown_fields)]
     pub struct RegisterResponse {
         pub message: String,
         pub certificates: Option<CertificateInfo>,
         pub rebuild_requested: bool,
+        pub move_requests: Vec<MoveRequest>,
     }
 }
 

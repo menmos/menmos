@@ -187,6 +187,25 @@ impl RoutingConfig {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub enum DirtyState {
+    Dirty,
+    Clean,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct RoutingConfigState {
+    pub routing_config: RoutingConfig,
+    pub state: DirtyState,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct MoveInformation {
+    pub blob_id: String,
+    pub destination_node: StorageNodeInfo,
+}
+
 #[async_trait]
 pub trait DirectoryNode {
     async fn pick_node_for_blob(
@@ -202,6 +221,8 @@ pub trait DirectoryNode {
     async fn get_routing_config(&self, user: &str) -> Result<Option<RoutingConfig>>;
     async fn set_routing_config(&self, user: &str, config: &RoutingConfig) -> Result<()>;
     async fn delete_routing_config(&self, user: &str) -> Result<()>;
+
+    async fn get_move_requests(&self, src_node: &str) -> Result<Vec<MoveInformation>>;
 
     async fn register_storage_node(&self, def: StorageNodeInfo) -> Result<StorageNodeResponseData>;
     async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>>;

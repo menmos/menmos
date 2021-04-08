@@ -28,6 +28,7 @@ fn put(
         ))
         .and(util::with_context(context))
         .and(warp::body::json())
+        .and(warp::filters::addr::remote())
         .and_then(handlers::storage::put)
 }
 

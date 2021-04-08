@@ -7,7 +7,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use interface::{BlobInfo, RoutingConfig};
+use interface::{BlobInfo, RoutingConfig, RoutingConfigState};
 
 #[async_trait]
 pub trait Flush {
@@ -49,10 +49,33 @@ pub trait MetadataMapper {
     fn clear(&self) -> Result<()>;
 }
 
+pub struct DynIter<'iter, V> {
+    iter: Box<dyn Iterator<Item = V> + 'iter + Send>,
+}
+
+impl<'iter, V> Iterator for DynIter<'iter, V> {
+    type Item = V;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+impl<'iter, V> DynIter<'iter, V> {
+    pub fn new<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = V> + 'iter + Send,
+    {
+        Self {
+            iter: Box::new(iter),
+        }
+    }
+}
+
 pub trait RoutingMapper {
-    fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfig>>;
-    fn set_routing_config(&self, username: &str, routing_key: &RoutingConfig) -> Result<()>;
+    fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfigState>>;
+    fn set_routing_config(&self, username: &str, routing_key: &RoutingConfigState) -> Result<()>;
     fn delete_routing_config(&self, username: &str) -> Result<()>;
+    fn iter(&self) -> DynIter<'static, Result<RoutingConfigState>>;
 }
 
 pub trait StorageNodeMapper {
@@ -66,6 +89,7 @@ pub trait UserMapper {
     fn add_user(&self, username: &str, password: &str) -> Result<()>;
     fn authenticate(&self, username: &str, password: &str) -> Result<bool>;
     fn has_user(&self, username: &str) -> Result<bool>;
+    fn iter(&self) -> DynIter<'static, Result<String>>;
 }
 
 pub trait IndexProvider {
