@@ -10,7 +10,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use interface::{BlobInfo, RoutingConfig, RoutingConfigState};
+use interface::{BlobInfo, RoutingConfigState};
 
 use indexer::iface::*;
 

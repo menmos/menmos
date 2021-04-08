@@ -1,15 +1,18 @@
 use std::io::Write;
+use std::net::IpAddr;
 use std::sync::Once;
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 
+use interface::StorageNodeInfo;
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::config::{Appender, Config as LogConfig, Root};
 use menmos_client::{Client, Meta};
 use menmosd::config::{HttpParameters, ServerSetting};
 use menmosd::{Config, Server};
+use protocol::directory::storage::MoveRequest;
 use tempfile::{NamedTempFile, TempDir};
 
 const DIRECTORY_PASSWORD: &str = "password";
@@ -37,6 +40,7 @@ pub struct Menmos {
     pub directory_url: String,
     pub directory_password: String,
     pub client: Client,
+    pub config: Config,
 }
 
 impl Menmos {
@@ -55,7 +59,7 @@ impl Menmos {
 
         let node = menmosd::make_node(&cfg)?;
 
-        let dir_server = Server::new(cfg, node).await?;
+        let dir_server = Server::new(cfg.clone(), node).await?;
 
         let directory_url = format!("http://localhost:{}", port);
         let client = Client::new(&directory_url, "admin", DIRECTORY_PASSWORD).await?;
@@ -68,6 +72,7 @@ impl Menmos {
             directory_url,
             directory_password: DIRECTORY_PASSWORD.into(),
             client,
+            config: cfg,
         })
     }
 
@@ -120,6 +125,47 @@ impl Menmos {
         let file_path = tfile.into_temp_path();
         client.update_blob(blob_id, &file_path, meta).await?;
         Ok(())
+    }
+
+    pub async fn get_move_requests_from<S: AsRef<str>>(
+        &self,
+        storage_node_id: S,
+    ) -> Result<Vec<MoveRequest>> {
+        let reqwest_client = reqwest::Client::new();
+        let auth_token = apikit::auth::make_token(
+            &self.config.node.encryption_key,
+            apikit::auth::StorageNodeIdentity { id: "alpha".into() },
+        )?;
+
+        let url = self.directory_url.clone() + "/node/storage";
+
+        let mock_node_info = StorageNodeInfo {
+            id: String::from(storage_node_id.as_ref()),
+            redirect_info: interface::RedirectInfo::Static {
+                static_address: IpAddr::from([127, 0, 0, 1]),
+            },
+            port: 8081,
+        };
+
+        let req = reqwest_client
+            .put(&url)
+            .bearer_auth(&auth_token)
+            .json(&mock_node_info)
+            .build()?;
+
+        let resp = reqwest_client.execute(req).await?;
+
+        ensure!(
+            resp.status().is_success(),
+            "unexpected response status: {}",
+            resp.status()
+        );
+
+        let body_bytes = resp.bytes().await?;
+        let reg_response: protocol::directory::storage::RegisterResponse =
+            serde_json::from_slice(body_bytes.as_ref())?;
+
+        Ok(reg_response.move_requests)
     }
 
     pub async fn add_amphora<S: Into<String>>(&mut self, name: S) -> Result<()> {
