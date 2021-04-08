@@ -1,12 +1,10 @@
-use std::path::Path;
-
 use crate::metadata_detector::MetadataDetector;
 
 use crate::{Meta, Type};
 
 #[test]
 fn detect_file_mime_type() {
-    let path = Path::new("foo.txt");
+    let path = "foo.txt";
     let mut meta = Meta::new("test", Type::File);
     let meta_detector = MetadataDetector::new().unwrap();
 
@@ -19,7 +17,7 @@ fn detect_file_mime_type() {
 
 #[test]
 fn detect_no_mime_type() {
-    let path = Path::new("foo.invalid");
+    let path = "foo.invalid";
     let mut meta = Meta::new("test", Type::File);
     let meta_detector = MetadataDetector::new().unwrap();
 

@@ -32,7 +32,7 @@ pub struct ClientBuilder {
     max_retry_count: usize,
     retry_interval: time::Duration,
 
-    smart_detection: bool,
+    metadata_detection: bool,
 }
 
 impl ClientBuilder {
@@ -76,8 +76,8 @@ impl ClientBuilder {
         self
     }
 
-    pub fn with_smart_detection(mut self) -> Self {
-        self.smart_detection = true;
+    pub fn with_metadata_detection(mut self) -> Self {
+        self.metadata_detection = true;
         self
     }
 
@@ -101,7 +101,7 @@ impl ClientBuilder {
             request_timeout: self.request_timeout,
             max_retry_count: self.max_retry_count,
             retry_interval: self.retry_interval,
-            smart_detection: self.smart_detection,
+            metadata_detection: self.metadata_detection,
         };
 
         Client::new_with_params(params)
@@ -121,7 +121,7 @@ impl Default for ClientBuilder {
             request_timeout: time::Duration::from_secs(60),
             max_retry_count: 20,
             retry_interval: time::Duration::from_millis(100),
-            smart_detection: false,
+            metadata_detection: false,
         }
     }
 }

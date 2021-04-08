@@ -20,5 +20,5 @@ pub struct Parameters {
     pub max_retry_count: usize,
     pub retry_interval: time::Duration,
 
-    pub smart_detection: bool,
+    pub metadata_detection: bool,
 }

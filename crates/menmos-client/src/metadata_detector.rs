@@ -27,13 +27,13 @@ impl MetadataDetector {
         Ok(Self { mime_types })
     }
 
-    fn detect_mime_type<P: AsRef<Path>>(&self, path: P) -> Option<&String> {
+    fn detect_mime_type<P: AsRef<Path>>(&self, path: P) -> Option<String> {
         let ext = path.as_ref().extension()?;
         let ext_str = ext.to_string_lossy().to_string();
 
         let mime_type = self.mime_types.get(&ext_str)?;
 
-        Some(mime_type)
+        Some(mime_type.to_owned())
     }
 
     pub fn populate<P: AsRef<Path>>(&self, path: P, meta: &mut Meta) -> Result<()> {
@@ -48,7 +48,7 @@ impl MetadataDetector {
 
 #[test]
 fn detect_file_mime_type() {
-    let path = Path::new("foo.txt");
+    let path = "foo.txt";
     let metadata_detector = MetadataDetector::new().unwrap();
 
     let mime_type = metadata_detector.detect_mime_type(path);
@@ -59,7 +59,7 @@ fn detect_file_mime_type() {
 
 #[test]
 fn detect_no_mime_type() {
-    let path = Path::new("foo.invalid");
+    let path = "foo.invalid";
     let metadata_detector = MetadataDetector::new().unwrap();
 
     let mime_type = metadata_detector.detect_mime_type(path);

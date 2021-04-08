@@ -143,7 +143,7 @@ impl Client {
             request_timeout: Duration::from_secs(60),
             max_retry_count: 20,
             retry_interval: Duration::from_millis(100),
-            smart_detection: false,
+            metadata_detection: false,
         })
         .await
     }
@@ -163,7 +163,7 @@ impl Client {
             request_timeout: Duration::from_secs(60),
             max_retry_count: 20,
             retry_interval: Duration::from_millis(100),
-            smart_detection: false,
+            metadata_detection: false,
         })
         .await
     }
@@ -203,7 +203,7 @@ impl Client {
 
         let token = Client::login(&client, &host, &username, &admin_password).await?;
 
-        let metadata_detector = if params.smart_detection {
+        let metadata_detector = if params.metadata_detection {
             Some(MetadataDetector::new().context(MetadataDetectorErrorInstantiationError)?)
         } else {
             None
@@ -376,7 +376,7 @@ impl Client {
     async fn push_internal<P: AsRef<Path>>(
         &self,
         path: P,
-        meta: &mut Meta,
+        mut meta: Meta,
         base_url: String,
     ) -> Result<String> {
         ensure!(
@@ -388,12 +388,12 @@ impl Client {
 
         if let Some(metadata_detector) = self.metadata_detector.as_ref() {
             metadata_detector
-                .populate(&path, meta)
+                .populate(&path, &mut meta)
                 .context(MetadataDetectorErrorInstantiationError)?;
         }
 
         let mut url = base_url;
-        let meta_b64 = encode_metadata(meta.clone())?;
+        let meta_b64 = encode_metadata(meta)?;
 
         let initial_redirect_request = self
             .client
@@ -456,8 +456,8 @@ impl Client {
     /// Pushes a file with the specified meta to the cluster.
     ///
     /// Returns the ID of the created file.
-    pub async fn push<P: AsRef<Path>>(&self, path: P, mut meta: Meta) -> Result<String> {
-        self.push_internal(path, &mut meta, format!("{}/blob", self.host))
+    pub async fn push<P: AsRef<Path>>(&self, path: P, meta: Meta) -> Result<String> {
+        self.push_internal(path, meta, format!("{}/blob", self.host))
             .await
     }
 
@@ -468,9 +468,9 @@ impl Client {
         &self,
         blob_id: &str,
         path: P,
-        mut meta: Meta,
+        meta: Meta,
     ) -> Result<String> {
-        self.push_internal(path, &mut meta, format!("{}/blob/{}", self.host, blob_id))
+        self.push_internal(path, meta, format!("{}/blob/{}", self.host, blob_id))
             .await
     }
 
