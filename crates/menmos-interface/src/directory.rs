@@ -193,6 +193,7 @@ pub trait DirectoryNode {
         &self,
         blob_id: &str,
         meta: BlobMetaRequest,
+        username: &str,
     ) -> Result<StorageNodeInfo>;
     async fn get_blob_meta(&self, blob_id: &str, user: &str) -> Result<Option<BlobInfo>>;
     async fn index_blob(&self, blob_id: &str, meta: BlobInfo, storage_node_id: &str) -> Result<()>;

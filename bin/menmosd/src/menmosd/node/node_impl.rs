@@ -89,8 +89,9 @@ where
         &self,
         blob_id: &str,
         meta: BlobMetaRequest,
+        username: &str,
     ) -> Result<StorageNodeInfo> {
-        self.node_router.route_blob(blob_id, &meta).await
+        self.node_router.route_blob(blob_id, &meta, username).await
     }
 
     async fn get_blob_meta(&self, blob_id: &str, username: &str) -> Result<Option<BlobInfo>> {
