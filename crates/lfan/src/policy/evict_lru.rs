@@ -7,25 +7,25 @@ use crate::cache::EvictionPolicy;
 
 struct Nothing;
 
-pub struct LRUEvictionPolicy<K>
+pub struct LruEvictionPolicy<K>
 where
     K: Eq + Hash + Clone,
 {
     data: LinkedHashMap<K, Nothing>,
 }
 
-impl<K> Default for LRUEvictionPolicy<K>
+impl<K> Default for LruEvictionPolicy<K>
 where
     K: Eq + Hash + Clone,
 {
     fn default() -> Self {
-        LRUEvictionPolicy {
+        LruEvictionPolicy {
             data: LinkedHashMap::new(),
         }
     }
 }
 
-impl<K> EvictionPolicy<K> for LRUEvictionPolicy<K>
+impl<K> EvictionPolicy<K> for LruEvictionPolicy<K>
 where
     K: Eq + Hash + Clone,
 {

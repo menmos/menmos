@@ -1,5 +1,5 @@
 [server]
-type = "HTTP"
+type = "http"
 port = 3030
 
 [node]

@@ -90,20 +90,16 @@ where
         meta_request: &BlobMetaRequest,
         username: &str,
     ) -> Result<Option<StorageNodeInfo>> {
-        let routed_storage_node_maybe = self
-            .index
-            .get_routing_config(username)?
-            .map(|cfg_state| {
-                meta_request
-                    .metadata
-                    .get(&cfg_state.routing_config.routing_key)
-                    .map(|cfg_value| (cfg_state.routing_config, cfg_value))
-            })
-            .flatten()
-            .map(|(routing_cfg, routing_field_value)| {
-                routing_cfg.routes.get(routing_field_value).cloned()
-            })
-            .flatten();
+        let routed_storage_node_maybe = if let Some(cfg_state) =
+            self.index.get_routing_config(username)?
+        {
+            meta_request
+                .metadata
+                .get(&cfg_state.routing_config.routing_key)
+                .and_then(|field_value| cfg_state.routing_config.routes.get(field_value).cloned())
+        } else {
+            None
+        };
 
         if let Some(storage_node_id) = routed_storage_node_maybe {
             self.get_node(&storage_node_id)

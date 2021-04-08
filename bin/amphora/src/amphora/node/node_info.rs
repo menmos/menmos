@@ -6,16 +6,16 @@ use interface::StorageNodeInfo;
 
 use public_ip::{dns, http, BoxToResolver, ToResolver};
 
-use crate::RedirectIP;
+use crate::RedirectIp;
 
 pub async fn get_info<S: AsRef<str>>(
     port: u16,
     subnet_mask: IpAddr,
     name: S,
-    redirect_instructions: RedirectIP,
+    redirect_instructions: RedirectIp,
 ) -> Result<StorageNodeInfo> {
     match redirect_instructions {
-        RedirectIP::Automatic => {
+        RedirectIp::Automatic => {
             let resolver = vec![
                 BoxToResolver::new(dns::OPENDNS_RESOLVER),
                 BoxToResolver::new(http::HTTP_IPIFY_ORG_RESOLVER),
@@ -41,7 +41,7 @@ pub async fn get_info<S: AsRef<str>>(
                 port,
             })
         }
-        RedirectIP::Static(static_redirect) => Ok(StorageNodeInfo {
+        RedirectIp::Static(static_redirect) => Ok(StorageNodeInfo {
             id: name.as_ref().to_string(),
             redirect_info: interface::RedirectInfo::Static {
                 static_address: static_redirect,

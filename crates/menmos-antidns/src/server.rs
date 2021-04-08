@@ -26,8 +26,6 @@ pub enum ServerError {
 
     ResolutionError { source: ResolveError },
 
-    CantFindPublicIP,
-
     JoinError,
     PoisonedMutex,
 }
@@ -141,7 +139,7 @@ impl Server {
                     }
                     Err(e) => {
                         log::error!("servfail: {}", e);
-                        packet.header.rescode = ResultCode::SERVFAIL;
+                        packet.header.rescode = ResultCode::ServFail;
                     }
                 }
             }
@@ -151,7 +149,7 @@ impl Server {
         // to indicate that the sender made something wrong.
         else {
             log::warn!("FORMERR");
-            packet.header.rescode = ResultCode::FORMERR;
+            packet.header.rescode = ResultCode::FormErr;
         }
 
         // The only thing remaining is to encode our response and send it off!

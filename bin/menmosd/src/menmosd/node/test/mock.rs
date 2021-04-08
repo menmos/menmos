@@ -21,14 +21,14 @@ fn tag_to_kv(tag: &str) -> Result<(&str, &str)> {
 }
 
 #[derive(Default)]
-pub struct MockDocIDMap {
+pub struct MockDocIdMap {
     forward_map: Mutex<HashMap<String, u32>>,
     backward_map: Mutex<HashMap<u32, String>>,
     recycled_ids: Mutex<Vec<u32>>,
     next_id: AtomicU32,
 }
 
-impl DocIDMapper for MockDocIDMap {
+impl DocIdMapper for MockDocIdMap {
     fn get_nb_of_docs(&self) -> u32 {
         self.next_id.load(Ordering::SeqCst)
     }
@@ -400,7 +400,7 @@ impl UserMapper for MockUserMap {
 
 #[derive(Default)]
 pub struct MockIndex {
-    documents: Arc<MockDocIDMap>,
+    documents: Arc<MockDocIdMap>,
     meta: Arc<MockMetaMap>,
     routing: Arc<MockRoutingMap>,
     storage: Arc<MockStorageMap>,
@@ -416,7 +416,7 @@ impl Flush for MockIndex {
 
 impl IndexProvider for MockIndex {
     type MetadataProvider = MockMetaMap;
-    type DocumentProvider = MockDocIDMap;
+    type DocumentProvider = MockDocIdMap;
     type RoutingProvider = MockRoutingMap;
     type StorageProvider = MockStorageMap;
     type UserProvider = MockUserMap;
