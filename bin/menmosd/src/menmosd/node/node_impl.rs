@@ -200,13 +200,13 @@ where
                 continue;
             }
 
-            let routing_config_state = routing_config_maybe.unwrap();
+            let mut routing_config_state = routing_config_maybe.unwrap();
             if routing_config_state.state == DirtyState::Clean {
                 continue;
             }
 
-            let routing_field = routing_config_state.routing_config.routing_key;
-            for (field_value, dst_node_id) in routing_config_state.routing_config.routes {
+            let routing_field = &routing_config_state.routing_config.routing_key;
+            for (field_value, dst_node_id) in routing_config_state.routing_config.routes.iter() {
                 if dst_node_id == src_node {
                     // no need to move when src = dst.
                     continue;
@@ -221,8 +221,16 @@ where
 
                 let destination_node = destination_node_maybe.unwrap();
 
-                let query = Query::default().and_meta(&routing_field, field_value);
+                let query = Query::default().and_meta(routing_field.clone(), field_value);
                 let resulting_bitvector = self.get_resulting_bitvector(&query, &username)?;
+
+                if resulting_bitvector.count_ones() == 0 {
+                    // No pending move requests, this routing config is clean.
+                    routing_config_state.state = DirtyState::Clean;
+                    self.index
+                        .routing()
+                        .set_routing_config(&username, &routing_config_state)?;
+                }
 
                 for doc_idx in resulting_bitvector.iter_ones() {
                     let blob_id = self
