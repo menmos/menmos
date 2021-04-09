@@ -1,5 +1,6 @@
 mod builder;
 mod client;
+mod metadata_detector;
 mod parameters;
 mod profile;
 
@@ -11,3 +12,6 @@ pub use interface::BlobMetaRequest as Meta;
 pub use interface::Type;
 pub use interface::{Expression, Query, QueryResponse};
 pub use profile::{Config, Profile};
+
+#[cfg(test)]
+mod test;
