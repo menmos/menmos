@@ -13,7 +13,8 @@ use repository::{Repository, StreamInfo};
 use tokio::sync::Mutex;
 
 use super::{
-    directory_proxy::DirectoryProxy, node_info::get_info, rebuild, ConcurrentRepository, Config,
+    directory_proxy::DirectoryProxy, node_info::get_info, rebuild, transfer::TransferManager,
+    ConcurrentRepository, Config,
 };
 
 type RepoBox = Box<dyn Repository + Send + Sync>;
@@ -28,7 +29,9 @@ pub struct Storage {
     directory: Arc<DirectoryProxy>,
 
     index: Arc<sled::Db>,
-    repo: ConcurrentRepository,
+    repo: Arc<ConcurrentRepository>,
+
+    transfer_manager: TransferManager,
 }
 
 impl Storage {
@@ -46,10 +49,16 @@ impl Storage {
 
         let index = Arc::from(sled::open(&config.node.db_path)?);
 
-        let repo = ConcurrentRepository::new(
+        let repo = Arc::from(ConcurrentRepository::new(
             repo,
             Duration::from_secs(config.node.key_locks_lifetime_seconds),
             config.node.key_locks_max_memory,
+        ));
+
+        let transfer_manager = TransferManager::new(
+            repo.clone(),
+            index.clone(),
+            config.node.encryption_key.clone(),
         );
 
         let s = Self {
@@ -58,6 +67,7 @@ impl Storage {
             index,
             repo,
             certificates,
+            transfer_manager,
         };
 
         Ok(s)
@@ -82,6 +92,11 @@ impl Storage {
         {
             let mut cert_info_guard = self.certificates.lock().await;
             *cert_info_guard = response.certificate_info;
+        }
+
+        // Enqueue the requested transfers.
+        for move_request in response.move_requests {
+            self.transfer_manager.move_blob(move_request).await?;
         }
 
         // Trigger the rebuild task.

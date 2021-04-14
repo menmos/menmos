@@ -203,6 +203,7 @@ pub struct RoutingConfigState {
 #[serde(deny_unknown_fields)]
 pub struct MoveInformation {
     pub blob_id: String,
+    pub owner_username: String,
     pub destination_node: StorageNodeInfo,
 }
 

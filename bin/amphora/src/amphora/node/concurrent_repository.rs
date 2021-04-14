@@ -1,5 +1,6 @@
 use std::io;
 use std::ops::Bound;
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -7,6 +8,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use futures::Stream;
 use repository::{Repository, StreamInfo};
+use tokio::sync::RwLock;
 
 use super::stringlock::StringLock;
 
@@ -25,6 +27,21 @@ impl ConcurrentRepository {
             key_locks: StringLock::new(lifetime).with_cleanup_trigger(max_memory),
             repo,
         }
+    }
+
+    /// Utility to lock a blob indefinitely.
+    /// Used for blob transfers.
+    pub async fn unsafe_lock(&self, id: &str) -> Arc<RwLock<()>> {
+        self.key_locks.get_lock(id).await
+    }
+
+    /// Get a ref to the underlying repository.
+    ///
+    /// This is unsafe because concurrency protection is not enforced.
+    /// Be sure to use this in conjuntion with ConcurrentRepository::unsafe_lock.
+    /// to ensure safety manually.
+    pub async fn unsafe_repository(&self) -> &Box<dyn Repository + Send + Sync> {
+        &self.repo
     }
 }
 

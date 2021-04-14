@@ -82,6 +82,7 @@ pub mod storage {
     pub struct MoveRequest {
         pub blob_id: String,
         pub destination_url: String,
+        pub owner_username: String,
     }
 
     #[derive(Clone, Debug, Deserialize, Serialize)]

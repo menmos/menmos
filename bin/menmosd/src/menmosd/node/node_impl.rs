@@ -239,6 +239,12 @@ where
                         .lookup(doc_idx as u32)?
                         .ok_or_else(|| anyhow!("missing document ID for index: {}", doc_idx))?;
 
+                    let blob_info = self
+                        .index
+                        .meta()
+                        .get(doc_idx as u32)?
+                        .ok_or_else(|| anyhow!("missing blob info for index: {}", doc_idx))?;
+
                     let blob_storage_node = self
                         .index
                         .storage()
@@ -250,6 +256,7 @@ where
                         // We must issue a move request.
                         move_requests.push(MoveInformation {
                             blob_id,
+                            owner_username: blob_info.owner,
                             destination_node: destination_node.clone(),
                         })
                     }

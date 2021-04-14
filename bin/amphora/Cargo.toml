@@ -40,6 +40,7 @@ menmos-apikit = "0.0.5"
 menmos-interface = "0.0.5"
 menmos-protocol = "0.0.5"
 menmos-repository = "0.0.5"
+menmos-std = {version = "0.0.5", features = ["async"]}
 menmos-xecute = "0.0.5"
 mime = "0.3"
 mpart-async = "0.5"

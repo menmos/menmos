@@ -29,6 +29,7 @@ fn get_request_from_move_info(
 
     Ok(MoveRequest {
         blob_id: move_info.blob_id,
+        owner_username: move_info.owner_username,
         destination_url: node_address.to_string(),
     })
 }
