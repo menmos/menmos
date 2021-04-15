@@ -1,5 +1,4 @@
 //! Test blob routing.
-
 use anyhow::Result;
 use interface::RoutingConfig;
 use menmos_client::{Client, Meta};
