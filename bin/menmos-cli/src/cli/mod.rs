@@ -42,6 +42,8 @@ impl Root {
             client_builder = client_builder.with_max_retry_count(max_retry_count);
         }
 
+        client_builder = client_builder.with_metadata_detection();
+
         let client = client_builder.build().await?;
 
         match self.command {
