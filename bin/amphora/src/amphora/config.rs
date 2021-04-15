@@ -71,6 +71,8 @@ pub struct NodeSetting {
 
     pub key_locks_max_memory: usize,
     pub key_locks_lifetime_seconds: u64,
+
+    pub checkin_frequency_seconds: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -113,6 +115,8 @@ impl Config {
             "node.key_locks_lifetime_seconds",
             DEFAULT_KEY_LOCKS_LIFETIME_SECONDS,
         )?;
+
+        loader.set_default("node.checkin_frequency_seconds", 20)?;
 
         loader.merge(
             File::from(default_config_path)

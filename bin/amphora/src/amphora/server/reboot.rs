@@ -64,7 +64,10 @@ impl RebootableServer {
         // Start the periodic registration task.
         let (registration_handle, registration_stop) = {
             let node_cloned = storage_node.clone();
+            let checkin_frequency = Duration::from_secs(cfg.node.checkin_frequency_seconds);
+
             let (stop_tx, mut stop_rx) = tokio::sync::mpsc::channel(1);
+
             let job_handle = tokio::task::spawn(async move {
                 loop {
                     match node_cloned.update_registration().await {
@@ -77,7 +80,7 @@ impl RebootableServer {
                     }
 
                     let stop_future = stop_rx.recv();
-                    let delay = tokio::time::sleep(Duration::from_secs(20));
+                    let delay = tokio::time::sleep(checkin_frequency);
                     tokio::pin!(delay);
 
                     let should_stop = tokio::select! {
