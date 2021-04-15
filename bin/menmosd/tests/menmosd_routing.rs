@@ -1,6 +1,4 @@
 //! Test blob routing.
-use std::net::IpAddr;
-
 use anyhow::Result;
 use interface::{RoutingConfig, StorageNodeInfo};
 use menmos_client::{Client, Meta};
