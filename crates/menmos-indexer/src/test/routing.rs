@@ -1,5 +1,5 @@
 use anyhow::Result;
-use interface::RoutingConfig;
+use interface::{DirtyState, RoutingConfig, RoutingConfigState};
 use tempfile::TempDir;
 
 use crate::{iface::RoutingMapper, routing::RoutingStore};
@@ -28,7 +28,10 @@ fn set_routing_config_works() -> Result<()> {
     let db = sled::open(d.path())?;
     let r = RoutingStore::new(&db)?;
 
-    let cfg = RoutingConfig::new("some_field");
+    let cfg = RoutingConfigState {
+        routing_config: RoutingConfig::new("some_field"),
+        state: DirtyState::Dirty,
+    };
 
     r.set_routing_config("jdoe", &cfg)?;
     assert_eq!(&r.get_routing_config("jdoe")?.unwrap(), &cfg);
@@ -42,7 +45,10 @@ fn delete_routing_config_works() -> Result<()> {
     let db = sled::open(d.path())?;
     let r = RoutingStore::new(&db)?;
 
-    let cfg = RoutingConfig::new("some_field").with_route("alpha", "beta");
+    let cfg = RoutingConfigState {
+        routing_config: RoutingConfig::new("some_field").with_route("alpha", "beta"),
+        state: DirtyState::Dirty,
+    };
 
     r.set_routing_config("jdoe", &cfg)?;
     r.delete_routing_config("jdoe")?;

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use ring::rand::{SecureRandom, SystemRandom};
 
-use crate::iface::{Flush, UserMapper};
+use crate::iface::{DynIter, Flush, UserMapper};
 
 const REGISTERED_USERS_MAP: &str = "registered_users";
 
@@ -60,6 +60,15 @@ impl UserMapper for UsersStore {
 
     fn has_user(&self, username: &str) -> Result<bool> {
         let user_exists = self.map.contains_key(username.as_bytes())?;
+
         Ok(user_exists)
+    }
+
+    fn iter(&self) -> DynIter<'static, Result<String>> {
+        DynIter::new(self.map.iter().map(|pair_result| {
+            pair_result
+                .map(|(key_ivec, _val_ivec)| String::from_utf8_lossy(&key_ivec).to_string())
+                .map_err(|e| e.into())
+        }))
     }
 }

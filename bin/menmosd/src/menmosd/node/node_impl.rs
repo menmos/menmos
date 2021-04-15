@@ -6,8 +6,9 @@ use async_trait::async_trait;
 use bitvec::prelude::*;
 
 use interface::{
-    BlobInfo, BlobMetaRequest, DirectoryNode, FacetResponse, Hit, MetadataList, Query,
-    QueryResponse, RoutingConfig, StorageNodeInfo, StorageNodeResponseData,
+    BlobInfo, BlobMetaRequest, DirectoryNode, DirtyState, FacetResponse, Hit, MetadataList,
+    MoveInformation, Query, QueryResponse, RoutingConfig, RoutingConfigState, StorageNodeInfo,
+    StorageNodeResponseData,
 };
 
 use rapidquery::Resolver;
@@ -15,6 +16,9 @@ use rapidquery::Resolver;
 use indexer::iface::*;
 
 use super::routing::NodeRouter;
+
+// TODO: Make configurable.
+const MOVE_REQUEST_BATCH_SIZE: usize = 10;
 
 pub struct Directory<I>
 where
@@ -51,6 +55,10 @@ where
             info.unwrap().meta,
             String::default(),
         )) // TODO: This default string isn't super clean, but in the current architecture its guaranteed to be replaced before returning.
+    }
+
+    fn get_resulting_bitvector(&self, query: &Query, username: &str) -> Result<BitVec> {
+        Ok(query.expression.evaluate(self)? & self.index.meta().load_user_mask(username)?)
     }
 }
 
@@ -158,17 +166,98 @@ where
     }
 
     async fn get_routing_config(&self, user: &str) -> Result<Option<RoutingConfig>> {
-        self.index.routing().get_routing_config(user)
+        Ok(self
+            .index
+            .routing()
+            .get_routing_config(user)?
+            .map(|cfg_state| cfg_state.routing_config))
     }
 
     async fn set_routing_config(&self, user: &str, routing_config: &RoutingConfig) -> Result<()> {
-        self.index
-            .routing()
-            .set_routing_config(user, routing_config)
+        self.index.routing().set_routing_config(
+            user,
+            &RoutingConfigState {
+                routing_config: routing_config.clone(),
+                state: DirtyState::Dirty,
+            },
+        )
     }
 
     async fn delete_routing_config(&self, user: &str) -> Result<()> {
         self.index.routing().delete_routing_config(user)
+    }
+
+    async fn get_move_requests(&self, src_node: &str) -> Result<Vec<MoveInformation>> {
+        // TODO: Split this into multiple functions once node refactor issue is complete.
+        // (because this refactor will split the node in multiple files, making splitting these things
+        // easier).
+
+        let mut move_requests = Vec::with_capacity(MOVE_REQUEST_BATCH_SIZE);
+
+        for username in self.index.users().iter().filter_map(|f| f.ok()) {
+            let routing_config_maybe = self.index.routing().get_routing_config(&username)?;
+            if routing_config_maybe.is_none() {
+                continue;
+            }
+
+            let mut routing_config_state = routing_config_maybe.unwrap();
+            if routing_config_state.state == DirtyState::Clean {
+                continue;
+            }
+
+            let routing_field = &routing_config_state.routing_config.routing_key;
+            for (field_value, dst_node_id) in routing_config_state.routing_config.routes.iter() {
+                if dst_node_id == src_node {
+                    // no need to move when src = dst.
+                    continue;
+                }
+
+                let destination_node_maybe = self.node_router.get_node(&dst_node_id).await;
+                if destination_node_maybe.is_none() {
+                    // This is not an error, this is simply that the node we need to move blobs to is not
+                    // online right now. We'll skip it and try again later.
+                    continue;
+                }
+
+                let destination_node = destination_node_maybe.unwrap();
+
+                let query = Query::default().and_meta(routing_field.clone(), field_value);
+                let resulting_bitvector = self.get_resulting_bitvector(&query, &username)?;
+
+                if resulting_bitvector.count_ones() == 0 {
+                    // No pending move requests, this routing config is clean.
+                    routing_config_state.state = DirtyState::Clean;
+                    self.index
+                        .routing()
+                        .set_routing_config(&username, &routing_config_state)?;
+                }
+
+                for doc_idx in resulting_bitvector.iter_ones() {
+                    let blob_id = self
+                        .index
+                        .documents()
+                        .lookup(doc_idx as u32)?
+                        .ok_or_else(|| anyhow!("missing document ID for index: {}", doc_idx))?;
+
+                    let blob_storage_node = self
+                        .index
+                        .storage()
+                        .get_node_for_blob(&blob_id)?
+                        .ok_or_else(|| anyhow!("missing storage node for blob: {}", blob_id))?;
+
+                    if blob_storage_node == src_node {
+                        // This document is stored on the src node and needs to go to dst_node_id.
+                        // We must issue a move request.
+                        move_requests.push(MoveInformation {
+                            blob_id,
+                            destination_node: destination_node.clone(),
+                        })
+                    }
+                }
+            }
+        }
+
+        Ok(move_requests)
     }
 
     async fn delete_blob(
@@ -212,8 +301,7 @@ where
     }
 
     async fn query(&self, query: &Query, username: &str) -> Result<QueryResponse> {
-        let result_bitvector =
-            query.expression.evaluate(self)? & self.index.meta().load_user_mask(username)?;
+        let result_bitvector = self.get_resulting_bitvector(query, username)?;
 
         // The number of true bits in the bitvector is the total number of query hits.
         let total = result_bitvector.count_ones(); // Total number of query hits.

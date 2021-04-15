@@ -10,7 +10,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use interface::{BlobInfo, RoutingConfig};
+use interface::{BlobInfo, RoutingConfigState};
 
 use indexer::iface::*;
 
@@ -117,16 +117,20 @@ impl DocIdMapper for MockDocIdMap {
 
 #[derive(Default)]
 pub struct MockRoutingMap {
-    m: Mutex<HashMap<String, RoutingConfig>>,
+    m: Mutex<HashMap<String, RoutingConfigState>>,
 }
 
 impl RoutingMapper for MockRoutingMap {
-    fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfig>> {
+    fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfigState>> {
         let guard = self.m.lock().unwrap();
         Ok(guard.get(username).cloned())
     }
 
-    fn set_routing_config(&self, username: &str, routing_config: &RoutingConfig) -> Result<()> {
+    fn set_routing_config(
+        &self,
+        username: &str,
+        routing_config: &RoutingConfigState,
+    ) -> Result<()> {
         let mut guard = self.m.lock().unwrap();
         guard.insert(String::from(username), routing_config.clone());
         Ok(())
@@ -136,6 +140,10 @@ impl RoutingMapper for MockRoutingMap {
         let mut guard = self.m.lock().unwrap();
         guard.remove(username);
         Ok(())
+    }
+
+    fn iter(&self) -> DynIter<'static, Result<RoutingConfigState>> {
+        unimplemented!()
     }
 }
 
@@ -382,6 +390,11 @@ impl UserMapper for MockUserMap {
     fn has_user(&self, username: &str) -> Result<bool> {
         let guard = self.users.lock().unwrap();
         Ok(guard.contains_key(username))
+    }
+
+    fn iter(&self) -> DynIter<'static, Result<String>> {
+        // Returning an iterator on something protected by a mutex = cursed.
+        unimplemented!();
     }
 }
 
