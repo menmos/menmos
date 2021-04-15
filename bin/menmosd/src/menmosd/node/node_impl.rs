@@ -191,10 +191,12 @@ where
         // TODO: Split this into multiple functions once node refactor issue is complete.
         // (because this refactor will split the node in multiple files, making splitting these things
         // easier).
+        log::debug!("processing move requests");
 
         let mut move_requests = Vec::with_capacity(MOVE_REQUEST_BATCH_SIZE);
 
         for username in self.index.users().iter().filter_map(|f| f.ok()) {
+            log::debug!("processing routing config for user '{}'", username);
             let routing_config_maybe = self.index.routing().get_routing_config(&username)?;
             if routing_config_maybe.is_none() {
                 continue;
@@ -202,6 +204,7 @@ where
 
             let mut routing_config_state = routing_config_maybe.unwrap();
             if routing_config_state.state == DirtyState::Clean {
+                log::debug!("routing config for user '{}' is clean, skipping", username);
                 continue;
             }
 
@@ -252,6 +255,11 @@ where
                         .ok_or_else(|| anyhow!("missing storage node for blob: {}", blob_id))?;
 
                     if blob_storage_node == src_node {
+                        log::debug!(
+                            "blob {} needs to move to node '{}'",
+                            blob_id,
+                            blob_storage_node
+                        );
                         // This document is stored on the src node and needs to go to dst_node_id.
                         // We must issue a move request.
                         move_requests.push(MoveInformation {

@@ -127,9 +127,19 @@ impl TransferManager {
 
         let url = reqwest::Url::parse(&request.destination_url)?;
 
+        // Generate a token on behalf of the blob owner.
+        let user_token = apikit::auth::make_token(
+            secret_key,
+            apikit::auth::UserIdentity {
+                username: request.owner_username.clone(),
+                admin: false,
+                blobs_whitelist: Some(vec![request.blob_id.clone()]),
+            },
+        )?;
+
         let req = client
             .post(url)
-            .bearer_auth("TODO: some_token?")
+            .bearer_auth(user_token)
             .header(
                 header::CONTENT_TYPE,
                 format!("multipart/form-data; boundary={}", mpart.get_boundary()),
@@ -148,6 +158,13 @@ impl TransferManager {
             request.blob_id
         );
 
+        // Once our sync is complete, we can delete the blob from our repo safely.
+        repo.unsafe_repository()
+            .await
+            .delete(&request.blob_id)
+            .await?;
+        index.remove(request.blob_id.as_bytes())?;
+
         Ok(())
     }
 
@@ -165,7 +182,8 @@ impl TransferManager {
 
         // Note: transfer guard does nothing, but on drop it removes the blob ID from the pending transfers set, preventing duplicates.
         while let Some((request, _transfer_guard)) = rx.recv().await {
-            for _ in 0..RETRY_COUNT {
+            let mut try_count = 0;
+            loop {
                 if let Err(e) = TransferManager::transfer_single(
                     repo.clone(),
                     &client,
@@ -182,11 +200,17 @@ impl TransferManager {
                         e
                     );
                 } else {
-                    continue;
+                    break;
+                }
+
+                try_count += 1;
+                if try_count >= RETRY_COUNT {
+                    log::error!(
+                        "exceeded retries while attempting to transfer blob '{}'",
+                        request.blob_id
+                    );
                 }
             }
-
-            log::error!("exceeded retries while attempting to transfer ")
         }
 
         Ok(())
