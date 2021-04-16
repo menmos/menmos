@@ -1,3 +1,4 @@
+use core::panic;
 use std::io;
 use std::ops::Bound;
 use std::sync::Arc;
@@ -31,7 +32,7 @@ pub struct Storage {
     index: Arc<sled::Db>,
     repo: Arc<ConcurrentRepository>,
 
-    transfer_manager: TransferManager,
+    transfer_manager: Arc<Mutex<Option<TransferManager>>>,
 }
 
 impl Storage {
@@ -55,11 +56,7 @@ impl Storage {
             config.node.key_locks_max_memory,
         ));
 
-        let transfer_manager = TransferManager::new(
-            repo.clone(),
-            index.clone(),
-            config.node.encryption_key.clone(),
-        );
+        let transfer_manager = TransferManager::new(repo.clone(), index.clone(), config.clone());
 
         let s = Self {
             config,
@@ -67,7 +64,7 @@ impl Storage {
             index,
             repo,
             certificates,
-            transfer_manager,
+            transfer_manager: Arc::new(Mutex::new(Some(transfer_manager))),
         };
 
         Ok(s)
@@ -95,8 +92,12 @@ impl Storage {
         }
 
         // Enqueue the requested transfers.
-        for move_request in response.move_requests {
-            self.transfer_manager.move_blob(move_request).await?;
+        if let Some(transfer_manager) = &(*self.transfer_manager.lock().await) {
+            for move_request in response.move_requests {
+                transfer_manager.move_blob(move_request).await?;
+            }
+        } else {
+            panic!("invalid state: received a request but transfer manager is not running");
         }
 
         // Trigger the rebuild task.
@@ -120,6 +121,17 @@ impl Storage {
             });
         }
         Ok(())
+    }
+
+    pub async fn stop_transfers(&self) -> Result<()> {
+        let manager = {
+            let mut manager_guard = self.transfer_manager.lock().await;
+            (*manager_guard)
+                .take()
+                .ok_or_else(|| anyhow!("cannot stop transfers: transfers are already stopped"))?
+        };
+
+        manager.stop().await
     }
 
     fn is_blob_owned_by(&self, blob_id: &str, username: &str) -> Result<bool> {

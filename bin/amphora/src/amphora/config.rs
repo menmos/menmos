@@ -13,6 +13,8 @@ const DEFAULT_SERVER_PORT: i64 = 80;
 
 const DEFAULT_KEY_LOCKS_MAX_MEMORY: i64 = 500 * 1024; // 500kb of memory for the locks, plus whatever for the string IDs themselves.
 const DEFAULT_KEY_LOCKS_LIFETIME_SECONDS: i64 = 60 * 15; // 15 minutes.
+const DEFAULT_CHECKIN_FREQUENCY_SECONDS: i64 = 20;
+const DEFAULT_MOVE_REQUEST_BUFFER_SIZE: i64 = 50;
 
 /// The IP to which the directory node should redirect
 /// when referring to this storage node.
@@ -73,6 +75,7 @@ pub struct NodeSetting {
     pub key_locks_lifetime_seconds: u64,
 
     pub checkin_frequency_seconds: u64,
+    pub move_request_buffer_size: usize,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -116,7 +119,14 @@ impl Config {
             DEFAULT_KEY_LOCKS_LIFETIME_SECONDS,
         )?;
 
-        loader.set_default("node.checkin_frequency_seconds", 20)?;
+        loader.set_default(
+            "node.checkin_frequency_seconds",
+            DEFAULT_CHECKIN_FREQUENCY_SECONDS,
+        )?;
+        loader.set_default(
+            "node.move_request_buffer_size",
+            DEFAULT_MOVE_REQUEST_BUFFER_SIZE,
+        )?;
 
         loader.merge(
             File::from(default_config_path)

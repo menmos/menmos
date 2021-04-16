@@ -118,7 +118,7 @@ impl RebootableServer {
 
         let s = NodeServer::new(storage_node.clone(), cfg.clone(), cert_paths);
 
-        let cert_change_validator = block_until_cert_change(storage_node, certs);
+        let cert_change_validator = block_until_cert_change(storage_node.clone(), certs);
         let stop_signal = stop_rx.recv();
 
         let should_terminate = tokio::select! {
@@ -132,6 +132,7 @@ impl RebootableServer {
         };
 
         s.stop().await?;
+        storage_node.stop_transfers().await?;
 
         registration_stop.send(()).await?;
         registration_handle.await?;

@@ -60,12 +60,11 @@ async fn move_request_dispatch() -> Result<()> {
         )
         .await?;
 
-    // Create a new empty node after adding both documents.
-    cluster.add_amphora("beta").await?;
-
     // Set the routing config.
     let cfg = RoutingConfig::new("some_field").with_route("bing", "beta");
     cluster.client.set_routing_config(&cfg).await?;
+
+    cluster.add_amphora("beta").await?;
 
     // Check-in manually as the "alpha" storage node to check if there are pending move requests.
     let move_requests = cluster.get_move_requests_from("alpha").await?;
