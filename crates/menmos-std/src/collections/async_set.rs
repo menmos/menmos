@@ -4,6 +4,7 @@ use std::hash::Hash;
 
 use tokio::sync::RwLock;
 
+#[derive(Default)]
 pub struct AsyncSet<T>
 where
     T: Eq + Hash,
