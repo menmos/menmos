@@ -41,49 +41,6 @@ async fn get_set_delete_routing_config() -> Result<()> {
 }
 
 #[tokio::test]
-async fn move_request_dispatch() -> Result<()> {
-    let mut cluster = Menmos::new().await?;
-
-    cluster.add_amphora("alpha").await?;
-
-    let blob_a = cluster
-        .push_document(
-            "yeet yeet",
-            Meta::file("file1.txt").with_meta("some_field", "bing"),
-        )
-        .await?;
-
-    let blob_b = cluster
-        .push_document(
-            "bing bong",
-            Meta::file("file2.txt").with_meta("some_field", "bong"),
-        )
-        .await?;
-
-    // Set the routing config.
-    let cfg = RoutingConfig::new("some_field").with_route("bing", "beta");
-    cluster.client.set_routing_config(&cfg).await?;
-
-    cluster.add_amphora("beta").await?;
-
-    // Check-in manually as the "alpha" storage node to check if there are pending move requests.
-    let move_requests = cluster.get_move_requests_from("alpha").await?;
-    assert_eq!(move_requests.len(), 1);
-    assert_eq!(&move_requests[0].blob_id, &blob_a);
-
-    // Update the routing config so the second blob is the one that should be moved.
-    let cfg = RoutingConfig::new("some_field").with_route("bong", "beta");
-    cluster.client.set_routing_config(&cfg).await?;
-    // Check-in manually as the "alpha" storage node to check if there are pending move requests.
-    let move_requests = cluster.get_move_requests_from("alpha").await?;
-    assert_eq!(move_requests.len(), 1);
-    assert_eq!(&move_requests[0].blob_id, &blob_b);
-
-    cluster.stop_all().await?;
-    Ok(())
-}
-
-#[tokio::test]
 async fn move_request_full_loop() -> Result<()> {
     let mut cluster = Menmos::new().await?;
 
