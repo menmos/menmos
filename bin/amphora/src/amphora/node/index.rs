@@ -41,3 +41,68 @@ impl Index {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use interface::{BlobInfo, BlobMeta};
+
+    use super::Index;
+
+    #[test]
+    fn get_nonexistent_info_returns_none() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let idx = Index::new(dir.path())?;
+
+        assert!(idx.get("bad_blob")?.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn insert_get_remove_loop() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let idx = Index::new(dir.path())?;
+
+        let info = BlobInfo {
+            meta: BlobMeta::file("asdf"),
+            owner: String::from("hello"),
+        };
+
+        idx.insert("asdf", &info)?;
+
+        assert_eq!(idx.get("asdf")?.unwrap(), info);
+
+        idx.remove("asdf")?;
+
+        assert!(idx.get("asdf")?.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_all_keys() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let idx = Index::new(dir.path())?;
+
+        idx.insert(
+            "a",
+            &BlobInfo {
+                meta: BlobMeta::file("asdf"),
+                owner: String::from("hello"),
+            },
+        )?;
+        idx.insert(
+            "b",
+            &BlobInfo {
+                meta: BlobMeta::file("zxcv"),
+                owner: String::from("hello"),
+            },
+        )?;
+
+        let keys = idx.get_all_keys();
+        assert_eq!(keys.as_slice(), &[String::from("a"), String::from("b")]);
+
+        Ok(())
+    }
+}
