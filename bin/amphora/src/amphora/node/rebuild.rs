@@ -2,9 +2,8 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use futures::StreamExt;
-use interface::BlobInfo;
 
-use super::directory_proxy::DirectoryProxy;
+use super::{directory_proxy::DirectoryProxy, index::Index};
 
 pub struct Params {
     pub storage_node_name: String,
@@ -12,19 +11,11 @@ pub struct Params {
     pub directory_host_port: usize,
 }
 
-pub async fn execute(
-    parameters: Params,
-    proxy: Arc<DirectoryProxy>,
-    db: Arc<sled::Db>,
-) -> Result<()> {
+pub async fn execute(parameters: Params, proxy: Arc<DirectoryProxy>, db: Arc<Index>) -> Result<()> {
     log::info!("starting node rebuild");
 
     // Step 1 - Get a set of keys to push (so we dont re-push documents that are indexed during the rebuild).
-    let keys: Vec<_> = db
-        .iter()
-        .filter_map(|r| r.ok())
-        .map(|(k, _v)| String::from_utf8_lossy(k.as_ref()).to_string())
-        .collect();
+    let keys = db.get_all_keys();
 
     // Step 2 - Push all those keys (and their meta) back to the directory.
     let puts = futures::stream::iter(keys.into_iter().map(|key| {
@@ -32,8 +23,8 @@ pub async fn execute(
         let cloned_db = db.clone();
         let cloned_node_id = parameters.storage_node_name.clone();
         async move {
-            let meta_maybe = cloned_db.get(key.as_bytes())?;
-            if meta_maybe.is_none() {
+            let info_maybe = cloned_db.get(&key)?;
+            if info_maybe.is_none() {
                 log::warn!(
                     "seemingly missing blob: {} - was it deleted during the rebuild?",
                     &key
@@ -41,8 +32,10 @@ pub async fn execute(
                 return Ok(());
             }
 
-            let info: BlobInfo = bincode::deserialize(meta_maybe.unwrap().as_ref())?;
-            cloned_proxy.index_blob(&key, info, &cloned_node_id).await?;
+            cloned_proxy
+                .index_blob(&key, info_maybe.unwrap(), &cloned_node_id)
+                .await?;
+
             log::info!("rebuilt {}", &key);
             Ok(())
         }
