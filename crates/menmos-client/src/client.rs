@@ -31,7 +31,10 @@ use serde::de::DeserializeOwned;
 use snafu::{ensure, ResultExt, Snafu};
 
 use crate::{
-    parameters::HostConfig, profile::ProfileError, ClientBuilder, Config, Meta, Parameters,
+    metadata_detector::{MetadataDetector, MetadataDetectorError},
+    parameters::HostConfig,
+    profile::ProfileError,
+    ClientBuilder, Config, Meta, Parameters,
 };
 
 #[derive(Debug, Snafu)]
@@ -80,6 +83,9 @@ pub enum ClientError {
 
     #[snafu(display("unknown error"))]
     UnknownError,
+
+    #[snafu(display("failed to instantiate the metadata detector: {}", source))]
+    MetadataDetectorErrorInstantiationError { source: MetadataDetectorError },
 }
 
 fn encode_metadata(meta: Meta) -> Result<String> {
@@ -116,6 +122,7 @@ pub struct Client {
     max_retry_count: usize,
     retry_interval: Duration,
     token: String,
+    metadata_detector: Option<MetadataDetector>,
 }
 
 type Result<T> = std::result::Result<T, ClientError>;
@@ -137,6 +144,7 @@ impl Client {
             request_timeout: Duration::from_secs(60),
             max_retry_count: 20,
             retry_interval: Duration::from_millis(100),
+            metadata_detection: false,
         })
         .await
     }
@@ -156,6 +164,7 @@ impl Client {
             request_timeout: Duration::from_secs(60),
             max_retry_count: 20,
             retry_interval: Duration::from_millis(100),
+            metadata_detection: false,
         })
         .await
     }
@@ -195,12 +204,19 @@ impl Client {
 
         let token = Client::login(&client, &host, &username, &admin_password).await?;
 
+        let metadata_detector = if params.metadata_detection {
+            Some(MetadataDetector::new().context(MetadataDetectorErrorInstantiationError)?)
+        } else {
+            None
+        };
+
         Ok(Self {
             host,
             client,
             max_retry_count: params.max_retry_count,
             retry_interval: params.retry_interval,
             token,
+            metadata_detector,
         })
     }
 
@@ -361,7 +377,7 @@ impl Client {
     async fn push_internal<P: AsRef<Path>>(
         &self,
         path: P,
-        meta: Meta,
+        mut meta: Meta,
         base_url: String,
     ) -> Result<String> {
         ensure!(
@@ -370,6 +386,12 @@ impl Client {
                 path: PathBuf::from(path.as_ref())
             }
         );
+
+        if let Some(metadata_detector) = self.metadata_detector.as_ref() {
+            metadata_detector
+                .populate(&path, &mut meta)
+                .context(MetadataDetectorErrorInstantiationError)?;
+        }
 
         let mut url = base_url;
         let meta_b64 = encode_metadata(meta)?;

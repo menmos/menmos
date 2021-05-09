@@ -7,7 +7,10 @@ use protocol::directory::storage::MoveRequest;
 use tokio::sync::mpsc::{self, error::TrySendError};
 
 use super::{PendingTransfers, TransferGuard, TransferWorker};
-use crate::{node::ConcurrentRepository, Config};
+use crate::{
+    node::{index::Index, ConcurrentRepository},
+    Config,
+};
 
 pub struct TransferManager {
     pending_transfers: PendingTransfers,
@@ -16,7 +19,7 @@ pub struct TransferManager {
 }
 
 impl TransferManager {
-    pub fn new(repo: Arc<ConcurrentRepository>, index: Arc<sled::Db>, config: Config) -> Self {
+    pub fn new(repo: Arc<ConcurrentRepository>, index: Arc<Index>, config: Config) -> Self {
         let (tx, rx) = mpsc::channel(config.node.move_request_buffer_size);
 
         let handle = tokio::task::spawn(async move {

@@ -31,6 +31,8 @@ pub struct ClientBuilder {
 
     max_retry_count: usize,
     retry_interval: time::Duration,
+
+    metadata_detection: bool,
 }
 
 impl ClientBuilder {
@@ -74,6 +76,11 @@ impl ClientBuilder {
         self
     }
 
+    pub fn with_metadata_detection(mut self) -> Self {
+        self.metadata_detection = true;
+        self
+    }
+
     pub async fn build(self) -> Result<Client, BuildError> {
         let host_config = if let Some(profile) = self.profile {
             HostConfig::Profile { profile }
@@ -94,6 +101,7 @@ impl ClientBuilder {
             request_timeout: self.request_timeout,
             max_retry_count: self.max_retry_count,
             retry_interval: self.retry_interval,
+            metadata_detection: self.metadata_detection,
         };
 
         Client::new_with_params(params)
@@ -113,6 +121,7 @@ impl Default for ClientBuilder {
             request_timeout: time::Duration::from_secs(60),
             max_retry_count: 20,
             retry_interval: time::Duration::from_millis(100),
+            metadata_detection: false,
         }
     }
 }

@@ -3,6 +3,7 @@ use anyhow::Result;
 mod concurrent_repository;
 pub mod constants;
 mod directory_proxy;
+mod index;
 mod node_impl;
 mod node_info;
 mod rebuild;

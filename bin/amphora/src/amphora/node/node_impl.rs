@@ -13,8 +13,8 @@ use repository::{Repository, StreamInfo};
 use tokio::sync::Mutex;
 
 use super::{
-    directory_proxy::DirectoryProxy, node_info::get_info, rebuild, transfer::TransferManager,
-    ConcurrentRepository, Config,
+    directory_proxy::DirectoryProxy, index::Index, node_info::get_info, rebuild,
+    transfer::TransferManager, ConcurrentRepository, Config,
 };
 
 type RepoBox = Box<dyn Repository + Send + Sync>;
@@ -28,7 +28,7 @@ pub struct Storage {
 
     directory: Arc<DirectoryProxy>,
 
-    index: Arc<sled::Db>,
+    index: Arc<Index>,
     repo: Arc<ConcurrentRepository>,
 
     transfer_manager: Arc<Mutex<Option<TransferManager>>>,
@@ -47,7 +47,7 @@ impl Storage {
 
         let certificates = Arc::from(Mutex::from(certs));
 
-        let index = Arc::from(sled::open(&config.node.db_path)?);
+        let index = Arc::from(Index::new(&config.node.db_path)?);
 
         let repo = Arc::from(ConcurrentRepository::new(
             repo,
@@ -134,12 +134,12 @@ impl Storage {
     }
 
     fn is_blob_owned_by(&self, blob_id: &str, username: &str) -> Result<bool> {
-        if let Some(blob_info_iv) = self.index.get(blob_id.as_bytes())? {
-            let blob_info: BlobInfo = bincode::deserialize(blob_info_iv.as_ref())?;
-            Ok(blob_info.owner == username)
-        } else {
-            Err(anyhow!("not found"))
-        }
+        let blob_info = self
+            .index
+            .get(blob_id)?
+            .ok_or_else(|| anyhow!("not found"))?;
+
+        Ok(blob_info.owner == username)
     }
 }
 
@@ -157,19 +157,15 @@ impl StorageNode for Storage {
                 .await?;
         }
 
-        let (created_at, modified_at) =
-            if let Some(existing_ivec) = self.index.get(id.as_bytes())? {
-                let old_info: BlobInfo = bincode::deserialize(&existing_ivec)?;
-                (old_info.meta.created_at, old_info.meta.modified_at)
-            } else {
-                let date = Utc::now();
-                (date, date)
-            };
+        let (created_at, modified_at) = if let Some(old_info) = self.index.get(&id)? {
+            (old_info.meta.created_at, old_info.meta.modified_at)
+        } else {
+            let date = Utc::now();
+            (date, date)
+        };
 
         let info = info_request.into_blob_info(created_at, modified_at);
-
-        self.index
-            .insert(id.as_bytes(), bincode::serialize(&info)?)?;
+        self.index.insert(&id, &info)?;
 
         self.directory
             .index_blob(&id, info, &self.config.node.name)
@@ -191,12 +187,10 @@ impl StorageNode for Storage {
         // Write the diff
         let new_blob_size = self.repo.write(id.clone(), range, body).await?;
 
-        if let Some(meta_ivec) = self.index.get(id.as_bytes())? {
-            let mut info: BlobInfo = bincode::deserialize(&meta_ivec)?;
+        if let Some(mut info) = self.index.get(&id)? {
             info.meta.modified_at = Utc::now();
             info.meta.size = new_blob_size;
-            self.index
-                .insert(id.as_bytes(), bincode::serialize(&info)?)?;
+            self.index.insert(&id, &info)?;
 
             // Update the config on the directory.
             self.directory
@@ -210,12 +204,10 @@ impl StorageNode for Storage {
     }
 
     async fn get(&self, blob_id: String, range: Option<(Bound<u64>, Bound<u64>)>) -> Result<Blob> {
-        let info: BlobInfo = bincode::deserialize(
-            self.index
-                .get(blob_id.as_bytes())?
-                .ok_or_else(|| anyhow!("missing meta"))?
-                .as_ref(),
-        )?;
+        let info: BlobInfo = self
+            .index
+            .get(&blob_id)?
+            .ok_or_else(|| anyhow!("missing meta"))?;
 
         let stream_info = match info.meta.blob_type {
             Type::Directory => StreamInfo {
@@ -241,11 +233,9 @@ impl StorageNode for Storage {
             "forbidden"
         );
 
-        if let Some(existing_ivec) = self.index.get(blob_id.as_bytes())? {
-            let old_info: BlobInfo = bincode::deserialize(&existing_ivec)?;
+        if let Some(old_info) = self.index.get(&blob_id)? {
             let info = info_request.into_blob_info(old_info.meta.created_at, Utc::now());
-            self.index
-                .insert(blob_id.as_bytes(), bincode::serialize(&info)?)?;
+            self.index.insert(&blob_id, &info)?;
 
             self.directory
                 .index_blob(&blob_id, info, &self.config.node.name)
@@ -261,7 +251,7 @@ impl StorageNode for Storage {
         // Privilege check.
         ensure!(self.is_blob_owned_by(&blob_id, username)?, "forbidden");
 
-        self.index.remove(&blob_id.as_bytes())?;
+        self.index.remove(&blob_id)?;
         self.repo.delete(&blob_id).await?;
 
         // Delete the blob on the directory.

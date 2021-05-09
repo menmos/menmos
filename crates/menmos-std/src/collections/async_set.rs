@@ -27,6 +27,8 @@ where
         guard.reserve(additional);
     }
 
+    // Clippy complains because the is_empty method is async, as if we had a choice.
+    #[allow(clippy::clippy::len_without_is_empty)]
     pub async fn len(&self) -> usize {
         let guard = self.data.read().await;
         guard.len()

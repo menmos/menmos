@@ -4,12 +4,12 @@ use std::time::Duration;
 
 use anyhow::{anyhow, ensure, Result};
 use http::header;
-use interface::{BlobInfo, BlobMetaRequest};
+use interface::BlobMetaRequest;
 use mpart_async::client::MultipartRequest;
 use protocol::{directory::storage::MoveRequest, storage::PutResponse};
 use tokio::sync::mpsc;
 
-use crate::node::concurrent_repository::ConcurrentRepository;
+use crate::node::{concurrent_repository::ConcurrentRepository, index::Index};
 
 use super::pending::TransferGuard;
 
@@ -19,7 +19,7 @@ pub struct TransferWorker {
     client: reqwest::Client,
     rx: mpsc::Receiver<(MoveRequest, TransferGuard)>,
     repo: Arc<ConcurrentRepository>,
-    index: Arc<sled::Db>,
+    index: Arc<Index>,
     secret_key: String,
 }
 
@@ -27,7 +27,7 @@ impl TransferWorker {
     pub async fn start(
         rx: mpsc::Receiver<(MoveRequest, TransferGuard)>,
         repo: Arc<ConcurrentRepository>,
-        index: Arc<sled::Db>,
+        index: Arc<Index>,
         secret_key: String,
     ) -> Result<()> {
         let client = reqwest::Client::builder()
@@ -48,11 +48,10 @@ impl TransferWorker {
     }
 
     fn encode_metadata(&self, blob_id: &str) -> Result<String> {
-        let info: BlobInfo = if let Some(meta_ivec) = self.index.get(blob_id.as_bytes())? {
-            bincode::deserialize(&meta_ivec)?
-        } else {
-            return Err(anyhow!("failed to load blob info"));
-        };
+        let info = self
+            .index
+            .get(blob_id)?
+            .ok_or_else(|| anyhow!("failed to load blob info"))?;
 
         let meta_request = BlobMetaRequest::from(info.meta);
         let serialized_meta = serde_json::to_vec(&meta_request)?;
@@ -131,7 +130,7 @@ impl TransferWorker {
             .delete(&request.blob_id)
             .await?;
 
-        self.index.remove(request.blob_id.as_bytes())?;
+        self.index.remove(&request.blob_id)?;
 
         Ok(())
     }
