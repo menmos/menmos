@@ -4,16 +4,24 @@ use async_trait::async_trait;
 
 use ring::rand::{SecureRandom, SystemRandom};
 
-use crate::iface::{DynIter, Flush, UserMapper};
+use super::iface::Flush;
+use super::DynIter;
 
 const REGISTERED_USERS_MAP: &str = "registered_users";
 
-pub struct UsersStore {
+pub trait UserStore: Flush {
+    fn add_user(&self, username: &str, password: &str) -> Result<()>;
+    fn authenticate(&self, username: &str, password: &str) -> Result<bool>;
+    fn has_user(&self, username: &str) -> Result<bool>;
+    fn iter(&self) -> DynIter<'static, Result<String>>;
+}
+
+pub struct SledUserStore {
     map: sled::Tree,
     rng: SystemRandom,
 }
 
-impl UsersStore {
+impl SledUserStore {
     pub fn new(db: &sled::Db) -> Result<Self> {
         let map = db.open_tree(REGISTERED_USERS_MAP)?;
 
@@ -30,14 +38,14 @@ impl UsersStore {
 }
 
 #[async_trait]
-impl Flush for UsersStore {
+impl Flush for SledUserStore {
     async fn flush(&self) -> Result<()> {
         self.map.flush_async().await?;
         Ok(())
     }
 }
 
-impl UserMapper for UsersStore {
+impl UserStore for SledUserStore {
     fn add_user(&self, username: &str, password: &str) -> Result<()> {
         let config = argon2::Config::default();
         let password_hash =

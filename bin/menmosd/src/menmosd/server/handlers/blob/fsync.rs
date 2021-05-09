@@ -20,6 +20,7 @@ pub async fn fsync(
 
     let storage_node = context
         .node
+        .indexer()
         .get_blob_storage_node(&blob_id)
         .await
         .map_err(InternalServerError::from)?

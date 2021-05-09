@@ -13,6 +13,7 @@ pub async fn list(
 ) -> Result<reply::Response, warp::Rejection> {
     let response = context
         .node
+        .query()
         .list_metadata(req.tags, req.meta_keys, &user.username)
         .await
         .map_err(InternalServerError::from)?;

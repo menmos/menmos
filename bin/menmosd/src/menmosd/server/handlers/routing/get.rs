@@ -9,6 +9,7 @@ use crate::server::context::Context;
 pub async fn get(user: UserIdentity, context: Context) -> Result<reply::Response, warp::Rejection> {
     let routing_config = context
         .node
+        .routing()
         .get_routing_config(&user.username)
         .await
         .map_err(InternalServerError::from)?;

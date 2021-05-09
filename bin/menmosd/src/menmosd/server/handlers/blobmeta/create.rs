@@ -15,6 +15,7 @@ pub async fn create(
 ) -> Result<reply::Response, warp::Rejection> {
     context
         .node
+        .indexer()
         .index_blob(&blob_id, blob_info, &identity.id)
         .await
         .map_err(InternalServerError::from)?;

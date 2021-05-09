@@ -1413,26 +1413,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "menmos-indexer"
-version = "0.0.5"
-dependencies = [
- "anyhow",
- "async-trait",
- "bincode",
- "bitvec 0.20.1",
- "byteorder",
- "chrono",
- "futures",
- "log",
- "menmos-interface",
- "ring",
- "rust-argon2",
- "sled 0.34.6 (git+https://github.com/spacejam/sled?branch=main)",
- "tempfile",
- "tokio",
-]
-
-[[package]]
 name = "menmos-interface"
 version = "0.0.5"
 dependencies = [
@@ -1494,7 +1474,6 @@ dependencies = [
  "log4rs",
  "menmos-apikit",
  "menmos-client",
- "menmos-indexer",
  "menmos-interface",
  "menmos-protocol",
  "menmosd",
@@ -1544,7 +1523,6 @@ dependencies = [
  "menmos-antidns",
  "menmos-apikit",
  "menmos-client",
- "menmos-indexer",
  "menmos-interface",
  "menmos-protocol",
  "menmos-std",
@@ -1554,6 +1532,8 @@ dependencies = [
  "portpicker",
  "rapidquery",
  "reqwest",
+ "ring",
+ "rust-argon2",
  "serde 1.0.123",
  "serde_json",
  "sled 0.34.6 (git+https://github.com/spacejam/sled?branch=main)",

@@ -25,7 +25,9 @@ impl Server {
         let node: Arc<Box<dyn DirectoryNode + Send + Sync>> = Arc::new(Box::new(node));
 
         // Create the admin user.
-        node.register("admin", &cfg.node.admin_password).await?;
+        node.user()
+            .register("admin", &cfg.node.admin_password)
+            .await?;
 
         let config = Arc::new(cfg.clone());
 

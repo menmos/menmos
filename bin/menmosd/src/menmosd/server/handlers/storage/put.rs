@@ -47,6 +47,7 @@ pub async fn put(
 
     let node_resp = context
         .node
+        .admin()
         .register_storage_node(info)
         .await
         .map_err(InternalServerError::from)?;
@@ -55,6 +56,7 @@ pub async fn put(
 
     let move_requests: Vec<MoveRequest> = context
         .node
+        .routing()
         .get_move_requests(&identity.id)
         .await
         .map_err(InternalServerError::from)?

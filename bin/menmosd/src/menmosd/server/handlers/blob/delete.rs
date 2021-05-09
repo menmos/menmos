@@ -18,6 +18,7 @@ pub async fn delete(
 
     let blob_info = context
         .node
+        .indexer()
         .get_blob_meta(&blob_id, &user.username)
         .await
         .map_err(InternalServerError::from)?
@@ -29,6 +30,7 @@ pub async fn delete(
 
     let storage_node = context
         .node
+        .indexer()
         .get_blob_storage_node(&blob_id)
         .await
         .map_err(InternalServerError::from)?

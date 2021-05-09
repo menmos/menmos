@@ -21,7 +21,6 @@ menmosd = {path = "../../bin/menmosd"}
 menmos-apikit = "0.0.5"
 menmos-client = "0.0.5"
 menmos-protocol = "0.0.5"
-menmos-indexer = {path = "../menmos-indexer"}
 menmos-interface = "0.0.5"
 portpicker = "0.1"
 reqwest = {version = "0.11", features = ["json"]}
