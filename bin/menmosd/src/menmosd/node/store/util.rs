@@ -1,3 +1,5 @@
+use std::iter::IntoIterator;
+
 pub struct DynIter<'iter, V> {
     iter: Box<dyn Iterator<Item = V> + 'iter + Send>,
 }
@@ -16,6 +18,16 @@ impl<'iter, V> DynIter<'iter, V> {
     {
         Self {
             iter: Box::new(iter),
+        }
+    }
+
+    pub fn from<I>(iter: I) -> Self
+    where
+        I: 'static + IntoIterator<Item = V> + Send + Sync,
+        I::IntoIter: Send + Sync,
+    {
+        Self {
+            iter: Box::from(iter.into_iter()),
         }
     }
 }

@@ -1,11 +1,11 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
 
 use interface::{
     BlobIndexer, DirectoryNode, NodeAdminController, QueryExecutor, RoutingConfigManager,
-    StorageNodeInfo, UserManagement,
+    UserManagement,
 };
 
 pub struct Directory {
@@ -14,8 +14,6 @@ pub struct Directory {
     admin: Arc<Box<dyn NodeAdminController + Send + Sync>>,
     user: Arc<Box<dyn UserManagement + Send + Sync>>,
     query: Arc<Box<dyn QueryExecutor + Send + Sync>>,
-
-    rebuild_queue: Mutex<Vec<StorageNodeInfo>>,
 }
 
 impl Directory {
@@ -32,7 +30,6 @@ impl Directory {
             admin,
             user,
             query,
-            rebuild_queue: Default::default(),
         }
     }
 }

@@ -4,7 +4,6 @@ use anyhow::Result;
 
 use chrono::Utc;
 
-use indexer::Index;
 use interface::{
     BlobInfo, BlobMetaRequest, DirectoryNode, Query, QueryResponse, RoutingConfig, StorageNodeInfo,
     Type,

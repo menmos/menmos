@@ -6,7 +6,7 @@ mod storage;
 mod user;
 mod util;
 
-use util::DynIter;
+pub use util::DynIter;
 
 pub mod iface {
     use anyhow::Result;
