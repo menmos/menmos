@@ -21,6 +21,7 @@ impl<'iter, V> DynIter<'iter, V> {
         }
     }
 
+    #[allow(dead_code)] // Used in tests.
     pub fn from<I>(iter: I) -> Self
     where
         I: 'static + IntoIterator<Item = V> + Send + Sync,

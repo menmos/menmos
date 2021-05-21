@@ -1,14 +1,10 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{ensure, Result};
 
 use async_trait::async_trait;
 
-use interface::{
-    BlobInfo, BlobMetaRequest, FacetResponse, Hit, MetadataList, Query, QueryResponse,
-    StorageNodeInfo,
-};
+use interface::{BlobInfo, BlobMetaRequest, StorageNodeInfo};
 
 use crate::node::{
     routing::NodeRouter,

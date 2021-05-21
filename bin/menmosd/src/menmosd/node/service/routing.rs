@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use async_trait::async_trait;
 
@@ -99,7 +99,7 @@ impl interface::RoutingConfigManager for RoutingService {
                     .query_move_requests(&query, &username, src_node)
                     .await?;
 
-                if out_of_place_blobs.len() == 0 {
+                if out_of_place_blobs.is_empty() {
                     // No pending move requests, this routing config is clean.
                     routing_config_state.state = DirtyState::Clean;
                     self.store

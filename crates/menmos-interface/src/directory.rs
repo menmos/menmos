@@ -10,7 +10,7 @@ pub use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Blob, BlobInfo, BlobMeta, BlobMetaRequest};
+use crate::{BlobInfo, BlobMeta, BlobMetaRequest};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]

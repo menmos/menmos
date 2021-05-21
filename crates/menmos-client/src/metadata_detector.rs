@@ -1,6 +1,5 @@
 use std::{collections::HashMap, path::Path};
 
-use serde_json;
 use snafu::{ResultExt, Snafu};
 
 use crate::Meta;
@@ -38,8 +37,7 @@ impl MetadataDetector {
 
     pub fn populate<P: AsRef<Path>>(&self, path: P, meta: &mut Meta) -> Result<()> {
         if let Some(mime_type) = self.detect_mime_type(path) {
-            meta.metadata
-                .insert(String::from("extension"), mime_type.clone());
+            meta.metadata.insert(String::from("extension"), mime_type);
         }
 
         Ok(())

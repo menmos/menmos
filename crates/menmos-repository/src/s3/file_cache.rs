@@ -37,11 +37,7 @@ impl FileCache {
     }
 
     pub async fn contains<S: AsRef<str>>(&self, blob_id: S) -> Option<PathBuf> {
-        if let Some(blob_path) = self.file_path_cache.get(blob_id.as_ref()).await {
-            Some(blob_path)
-        } else {
-            None
-        }
+        self.file_path_cache.get(blob_id.as_ref()).await
     }
 
     pub async fn invalidate<S: AsRef<str>>(&self, blob_id: S) -> Result<()> {
