@@ -52,7 +52,7 @@ impl Flush for MockUserStore {
 impl UserStore for MockUserStore {
     fn authenticate(&self, username: &str, password: &str) -> Result<bool> {
         let guard = self.users.lock().unwrap();
-        Ok(guard.get(username).cloned().unwrap_or(String::default()) == password)
+        Ok(guard.get(username).cloned().unwrap_or_default() == password)
     }
 
     fn add_user(&self, username: &str, password: &str) -> Result<()> {
@@ -235,10 +235,7 @@ impl MetadataStore for MockMetadataStore {
 
     fn load_user_mask(&self, username: &str) -> Result<BitVec> {
         let users_guard = self.users_map.lock().unwrap();
-        Ok(users_guard
-            .get(username)
-            .cloned()
-            .unwrap_or(BitVec::default()))
+        Ok(users_guard.get(username).cloned().unwrap_or_default())
     }
 
     fn load_tag(&self, tag: &str) -> Result<BitVec> {

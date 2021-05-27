@@ -1,8 +1,7 @@
 //! Test blob routing.
 use anyhow::Result;
-use interface::{RoutingConfig, StorageNodeInfo};
+use interface::RoutingConfig;
 use menmos_client::{Client, Meta};
-use protocol::directory::storage::RegisterResponse;
 use testing::fixtures::Menmos;
 
 #[tokio::test]

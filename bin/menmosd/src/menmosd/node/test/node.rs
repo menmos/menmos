@@ -8,7 +8,6 @@ use interface::{
     BlobInfo, BlobMetaRequest, DirectoryNode, Query, QueryResponse, RoutingConfig, StorageNodeInfo,
     Type,
 };
-use tempfile::TempDir;
 
 use crate::Directory;
 
@@ -92,16 +91,17 @@ async fn pick_node_for_blob_with_single_node() {
 async fn add_multiblob_round_robin() {
     let node = mock::node();
 
-    let mut storage_nodes = Vec::with_capacity(3);
-    storage_nodes.push(get_storage_node_info("alpha"));
-    storage_nodes.push(get_storage_node_info("beta"));
-    storage_nodes.push(get_storage_node_info("gamma"));
+    let storage_nodes = vec![
+        get_storage_node_info("alpha"),
+        get_storage_node_info("beta"),
+        get_storage_node_info("gamma"),
+    ];
 
     for n in storage_nodes.clone().into_iter() {
         node.admin().register_storage_node(n).await.unwrap();
     }
 
-    for i in 0..100 as i32 {
+    for i in 0..100_i32 {
         let tgt_storage_node = index(
             &format!("{}", i),
             BlobMetaRequest::new("somename", Type::File),
@@ -117,16 +117,17 @@ async fn add_multiblob_round_robin() {
 async fn get_blob_node_multiblob() {
     let node = mock::node();
 
-    let mut storage_nodes = Vec::with_capacity(3);
-    storage_nodes.push(get_storage_node_info("alpha"));
-    storage_nodes.push(get_storage_node_info("beta"));
-    storage_nodes.push(get_storage_node_info("gamma"));
+    let storage_nodes = vec![
+        get_storage_node_info("alpha"),
+        get_storage_node_info("beta"),
+        get_storage_node_info("gamma"),
+    ];
 
     for n in storage_nodes.clone().into_iter() {
         node.admin().register_storage_node(n).await.unwrap();
     }
 
-    for i in 0..100 as i32 {
+    for i in 0..100_i32 {
         let blob_id = format!("{}", i);
         index(
             &blob_id,
@@ -409,7 +410,6 @@ async fn list_metadata_tags() -> Result<()> {
 
 #[tokio::test]
 async fn document_deletion_missing_document_with_not() -> Result<()> {
-    let temp_dir = TempDir::new()?;
     let node = mock::node();
     node.admin()
         .register_storage_node(get_storage_node_info("alpha"))
