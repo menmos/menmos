@@ -258,7 +258,7 @@ pub trait QueryExecutor {
     async fn query(&self, q: &Query, username: &str) -> Result<QueryResponse>;
     async fn query_move_requests(
         &self,
-        q: &Query,
+        query: &Query,
         username: &str,
         src_node: &str,
     ) -> Result<Vec<String>>;

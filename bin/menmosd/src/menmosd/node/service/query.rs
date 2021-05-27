@@ -128,7 +128,7 @@ impl interface::QueryExecutor for QueryService {
             let blob_id = self
                 .documents
                 .lookup(doc_idx as u32)?
-                .ok_or_else(|| anyhow!("missing doucment ID for index '{}'"))?;
+                .ok_or_else(|| anyhow!("missing document ID for index '{}'"))?;
 
             let blob_storage_node = self
                 .storage
