@@ -8,7 +8,6 @@ members = [
     "crates/menmos-apikit",
     "crates/menmos-betterstreams",
     "crates/menmos-client",
-    "crates/menmos-indexer",
     "crates/menmos-interface",
     "crates/menmos-protocol",
     "crates/menmos-repository",
@@ -24,7 +23,6 @@ menmos-antidns = { path = 'crates/menmos-antidns' }
 menmos-apikit = { path = 'crates/menmos-apikit' }
 menmos-betterstreams = { path = 'crates/menmos-betterstreams' }
 menmos-client = { path = 'crates/menmos-client' }
-menmos-indexer = { path = 'crates/menmos-indexer' }
 menmos-interface = { path = 'crates/menmos-interface' }
 menmos-protocol = { path = 'crates/menmos-protocol' }
 menmos-repository = { path = 'crates/menmos-repository' }

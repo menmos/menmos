@@ -1,16 +1,37 @@
-use std::collections::HashMap;
-
 use anyhow::{anyhow, ensure, Result};
-
 use async_trait::async_trait;
-
 use bitvec::prelude::*;
-
 use futures::TryFutureExt;
 use interface::BlobInfo;
+use std::collections::HashMap;
 
-use crate::iface::{Flush, MetadataMapper};
-use crate::BitvecTree;
+use super::bitvec_tree::BitvecTree;
+use super::iface::Flush;
+
+pub trait MetadataStore {
+    fn get(&self, idx: u32) -> Result<Option<BlobInfo>>;
+    fn insert(&self, id: u32, info: &BlobInfo) -> Result<()>;
+
+    fn load_user_mask(&self, username: &str) -> Result<BitVec>;
+
+    fn load_tag(&self, tag: &str) -> Result<BitVec>;
+
+    fn load_key_value(&self, k: &str, v: &str) -> Result<BitVec>;
+
+    fn load_key(&self, k: &str) -> Result<BitVec>;
+
+    fn load_children(&self, parent_id: &str) -> Result<BitVec>;
+
+    fn list_all_tags(&self, mask: Option<&BitVec>) -> Result<HashMap<String, usize>>;
+    fn list_all_kv_fields(
+        &self,
+        key_filter: &Option<Vec<String>>,
+        mask: Option<&BitVec>,
+    ) -> Result<HashMap<String, HashMap<String, usize>>>;
+
+    fn purge(&self, idx: u32) -> Result<()>;
+    fn clear(&self) -> Result<()>;
+}
 
 const META_MAP: &str = "metadata";
 const TAG_MAP: &str = "tags";
@@ -28,7 +49,7 @@ fn tag_to_kv(tag: &str) -> Result<(&str, &str)> {
     Ok((splitted[0], splitted[1]))
 }
 
-pub struct MetadataStore {
+pub struct SledMetadataStore {
     meta_map: sled::Tree,
     tag_map: BitvecTree,
     kv_map: BitvecTree,
@@ -36,7 +57,7 @@ pub struct MetadataStore {
     user_mask_map: BitvecTree,
 }
 
-impl MetadataStore {
+impl SledMetadataStore {
     pub fn new(db: &sled::Db) -> Result<Self> {
         let meta_map = db.open_tree(META_MAP)?;
 
@@ -83,7 +104,7 @@ impl MetadataStore {
 }
 
 #[async_trait]
-impl Flush for MetadataStore {
+impl Flush for SledMetadataStore {
     async fn flush(&self) -> Result<()> {
         log::debug!("starting flush");
         let meta_flush = self
@@ -101,7 +122,7 @@ impl Flush for MetadataStore {
     }
 }
 
-impl MetadataMapper for MetadataStore {
+impl MetadataStore for SledMetadataStore {
     fn get(&self, idx: u32) -> Result<Option<BlobInfo>> {
         if let Some(ivec) = self.meta_map.get(idx.to_le_bytes())? {
             let info: BlobInfo = bincode::deserialize(&ivec)?;

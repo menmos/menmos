@@ -1,17 +1,25 @@
 use anyhow::{anyhow, Result};
-
 use async_trait::async_trait;
 use interface::RoutingConfigState;
 
-use crate::iface::{DynIter, Flush, RoutingMapper};
+use super::iface::Flush;
+use super::DynIter;
 
 const ROUTING_KEY_MAP: &str = "routing_keys";
 
-pub struct RoutingStore {
+#[async_trait]
+pub trait RoutingStore: Flush {
+    fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfigState>>;
+    fn set_routing_config(&self, username: &str, routing_key: &RoutingConfigState) -> Result<()>;
+    fn delete_routing_config(&self, username: &str) -> Result<()>;
+    fn iter(&self) -> DynIter<'static, Result<RoutingConfigState>>;
+}
+
+pub struct SledRoutingStore {
     routing_keys: sled::Tree,
 }
 
-impl RoutingStore {
+impl SledRoutingStore {
     pub fn new(db: &sled::Db) -> Result<Self> {
         let routing_keys = db.open_tree(ROUTING_KEY_MAP)?;
         Ok(Self { routing_keys })
@@ -19,14 +27,14 @@ impl RoutingStore {
 }
 
 #[async_trait]
-impl Flush for RoutingStore {
+impl Flush for SledRoutingStore {
     async fn flush(&self) -> Result<()> {
         self.routing_keys.flush_async().await?;
         Ok(())
     }
 }
 
-impl RoutingMapper for RoutingStore {
+impl RoutingStore for SledRoutingStore {
     fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfigState>> {
         if let Some(config_ivec) = self.routing_keys.get(username.as_bytes())? {
             let config: RoutingConfigState = bincode::deserialize(&config_ivec)?;

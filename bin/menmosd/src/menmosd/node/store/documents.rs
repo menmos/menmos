@@ -8,13 +8,23 @@ use bitvec::prelude::*;
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::iface::{DocIdMapper, Flush};
+use super::iface::Flush;
+
+pub trait DocumentIdStore {
+    fn get_nb_of_docs(&self) -> u32;
+    fn insert(&self, doc_id: &str) -> Result<u32>;
+    fn get(&self, doc_id: &str) -> Result<Option<u32>>;
+    fn lookup(&self, doc_idx: u32) -> Result<Option<String>>;
+    fn delete(&self, doc_id: &str) -> Result<Option<u32>>;
+    fn get_all_documents_mask(&self) -> Result<BitVec>;
+    fn clear(&self) -> Result<()>;
+}
 
 const DOC_MAP: &str = "document";
 const DOC_REV_MAP: &str = "document-rev";
 const RECYCLING_STORE: &str = "id-recycle";
 
-pub struct DocumentIdStore {
+pub struct SledDocumentIdStore {
     doc_map: sled::Tree,         // DocumentID => IDX
     doc_reverse_map: sled::Tree, // IDX => DocumentID
     recycling_store: sled::Tree,
@@ -22,7 +32,7 @@ pub struct DocumentIdStore {
     next_id: AtomicU32,
 }
 
-impl DocumentIdStore {
+impl SledDocumentIdStore {
     pub fn new(db: &sled::Db) -> Result<Self> {
         let doc_map = db.open_tree(DOC_MAP)?;
         let doc_reverse_map = db.open_tree(DOC_REV_MAP)?;
@@ -43,7 +53,7 @@ impl DocumentIdStore {
 }
 
 #[async_trait]
-impl Flush for DocumentIdStore {
+impl Flush for SledDocumentIdStore {
     async fn flush(&self) -> Result<()> {
         log::debug!("beginning flush");
         self.doc_map.flush_async().await?;
@@ -53,7 +63,7 @@ impl Flush for DocumentIdStore {
     }
 }
 
-impl DocIdMapper for DocumentIdStore {
+impl DocumentIdStore for SledDocumentIdStore {
     fn get_nb_of_docs(&self) -> u32 {
         self.next_id.load(Ordering::SeqCst)
     }

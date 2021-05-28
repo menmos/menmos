@@ -24,6 +24,7 @@ async fn get_blob_url<S: AsRef<str>>(
 ) -> Result<Uri> {
     let storage_node = context
         .node
+        .indexer()
         .get_blob_storage_node(blob_id.as_ref())
         .await?
         .ok_or_else(|| anyhow!("blob {} not found", blob_id.as_ref()))?;
@@ -87,6 +88,7 @@ pub async fn query(
 
     let mut query_response = context
         .node
+        .query()
         .query(&query, &user.username)
         .await
         .map_err(InternalServerError::from)?;

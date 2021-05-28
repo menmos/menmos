@@ -1,38 +1,26 @@
-use std::sync::Arc;
-
 use anyhow::{anyhow, Result};
 
 use chrono::{DateTime, Duration, Utc};
 
-use indexer::iface::RoutingMapper;
-use interface::{BlobMetaRequest, StorageNodeInfo};
+use interface::{BlobMetaRequest, RoutingConfig, StorageNodeInfo};
 
 use menmos_std::collections::{AsyncHashMap, AsyncList};
 
 const NODE_FORGET_DURATION_SECONDS: i64 = 60;
 
-pub struct NodeRouter<I>
-where
-    I: RoutingMapper + Send + Sync,
-{
+pub struct NodeRouter {
     storage_nodes: AsyncHashMap<String, (StorageNodeInfo, DateTime<Utc>)>,
     round_robin: AsyncList<String>,
 
     node_forget_duration: Duration,
-
-    index: Arc<I>,
 }
 
-impl<I> NodeRouter<I>
-where
-    I: RoutingMapper + Send + Sync,
-{
-    pub fn new(index: Arc<I>) -> Self {
+impl NodeRouter {
+    pub fn new() -> Self {
         Self {
             storage_nodes: AsyncHashMap::new(),
             round_robin: Default::default(),
             node_forget_duration: Duration::seconds(NODE_FORGET_DURATION_SECONDS),
-            index,
         }
     }
 
@@ -88,15 +76,13 @@ where
     async fn route_routing_key(
         &self,
         meta_request: &BlobMetaRequest,
-        username: &str,
+        routing_config: &Option<RoutingConfig>,
     ) -> Result<Option<StorageNodeInfo>> {
-        let routed_storage_node_maybe = if let Some(cfg_state) =
-            self.index.get_routing_config(username)?
-        {
+        let routed_storage_node_maybe = if let Some(cfg) = routing_config {
             meta_request
                 .metadata
-                .get(&cfg_state.routing_config.routing_key)
-                .and_then(|field_value| cfg_state.routing_config.routes.get(field_value).cloned())
+                .get(&cfg.routing_key)
+                .and_then(|field_value| cfg.routes.get(field_value).cloned())
         } else {
             None
         };
@@ -135,9 +121,9 @@ where
         &self,
         _blob_id: &str,
         meta_request: &BlobMetaRequest,
-        username: &str,
+        routing_config: &Option<RoutingConfig>,
     ) -> Result<StorageNodeInfo> {
-        match self.route_routing_key(meta_request, username).await? {
+        match self.route_routing_key(meta_request, routing_config).await? {
             Some(v) => Ok(v),
             None => self.route_round_robin().await,
         }

@@ -13,6 +13,7 @@ pub async fn login(
 ) -> Result<reply::Response, warp::Rejection> {
     if context
         .node
+        .user()
         .login(&request.username, &request.password)
         .await
         .map_err(InternalServerError::from)?
