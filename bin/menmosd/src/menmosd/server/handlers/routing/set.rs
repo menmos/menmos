@@ -14,6 +14,7 @@ pub async fn set(
 ) -> Result<reply::Response, warp::Rejection> {
     context
         .node
+        .routing()
         .set_routing_config(&user.username, &request.routing_config)
         .await
         .map_err(InternalServerError::from)?;

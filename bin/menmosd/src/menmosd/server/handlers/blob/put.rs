@@ -35,6 +35,7 @@ pub async fn put(
     let new_blob_id = uuid::Uuid::new_v4().to_string();
     let targeted_storage_node = context
         .node
+        .indexer()
         .pick_node_for_blob(&new_blob_id, meta, &user.username)
         .await
         .map_err(InternalServerError::from)?;

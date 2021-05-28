@@ -20,6 +20,7 @@ pub async fn register(
     // Don't allow duplicate username registration.
     if context
         .node
+        .user()
         .has_user(&request.username)
         .await
         .map_err(InternalServerError::from)?
@@ -29,6 +30,7 @@ pub async fn register(
 
     context
         .node
+        .user()
         .register(&request.username, &request.password)
         .await
         .map_err(InternalServerError::from)?;

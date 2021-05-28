@@ -11,6 +11,7 @@ pub async fn delete(
 ) -> Result<reply::Response, warp::Rejection> {
     context
         .node
+        .routing()
         .delete_routing_config(&user.username)
         .await
         .map_err(InternalServerError::from)?;

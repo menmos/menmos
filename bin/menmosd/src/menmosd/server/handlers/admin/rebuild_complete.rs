@@ -16,6 +16,7 @@ pub async fn rebuild_complete(
 
     context
         .node
+        .admin()
         .rebuild_complete(&storage_node_id)
         .await
         .map_err(InternalServerError::from)?;

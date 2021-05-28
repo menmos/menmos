@@ -2,14 +2,21 @@ use anyhow::Result;
 
 use async_trait::async_trait;
 
-use crate::iface::{Flush, StorageNodeMapper};
+use super::iface::Flush;
+
+pub trait StorageMappingStore {
+    fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>>;
+    fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()>;
+    fn delete_blob(&self, blob_id: &str) -> Result<Option<String>>;
+    fn clear(&self) -> Result<()>;
+}
 
 const DISPATCH_TREE: &str = "dispatch";
-pub struct StorageDispatch {
+pub struct SledStorageMappingStore {
     tree: sled::Tree,
 }
 
-impl StorageDispatch {
+impl SledStorageMappingStore {
     pub fn new(db: &sled::Db) -> Result<Self> {
         let tree = db.open_tree(DISPATCH_TREE)?;
         Ok(Self { tree })
@@ -17,14 +24,14 @@ impl StorageDispatch {
 }
 
 #[async_trait]
-impl Flush for StorageDispatch {
+impl Flush for SledStorageMappingStore {
     async fn flush(&self) -> Result<()> {
         self.tree.flush_async().await?;
         Ok(())
     }
 }
 
-impl StorageNodeMapper for StorageDispatch {
+impl StorageMappingStore for SledStorageMappingStore {
     fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>> {
         Ok(self
             .tree

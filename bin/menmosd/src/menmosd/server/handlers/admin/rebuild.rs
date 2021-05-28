@@ -15,6 +15,7 @@ pub async fn rebuild(
 
     context
         .node
+        .admin()
         .start_rebuild()
         .await
         .map_err(InternalServerError::from)?;

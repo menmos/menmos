@@ -12,6 +12,7 @@ pub async fn delete(
 ) -> Result<reply::Response, warp::Rejection> {
     context
         .node
+        .indexer()
         .delete_blob(&blob_id, &identity.id)
         .await
         .map_err(InternalServerError::from)?;

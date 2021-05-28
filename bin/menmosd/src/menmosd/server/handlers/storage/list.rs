@@ -12,6 +12,7 @@ pub async fn list(
 ) -> Result<reply::Response, warp::Rejection> {
     let storage_nodes = context
         .node
+        .admin()
         .list_storage_nodes()
         .await
         .map_err(InternalServerError::from)?;

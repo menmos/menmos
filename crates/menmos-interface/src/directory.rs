@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
+use std::sync::Arc;
 
 use anyhow::Result;
 
@@ -207,7 +208,7 @@ pub struct MoveInformation {
 }
 
 #[async_trait]
-pub trait DirectoryNode {
+pub trait BlobIndexer {
     async fn pick_node_for_blob(
         &self,
         blob_id: &str,
@@ -217,30 +218,65 @@ pub trait DirectoryNode {
     async fn get_blob_meta(&self, blob_id: &str, user: &str) -> Result<Option<BlobInfo>>;
     async fn index_blob(&self, blob_id: &str, meta: BlobInfo, storage_node_id: &str) -> Result<()>;
     async fn delete_blob(&self, blob_id: &str, username: &str) -> Result<Option<StorageNodeInfo>>;
+    async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>>;
+    async fn clear(&self) -> Result<()>;
+    async fn commit(&self) -> Result<()>;
+}
 
+#[async_trait]
+pub trait RoutingConfigManager {
     async fn get_routing_config(&self, user: &str) -> Result<Option<RoutingConfig>>;
     async fn set_routing_config(&self, user: &str, config: &RoutingConfig) -> Result<()>;
     async fn delete_routing_config(&self, user: &str) -> Result<()>;
 
     async fn get_move_requests(&self, src_node: &str) -> Result<Vec<MoveInformation>>;
 
-    async fn register_storage_node(&self, def: StorageNodeInfo) -> Result<StorageNodeResponseData>;
-    async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>>;
-
     async fn commit(&self) -> Result<()>;
+}
+
+#[async_trait]
+pub trait NodeAdminController {
+    async fn register_storage_node(&self, def: StorageNodeInfo) -> Result<StorageNodeResponseData>;
+    async fn list_storage_nodes(&self) -> Result<Vec<StorageNodeInfo>>;
+
     async fn start_rebuild(&self) -> Result<()>;
     async fn rebuild_complete(&self, storage_node_id: &str) -> Result<()>;
+    async fn commit(&self) -> Result<()>;
+}
 
+#[async_trait]
+pub trait UserManagement {
+    async fn login(&self, user: &str, password: &str) -> Result<bool>;
+    async fn register(&self, user: &str, password: &str) -> Result<()>;
+    async fn has_user(&self, user: &str) -> Result<bool>;
+    async fn commit(&self) -> Result<()>;
+    async fn list(&self) -> Vec<String>;
+}
+
+#[async_trait]
+pub trait QueryExecutor {
     async fn query(&self, q: &Query, username: &str) -> Result<QueryResponse>;
+    async fn query_move_requests(
+        &self,
+        query: &Query,
+        username: &str,
+        src_node: &str,
+    ) -> Result<Vec<String>>;
     async fn list_metadata(
         &self,
         tags: Option<Vec<String>>,
         meta_keys: Option<Vec<String>>,
         username: &str,
     ) -> Result<MetadataList>;
-    async fn list_storage_nodes(&self) -> Result<Vec<StorageNodeInfo>>;
+}
 
-    async fn login(&self, user: &str, password: &str) -> Result<bool>;
-    async fn register(&self, user: &str, password: &str) -> Result<()>;
-    async fn has_user(&self, user: &str) -> Result<bool>;
+#[async_trait]
+pub trait DirectoryNode {
+    fn indexer(&self) -> Arc<Box<dyn BlobIndexer + Send + Sync>>;
+    fn routing(&self) -> Arc<Box<dyn RoutingConfigManager + Send + Sync>>;
+    fn admin(&self) -> Arc<Box<dyn NodeAdminController + Send + Sync>>;
+    fn user(&self) -> Arc<Box<dyn UserManagement + Send + Sync>>;
+    fn query(&self) -> Arc<Box<dyn QueryExecutor + Send + Sync>>;
+
+    async fn commit(&self) -> Result<()>;
 }

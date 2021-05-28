@@ -1,18 +1,35 @@
 use std::collections::HashMap;
-use std::sync::{
-    atomic::{AtomicU32, Ordering},
-    Arc, Mutex,
-};
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 
 use anyhow::{ensure, Result};
 
 use async_trait::async_trait;
 
 use bitvec::prelude::*;
+use interface::{
+    BlobIndexer, BlobInfo, NodeAdminController, QueryExecutor, RoutingConfigManager,
+    RoutingConfigState, UserManagement,
+};
 
-use interface::{BlobInfo, RoutingConfigState};
-
-use indexer::iface::*;
+use crate::node::{
+    service::{IndexerService, NodeAdminService, QueryService},
+    store::{
+        iface::{DocumentIdStore, MetadataStore, StorageMappingStore},
+        DynIter,
+    },
+};
+use crate::{
+    node::{
+        routing::NodeRouter,
+        service::{RoutingService, UserService},
+        store::iface::{
+            DynDocumentIDStore, DynMetadataStore, DynRoutingStore, DynStorageMappingStore, Flush,
+            RoutingStore, UserStore,
+        },
+    },
+    Directory,
+};
 
 fn tag_to_kv(tag: &str) -> Result<(&str, &str)> {
     let splitted: Vec<_> = tag.split('$').collect();
@@ -21,14 +38,56 @@ fn tag_to_kv(tag: &str) -> Result<(&str, &str)> {
 }
 
 #[derive(Default)]
-pub struct MockDocIdMap {
+struct MockUserStore {
+    users: Mutex<HashMap<String, String>>,
+}
+
+#[async_trait]
+impl Flush for MockUserStore {
+    async fn flush(&self) -> Result<()> {
+        Ok(())
+    }
+}
+
+impl UserStore for MockUserStore {
+    fn authenticate(&self, username: &str, password: &str) -> Result<bool> {
+        let guard = self.users.lock().unwrap();
+        Ok(guard.get(username).cloned().unwrap_or_default() == password)
+    }
+
+    fn add_user(&self, username: &str, password: &str) -> Result<()> {
+        let mut guard = self.users.lock().unwrap();
+        guard.insert(username.to_string(), password.to_string());
+        Ok(())
+    }
+
+    fn has_user(&self, username: &str) -> Result<bool> {
+        let guard = self.users.lock().unwrap();
+        Ok(guard.contains_key(username))
+    }
+
+    fn iter(&self) -> DynIter<'static, Result<String>> {
+        // Returning an iterator on something protected by a mutex = cursed.
+        let guard = self.users.lock().unwrap();
+
+        let users = guard
+            .iter()
+            .map(|(k, _)| Ok(String::from(k)))
+            .collect::<Vec<_>>();
+
+        DynIter::from(users)
+    }
+}
+
+#[derive(Default)]
+struct MockDocumentIDStore {
     forward_map: Mutex<HashMap<String, u32>>,
     backward_map: Mutex<HashMap<u32, String>>,
     recycled_ids: Mutex<Vec<u32>>,
     next_id: AtomicU32,
 }
 
-impl DocIdMapper for MockDocIdMap {
+impl DocumentIdStore for MockDocumentIDStore {
     fn get_nb_of_docs(&self) -> u32 {
         self.next_id.load(Ordering::SeqCst)
     }
@@ -116,77 +175,13 @@ impl DocIdMapper for MockDocIdMap {
 }
 
 #[derive(Default)]
-pub struct MockRoutingMap {
-    m: Mutex<HashMap<String, RoutingConfigState>>,
-}
-
-impl RoutingMapper for MockRoutingMap {
-    fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfigState>> {
-        let guard = self.m.lock().unwrap();
-        Ok(guard.get(username).cloned())
-    }
-
-    fn set_routing_config(
-        &self,
-        username: &str,
-        routing_config: &RoutingConfigState,
-    ) -> Result<()> {
-        let mut guard = self.m.lock().unwrap();
-        guard.insert(String::from(username), routing_config.clone());
-        Ok(())
-    }
-
-    fn delete_routing_config(&self, username: &str) -> Result<()> {
-        let mut guard = self.m.lock().unwrap();
-        guard.remove(username);
-        Ok(())
-    }
-
-    fn iter(&self) -> DynIter<'static, Result<RoutingConfigState>> {
-        unimplemented!()
-    }
-}
-
-#[derive(Default)]
-pub struct MockStorageMap {
-    m: Mutex<HashMap<String, String>>,
-}
-
-impl StorageNodeMapper for MockStorageMap {
-    fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>> {
-        let guard = self.m.lock().unwrap();
-        let map = &*guard;
-        Ok(map.get(blob_id).cloned())
-    }
-
-    fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()> {
-        let mut guard = self.m.lock().unwrap();
-        let map = &mut *guard;
-        map.insert(String::from(blob_id), node_id);
-        Ok(())
-    }
-
-    fn delete_blob(&self, blob_id: &str) -> Result<Option<String>> {
-        let mut guard = self.m.lock().unwrap();
-        let map = &mut *guard;
-        Ok(map.remove(blob_id))
-    }
-
-    fn clear(&self) -> Result<()> {
-        let mut guard = self.m.lock().unwrap();
-        guard.clear();
-        Ok(())
-    }
-}
-
-#[derive(Default)]
-pub struct MockMetaMap {
+pub struct MockMetadataStore {
     meta_map: Mutex<HashMap<u32, BlobInfo>>,
     tag_map: Mutex<HashMap<String, BitVec>>,
     users_map: Mutex<HashMap<String, BitVec>>,
 }
 
-impl MetadataMapper for MockMetaMap {
+impl MetadataStore for MockMetadataStore {
     fn get(&self, idx: u32) -> Result<Option<BlobInfo>> {
         let guard = self.meta_map.lock().unwrap();
         let map = &*guard;
@@ -240,10 +235,7 @@ impl MetadataMapper for MockMetaMap {
 
     fn load_user_mask(&self, username: &str) -> Result<BitVec> {
         let users_guard = self.users_map.lock().unwrap();
-        Ok(users_guard
-            .get(username)
-            .cloned()
-            .unwrap_or(BitVec::default()))
+        Ok(users_guard.get(username).cloned().unwrap_or_default())
     }
 
     fn load_tag(&self, tag: &str) -> Result<BitVec> {
@@ -371,73 +363,120 @@ impl MetadataMapper for MockMetaMap {
 }
 
 #[derive(Default)]
-pub struct MockUserMap {
-    users: Mutex<HashMap<String, String>>,
+pub struct MockStorageStore {
+    m: Mutex<HashMap<String, String>>,
 }
 
-impl UserMapper for MockUserMap {
-    fn authenticate(&self, username: &str, password: &str) -> Result<bool> {
-        let guard = self.users.lock().unwrap();
-        Ok(guard.get(username).cloned().unwrap_or(String::default()) == password)
+impl StorageMappingStore for MockStorageStore {
+    fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>> {
+        let guard = self.m.lock().unwrap();
+        let map = &*guard;
+        Ok(map.get(blob_id).cloned())
     }
 
-    fn add_user(&self, username: &str, password: &str) -> Result<()> {
-        let mut guard = self.users.lock().unwrap();
-        guard.insert(username.to_string(), password.to_string());
+    fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()> {
+        let mut guard = self.m.lock().unwrap();
+        let map = &mut *guard;
+        map.insert(String::from(blob_id), node_id);
         Ok(())
     }
 
-    fn has_user(&self, username: &str) -> Result<bool> {
-        let guard = self.users.lock().unwrap();
-        Ok(guard.contains_key(username))
+    fn delete_blob(&self, blob_id: &str) -> Result<Option<String>> {
+        let mut guard = self.m.lock().unwrap();
+        let map = &mut *guard;
+        Ok(map.remove(blob_id))
     }
 
-    fn iter(&self) -> DynIter<'static, Result<String>> {
-        // Returning an iterator on something protected by a mutex = cursed.
-        unimplemented!();
+    fn clear(&self) -> Result<()> {
+        let mut guard = self.m.lock().unwrap();
+        guard.clear();
+        Ok(())
     }
 }
 
 #[derive(Default)]
-pub struct MockIndex {
-    documents: Arc<MockDocIdMap>,
-    meta: Arc<MockMetaMap>,
-    routing: Arc<MockRoutingMap>,
-    storage: Arc<MockStorageMap>,
-    users: Arc<MockUserMap>,
+pub struct MockRoutingStore {
+    m: Mutex<HashMap<String, RoutingConfigState>>,
+}
+
+impl RoutingStore for MockRoutingStore {
+    fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfigState>> {
+        let guard = self.m.lock().unwrap();
+        Ok(guard.get(username).cloned())
+    }
+
+    fn set_routing_config(
+        &self,
+        username: &str,
+        routing_config: &RoutingConfigState,
+    ) -> Result<()> {
+        let mut guard = self.m.lock().unwrap();
+        guard.insert(String::from(username), routing_config.clone());
+        Ok(())
+    }
+
+    fn delete_routing_config(&self, username: &str) -> Result<()> {
+        let mut guard = self.m.lock().unwrap();
+        guard.remove(username);
+        Ok(())
+    }
+
+    fn iter(&self) -> DynIter<'static, Result<RoutingConfigState>> {
+        unimplemented!()
+    }
 }
 
 #[async_trait]
-impl Flush for MockIndex {
+impl Flush for MockRoutingStore {
     async fn flush(&self) -> Result<()> {
         Ok(())
     }
 }
 
-impl IndexProvider for MockIndex {
-    type MetadataProvider = MockMetaMap;
-    type DocumentProvider = MockDocIdMap;
-    type RoutingProvider = MockRoutingMap;
-    type StorageProvider = MockStorageMap;
-    type UserProvider = MockUserMap;
+pub fn node() -> Directory {
+    let document_id_store: Arc<DynDocumentIDStore> =
+        Arc::new(Box::from(MockDocumentIDStore::default()));
 
-    fn documents(&self) -> Arc<Self::DocumentProvider> {
-        self.documents.clone()
-    }
+    let meta_store: Arc<DynMetadataStore> = Arc::new(Box::from(MockMetadataStore::default()));
 
-    fn meta(&self) -> Arc<Self::MetadataProvider> {
-        self.meta.clone()
-    }
+    let storage_store: Arc<DynStorageMappingStore> =
+        Arc::new(Box::from(MockStorageStore::default()));
 
-    fn routing(&self) -> Arc<Self::RoutingProvider> {
-        self.routing.clone()
-    }
+    let routing_store: DynRoutingStore = Box::from(MockRoutingStore::default());
 
-    fn storage(&self) -> Arc<Self::StorageProvider> {
-        self.storage.clone()
-    }
+    let query_svc: Arc<Box<dyn QueryExecutor + Send + Sync>> =
+        Arc::new(Box::from(QueryService::new(
+            document_id_store.clone(),
+            meta_store.clone(),
+            storage_store.clone(),
+        )));
 
-    fn users(&self) -> Arc<Self::UserProvider> {
-        self.users.clone()
-    }
+    let users_svc: Arc<Box<dyn UserManagement + Send + Sync>> = Arc::new(Box::from(
+        UserService::new(Box::from(MockUserStore::default())),
+    ));
+
+    let node_router = Arc::from(NodeRouter::new());
+
+    let routing_svc: Arc<Box<dyn RoutingConfigManager + Send + Sync>> =
+        Arc::new(Box::from(RoutingService::new(
+            routing_store,
+            node_router.clone(),
+            users_svc.clone(),
+            query_svc.clone(),
+        )));
+
+    let index_svc: Arc<Box<dyn BlobIndexer + Send + Sync>> =
+        Arc::new(Box::from(IndexerService::new(
+            document_id_store,
+            meta_store,
+            storage_store,
+            routing_svc.clone(),
+            node_router.clone(),
+        )));
+
+    let admin_svc: Arc<Box<dyn NodeAdminController + Send + Sync>> = Arc::new(Box::from(
+        NodeAdminService::new(index_svc.clone(), node_router),
+    ));
+
+    Directory::new(index_svc, routing_svc, admin_svc, users_svc, query_svc)
 }
