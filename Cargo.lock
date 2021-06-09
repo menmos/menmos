@@ -49,6 +49,7 @@ dependencies = [
  "menmos-interface",
  "menmos-protocol",
  "menmos-repository",
+ "menmos-std",
  "menmos-xecute",
  "mime",
  "mpart-async",

@@ -6,7 +6,7 @@ use anyhow::{ensure, Result};
 
 use interface::{BlobInfo, CertificateInfo, StorageNodeInfo};
 
-use protocol::directory::storage::RegisterResponse;
+use protocol::directory::storage::{MoveRequest, RegisterResponse};
 
 use reqwest::Url;
 
@@ -16,6 +16,7 @@ use crate::DirectoryHostConfig;
 pub struct RegisterResponseWrapper {
     pub certificate_info: Option<CertificateInfo>,
     pub rebuild_requested: bool,
+    pub move_requests: Vec<MoveRequest>,
 }
 
 pub struct DirectoryProxy {
@@ -83,6 +84,7 @@ impl DirectoryProxy {
         Ok(RegisterResponseWrapper {
             certificate_info: response.certificates,
             rebuild_requested: response.rebuild_requested,
+            move_requests: response.move_requests,
         })
     }
 

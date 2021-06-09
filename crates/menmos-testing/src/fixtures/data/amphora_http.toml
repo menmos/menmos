@@ -6,6 +6,7 @@ port = 3030
 name = "alpha"
 db_path= "./tmp/storage_db"
 encryption_key = "t1fhrIw48oLxhJavFY5GRbrANiI9uBL8"
+checkin_frequency_seconds = 1 # we lower the check frequency so we can hammer the directory faster, it'll help for test duration.
 
 [node.blob_storage]
 type = "Directory"

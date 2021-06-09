@@ -48,6 +48,8 @@ pub fn make_node(c: &Config) -> Result<Directory> {
     let routing_service: Arc<Box<dyn interface::RoutingConfigManager + Send + Sync>> =
         Arc::new(Box::from(RoutingService::new(
             routing_idx,
+            documents_idx.clone(),
+            metadata_idx.clone(),
             router.clone(),
             users_service.clone(),
             query_service.clone(),

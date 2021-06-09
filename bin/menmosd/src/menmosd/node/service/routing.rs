@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use async_trait::async_trait;
 
@@ -9,12 +9,17 @@ use interface::{
     UserManagement,
 };
 
-use crate::node::{routing::NodeRouter, store::iface::DynRoutingStore};
+use crate::node::{
+    routing::NodeRouter,
+    store::iface::{DynDocumentIDStore, DynMetadataStore, DynRoutingStore},
+};
 
 const MOVE_REQUEST_BATCH_SIZE: usize = 10;
 
 pub struct RoutingService {
     store: DynRoutingStore,
+    document_store: Arc<DynDocumentIDStore>,
+    metadata_store: Arc<DynMetadataStore>,
     router: Arc<NodeRouter>,
     users_service: Arc<Box<dyn UserManagement + Send + Sync>>,
     query_service: Arc<Box<dyn QueryExecutor + Send + Sync>>,
@@ -23,12 +28,16 @@ pub struct RoutingService {
 impl RoutingService {
     pub fn new(
         store: DynRoutingStore,
+        document_store: Arc<DynDocumentIDStore>,
+        metadata_store: Arc<DynMetadataStore>,
         router: Arc<NodeRouter>,
         users_service: Arc<Box<dyn UserManagement + Send + Sync>>,
         query_service: Arc<Box<dyn QueryExecutor + Send + Sync>>,
     ) -> Self {
         Self {
             store,
+            document_store,
+            metadata_store,
             router,
             users_service,
             query_service,
@@ -109,8 +118,20 @@ impl interface::RoutingConfigManager for RoutingService {
                 for blob_id in out_of_place_blobs.into_iter() {
                     // This document is stored on the src node and needs to go to dst_node_id.
                     // We must issue a move request.
+
+                    let doc_idx = self
+                        .document_store
+                        .get(&blob_id)?
+                        .ok_or_else(|| anyhow!("missing document ID"))?;
+
+                    let blob_info = self
+                        .metadata_store
+                        .get(doc_idx)?
+                        .ok_or_else(|| anyhow!("missing blob info for doc ID '{}'", doc_idx))?;
+
                     move_requests.push(MoveInformation {
                         blob_id,
+                        owner_username: blob_info.owner,
                         destination_node: destination_node.clone(),
                     })
                 }

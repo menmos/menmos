@@ -152,6 +152,19 @@ pub struct BlobMeta {
     pub modified_at: DateTime<Utc>,
 }
 
+impl From<BlobMeta> for BlobMetaRequest {
+    fn from(m: BlobMeta) -> Self {
+        Self {
+            name: m.name,
+            blob_type: m.blob_type,
+            metadata: m.metadata,
+            tags: m.tags,
+            parents: m.parents,
+            size: m.size,
+        }
+    }
+}
+
 impl BlobMeta {
     pub fn new<S: Into<String>>(name: S, blob_type: Type) -> Self {
         Self {

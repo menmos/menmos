@@ -460,6 +460,8 @@ pub fn node() -> Directory {
     let routing_svc: Arc<Box<dyn RoutingConfigManager + Send + Sync>> =
         Arc::new(Box::from(RoutingService::new(
             routing_store,
+            document_id_store.clone(),
+            meta_store.clone(),
             node_router.clone(),
             users_svc.clone(),
             query_svc.clone(),
