@@ -42,10 +42,10 @@ futures = "0.3"
 headers = "=0.3.3"
 ipnetwork = "0.17"
 log = "0.4"
-menmos-antidns = "0.0.5"
-menmos-apikit = "0.0.5"
-menmos-interface = "0.0.5"
-menmos-protocol = "0.0.5"
+menmos-antidns = {version = "0.0.5"}
+menmos-apikit = {version = "0.0.5"}
+menmos-interface = {version = "0.0.5"}
+menmos-protocol = {version = "0.0.5"}
 menmos-std = {version = "0.0.5", features = ["async"]}
 menmos-xecute = "0.0.5"
 mime = "0.3"
