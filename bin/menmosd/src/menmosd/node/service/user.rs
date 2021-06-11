@@ -33,7 +33,7 @@ impl interface::UserManagement for UserService {
         self.store.iter().filter_map(|f| f.ok()).collect()
     }
 
-    async fn commit(&self) -> Result<()> {
+    async fn flush(&self) -> Result<()> {
         self.store.flush().await?;
         Ok(())
     }

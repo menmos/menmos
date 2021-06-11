@@ -87,6 +87,13 @@ struct MockDocumentIDStore {
     next_id: AtomicU32,
 }
 
+#[async_trait]
+impl Flush for MockDocumentIDStore {
+    async fn flush(&self) -> Result<()> {
+        Ok(())
+    }
+}
+
 impl DocumentIdStore for MockDocumentIDStore {
     fn get_nb_of_docs(&self) -> u32 {
         self.next_id.load(Ordering::SeqCst)
@@ -179,6 +186,13 @@ pub struct MockMetadataStore {
     meta_map: Mutex<HashMap<u32, BlobInfo>>,
     tag_map: Mutex<HashMap<String, BitVec>>,
     users_map: Mutex<HashMap<String, BitVec>>,
+}
+
+#[async_trait]
+impl Flush for MockMetadataStore {
+    async fn flush(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl MetadataStore for MockMetadataStore {
@@ -365,6 +379,13 @@ impl MetadataStore for MockMetadataStore {
 #[derive(Default)]
 pub struct MockStorageStore {
     m: Mutex<HashMap<String, String>>,
+}
+
+#[async_trait]
+impl Flush for MockStorageStore {
+    async fn flush(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl StorageMappingStore for MockStorageStore {

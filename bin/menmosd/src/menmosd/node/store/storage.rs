@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use super::iface::Flush;
 
-pub trait StorageMappingStore {
+pub trait StorageMappingStore: Flush {
     fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>>;
     fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()>;
     fn delete_blob(&self, blob_id: &str) -> Result<Option<String>>;

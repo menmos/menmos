@@ -273,4 +273,8 @@ impl StorageNode for Storage {
 
         self.repo.fsync(blob_id).await
     }
+
+    async fn flush(&self) -> Result<()> {
+        self.index.flush().await
+    }
 }

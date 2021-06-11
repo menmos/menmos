@@ -104,6 +104,8 @@ async fn query_has_up_to_date_datetime() -> Result<()> {
         .update_meta(&blob_id, Meta::file("test_blob"))
         .await?;
 
+    cluster.flush().await?;
+
     let results = cluster.client.query(Query::default()).await?;
     assert!(results.hits[0].meta.modified_at > created_at);
 

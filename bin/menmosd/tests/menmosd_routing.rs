@@ -20,6 +20,7 @@ async fn get_set_delete_routing_config() -> Result<()> {
     let cfg = RoutingConfig::new("some_field").with_route("a", "b");
 
     cluster.client.set_routing_config(&cfg).await?;
+    cluster.flush().await?;
 
     // Key exists afterwards.
     let response = cluster.client.get_routing_config().await?;
@@ -33,6 +34,7 @@ async fn get_set_delete_routing_config() -> Result<()> {
 
     // Deleting the key works.
     cluster.client.delete_routing_config().await?;
+    cluster.flush().await?;
     let response = cluster.client.get_routing_config().await?;
     assert_eq!(response, None);
 
@@ -54,6 +56,8 @@ async fn move_request_full_loop() -> Result<()> {
         )
         .await?;
 
+    cluster.flush().await?;
+
     // We verify the blob is there.
     assert!(cluster
         .root_directory
@@ -69,6 +73,8 @@ async fn move_request_full_loop() -> Result<()> {
         .client
         .set_routing_config(&RoutingConfig::new("some_file").with_route("bing", "beta"))
         .await?;
+
+    cluster.flush().await?;
 
     tokio::time::sleep(Duration::from_secs(2)).await;
 

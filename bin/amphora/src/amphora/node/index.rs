@@ -40,6 +40,11 @@ impl Index {
         self.db.remove(blob_id.as_bytes())?;
         Ok(())
     }
+
+    pub async fn flush(&self) -> Result<()> {
+        self.db.flush_async().await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
