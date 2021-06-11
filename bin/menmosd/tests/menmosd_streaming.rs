@@ -18,6 +18,8 @@ async fn get_blob_basic() -> Result<()> {
         .push_document(DOCUMENT_BODY, Meta::file("test_blob"))
         .await?;
 
+    cluster.flush().await?;
+
     let file_stream = cluster.client.get_file(&blob_id).await?;
     let file_bytes = stream_to_bytes(file_stream).await?;
 
@@ -38,6 +40,8 @@ async fn get_blob_range() -> Result<()> {
         .push_document("Hello world", Meta::file("test_blob"))
         .await?;
 
+    cluster.flush().await?;
+
     let range_bytes = cluster.client.read_range(&blob_id, (2, 8)).await?;
     let range_str = String::from_utf8_lossy(&range_bytes);
 
@@ -54,6 +58,8 @@ async fn get_blob_range_overflow() -> Result<()> {
     let blob_id = cluster
         .push_document("Hello world", Meta::file("test_blob"))
         .await?;
+
+    cluster.flush().await?;
 
     let range_bytes = cluster.client.read_range(&blob_id, (2, 999)).await?;
     let range_str = String::from_utf8_lossy(&range_bytes);
@@ -72,6 +78,8 @@ async fn get_blob_range_invalid() -> Result<()> {
         .push_document("Hello world", Meta::file("test_blob"))
         .await?;
 
+    cluster.flush().await?;
+
     assert!(cluster.client.read_range(&blob_id, (2, 1)).await.is_err());
 
     Ok(())
@@ -85,6 +93,8 @@ async fn get_empty_blob_range() -> Result<()> {
     let blob_id = cluster
         .push_document("Hello world", Meta::file("test_blob"))
         .await?;
+
+    cluster.flush().await?;
 
     assert_eq!(cluster.client.read_range(&blob_id, (1, 1)).await?, b"e");
 

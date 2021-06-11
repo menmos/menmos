@@ -10,7 +10,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 
 use super::iface::Flush;
 
-pub trait DocumentIdStore {
+pub trait DocumentIdStore: Flush {
     fn get_nb_of_docs(&self) -> u32;
     fn insert(&self, doc_id: &str) -> Result<u32>;
     fn get(&self, doc_id: &str) -> Result<Option<u32>>;

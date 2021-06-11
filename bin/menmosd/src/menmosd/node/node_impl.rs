@@ -52,12 +52,12 @@ impl DirectoryNode for Directory {
         self.query.clone()
     }
 
-    async fn commit(&self) -> Result<()> {
+    async fn flush(&self) -> Result<()> {
         let (a, b, c, d) = tokio::join!(
-            self.indexer.commit(),
-            self.router.commit(),
-            self.admin.commit(),
-            self.user.commit(),
+            self.indexer.flush(),
+            self.router.flush(),
+            self.admin.flush(),
+            self.user.flush(),
         );
 
         a?;

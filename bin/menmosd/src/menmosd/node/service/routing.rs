@@ -141,7 +141,7 @@ impl interface::RoutingConfigManager for RoutingService {
         Ok(move_requests)
     }
 
-    async fn commit(&self) -> Result<()> {
+    async fn flush(&self) -> Result<()> {
         self.store.flush().await?;
         Ok(())
     }

@@ -33,6 +33,7 @@ fn init_logger() {
 pub struct Menmos {
     directory: Server,
     amphorae: Vec<amphora::Server>,
+    amphora_urls: Vec<String>,
 
     directory_port: u16,
     pub root_directory: TempDir,
@@ -68,6 +69,7 @@ impl Menmos {
             directory: dir_server,
             directory_port: port,
             amphorae: Vec::new(),
+            amphora_urls: Vec::new(),
             root_directory,
             directory_url,
             directory_password: DIRECTORY_PASSWORD.into(),
@@ -193,6 +195,7 @@ impl Menmos {
         let initial_node_count = self.client.list_storage_nodes().await?.storage_nodes.len();
 
         self.amphorae.push(amphora::Server::new(cfg));
+        self.amphora_urls.push(format!("http://localhost:{}", port));
 
         // Wait for the node to register itself.
         let mut iter_count = 20;
@@ -222,6 +225,38 @@ impl Menmos {
 
         // Stop the directory.
         self.directory.stop().await?;
+
+        Ok(())
+    }
+
+    pub async fn flush(&self) -> Result<()> {
+        let auth_token = apikit::auth::make_token(
+            &self.config.node.encryption_key,
+            apikit::auth::UserIdentity {
+                username: String::from("admin"),
+                admin: true,
+                blobs_whitelist: None,
+            },
+        )?;
+
+        let reqwest_client = reqwest::Client::new();
+
+        let mut urls = self.amphora_urls.clone();
+        urls.push(self.directory_url.clone());
+
+        for amphora_url in urls.iter() {
+            let req = reqwest_client
+                .post(&format!("{}/flush", amphora_url))
+                .bearer_auth(&auth_token)
+                .build()?;
+
+            let resp = reqwest_client.execute(req).await?;
+            ensure!(
+                resp.status().is_success(),
+                "unexpected response status: {}",
+                resp.status()
+            );
+        }
 
         Ok(())
     }

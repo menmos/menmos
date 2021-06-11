@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use super::bitvec_tree::BitvecTree;
 use super::iface::Flush;
 
-pub trait MetadataStore {
+pub trait MetadataStore: Flush {
     fn get(&self, idx: u32) -> Result<Option<BlobInfo>>;
     fn insert(&self, id: u32, info: &BlobInfo) -> Result<()>;
 

@@ -20,6 +20,7 @@ async fn write_blob_basic() -> Result<()> {
         .client
         .write(&blob_id, 6, Bytes::from_static(b"there"))
         .await?;
+    cluster.flush().await?;
 
     let file_stream = cluster.client.get_file(&blob_id).await?;
     let file_bytes = stream_to_bytes(file_stream).await?;
@@ -46,6 +47,8 @@ async fn extend_blob() -> Result<()> {
         .write(&blob_id, 11, Bytes::from_static(b" it's me."))
         .await?;
 
+    cluster.flush().await?;
+
     let file_stream = cluster.client.get_file(&blob_id).await?;
     let file_bytes = stream_to_bytes(file_stream).await?;
     let file_string = String::from_utf8_lossy(file_bytes.as_ref());
@@ -66,6 +69,8 @@ async fn write_updates_datetime() -> Result<()> {
         .push_document("Hello world", Meta::file("test_blob"))
         .await?;
 
+    cluster.flush().await?;
+
     // Make sure datetimes make sense.
     let meta = cluster.client.get_meta(&blob_id).await?.unwrap();
 
@@ -79,6 +84,8 @@ async fn write_updates_datetime() -> Result<()> {
         .client
         .write(&blob_id, 0, Bytes::from_static(b"its me"))
         .await?;
+
+    cluster.flush().await?;
 
     let after_meta = cluster.client.get_meta(&blob_id).await?.unwrap();
 
@@ -115,6 +122,8 @@ async fn meta_update_updates_datetime() -> Result<()> {
         .client
         .update_meta(&blob_id, Meta::file("test_blob"))
         .await?;
+
+    cluster.flush().await?;
 
     let after_meta = cluster.client.get_meta(&blob_id).await?.unwrap();
 

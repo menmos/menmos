@@ -9,6 +9,7 @@ use super::util::with_context;
 const VERSION_PATH: &str = "version";
 const REBUILD_PATH: &str = "rebuild";
 const HEALTH_PATH: &str = "health";
+const FLUSH_PATH: &str = "flush";
 
 pub fn all(
     context: Context,
@@ -16,6 +17,7 @@ pub fn all(
     health()
         .or(rebuild(context.clone()))
         .or(rebuild_complete(context.clone()))
+        .or(flush(context.clone()))
         .or(version(context))
 }
 
@@ -46,6 +48,17 @@ fn rebuild_complete(
         .and(warp::path(REBUILD_PATH))
         .and(warp::path::param())
         .and_then(handlers::admin::rebuild_complete)
+}
+
+fn flush(
+    context: Context,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::post()
+        .and(user(context.config.node.encryption_key.clone()))
+        .and(with_context(context))
+        .and(warp::path(FLUSH_PATH))
+        .and(warp::path::end())
+        .and_then(handlers::admin::flush)
 }
 
 fn version(

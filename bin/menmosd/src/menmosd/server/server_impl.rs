@@ -72,7 +72,7 @@ impl Server {
         log::info!("requesting to quit");
         self.stop_tx.send(()).await?;
         self.handle.await?;
-        self.node.commit().await?;
+        self.node.flush().await?;
         log::info!("exited");
 
         Ok(())

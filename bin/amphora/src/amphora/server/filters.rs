@@ -17,6 +17,7 @@ const BLOBS_PATH: &str = "blob";
 const METADATA_PATH: &str = "metadata";
 const VERSION_PATH: &str = "version";
 const FSYNC_PATH: &str = "fsync";
+const FLUSH_PATH: &str = "flush";
 
 fn with_node<N>(
     node: Arc<N>,
@@ -40,7 +41,8 @@ where
         .or(write(node.clone(), config.clone()))
         .or(update_meta(config.clone(), node.clone()))
         .or(delete(node.clone(), config.clone()))
-        .or(fsync(node, config))
+        .or(fsync(node.clone(), config.clone()))
+        .or(flush(node, config))
         .or(version())
         .with(warp::log("storage::api"))
         .recover(apikit::reject::recover)
@@ -157,6 +159,21 @@ where
         .and(warp::path(FSYNC_PATH))
         .and(warp::path::end())
         .and_then(handlers::fsync)
+}
+
+fn flush<N>(
+    node: Arc<N>,
+    config: Config,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    N: StorageNode + Send + Sync,
+{
+    warp::post()
+        .and(user(config.node.encryption_key))
+        .and(with_node(node))
+        .and(warp::path(FLUSH_PATH))
+        .and(warp::path::end())
+        .and_then(handlers::flush)
 }
 
 fn version() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {

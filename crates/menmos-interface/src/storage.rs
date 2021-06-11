@@ -264,4 +264,6 @@ pub trait StorageNode {
     async fn get_certificates(&self) -> Option<CertificateInfo>;
 
     async fn fsync(&self, blob_id: String, username: &str) -> Result<()>;
+
+    async fn flush(&self) -> Result<()>;
 }

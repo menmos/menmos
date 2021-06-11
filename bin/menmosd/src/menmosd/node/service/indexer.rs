@@ -139,8 +139,17 @@ impl interface::BlobIndexer for IndexerService {
         Ok(())
     }
 
-    async fn commit(&self) -> Result<()> {
-        // TODO: Actually commit
+    async fn flush(&self) -> Result<()> {
+        let (a, b, c) = tokio::join!(
+            self.metadata.flush(),
+            self.documents.flush(),
+            self.storage.flush()
+        );
+
+        a?;
+        b?;
+        c?;
+
         Ok(())
     }
 }

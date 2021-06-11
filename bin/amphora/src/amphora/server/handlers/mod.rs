@@ -1,4 +1,5 @@
 mod delete;
+mod flush;
 mod fsync;
 mod get;
 mod health;
@@ -8,6 +9,7 @@ mod version;
 mod write;
 
 pub use delete::delete;
+pub use flush::flush;
 pub use fsync::fsync;
 pub use get::{get, Signature};
 pub use health::health;

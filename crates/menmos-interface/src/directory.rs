@@ -221,7 +221,7 @@ pub trait BlobIndexer {
     async fn delete_blob(&self, blob_id: &str, username: &str) -> Result<Option<StorageNodeInfo>>;
     async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>>;
     async fn clear(&self) -> Result<()>;
-    async fn commit(&self) -> Result<()>;
+    async fn flush(&self) -> Result<()>;
 }
 
 #[async_trait]
@@ -232,7 +232,7 @@ pub trait RoutingConfigManager {
 
     async fn get_move_requests(&self, src_node: &str) -> Result<Vec<MoveInformation>>;
 
-    async fn commit(&self) -> Result<()>;
+    async fn flush(&self) -> Result<()>;
 }
 
 #[async_trait]
@@ -242,7 +242,7 @@ pub trait NodeAdminController {
 
     async fn start_rebuild(&self) -> Result<()>;
     async fn rebuild_complete(&self, storage_node_id: &str) -> Result<()>;
-    async fn commit(&self) -> Result<()>;
+    async fn flush(&self) -> Result<()>;
 }
 
 #[async_trait]
@@ -250,8 +250,8 @@ pub trait UserManagement {
     async fn login(&self, user: &str, password: &str) -> Result<bool>;
     async fn register(&self, user: &str, password: &str) -> Result<()>;
     async fn has_user(&self, user: &str) -> Result<bool>;
-    async fn commit(&self) -> Result<()>;
     async fn list(&self) -> Vec<String>;
+    async fn flush(&self) -> Result<()>;
 }
 
 #[async_trait]
@@ -279,5 +279,5 @@ pub trait DirectoryNode {
     fn user(&self) -> Arc<Box<dyn UserManagement + Send + Sync>>;
     fn query(&self) -> Arc<Box<dyn QueryExecutor + Send + Sync>>;
 
-    async fn commit(&self) -> Result<()>;
+    async fn flush(&self) -> Result<()>;
 }

@@ -13,6 +13,7 @@ async fn delete_blob() -> Result<()> {
         .await?;
 
     cluster.client.delete(blob_id.clone()).await?;
+    cluster.flush().await?;
 
     let file = cluster.client.get_file(&blob_id).await;
     assert!(file.is_err());

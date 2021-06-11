@@ -70,7 +70,7 @@ impl interface::NodeAdminController for NodeAdminService {
         Ok(())
     }
 
-    async fn commit(&self) -> Result<()> {
+    async fn flush(&self) -> Result<()> {
         Ok(())
     }
 }
