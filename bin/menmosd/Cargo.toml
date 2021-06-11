@@ -1,6 +1,6 @@
 [package]
 name = "menmosd"
-version = "0.0.5"
+version = "0.0.7"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
 publish = false
@@ -42,14 +42,14 @@ futures = "0.3"
 headers = "=0.3.3"
 ipnetwork = "0.17"
 log = "0.4"
-menmos-antidns = {version = "0.0.5"}
-menmos-apikit = {version = "0.0.5"}
-menmos-interface = {version = "0.0.5"}
-menmos-protocol = {version = "0.0.5"}
-menmos-std = {version = "0.0.5"}
-menmos-xecute = {version = "0.0.5"}
+menmos-antidns = {version = "^0.0.7"}
+menmos-apikit = {version = "^0.0.7"}
+menmos-interface = {version = "^0.0.7"}
+menmos-protocol = {version = "^0.0.7"}
+menmos-std = {version = "^0.0.7"}
+menmos-xecute = {version = "^0.0.7"}
 mime = "0.3"
-rapidquery = {version = "0.0.5", features=["bitvec_span"]}
+rapidquery = {version = "^0.0.7", features=["bitvec_span"]}
 ring = "0.16"
 rust-argon2 = "0.8"
 serde = {version = "1", features = ["derive"]}

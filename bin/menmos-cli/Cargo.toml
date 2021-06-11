@@ -1,6 +1,6 @@
 [package]
 name = "menmos-cli"
-version = "0.0.5"
+version = "0.0.7"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
 publish = false
@@ -21,8 +21,8 @@ async-stream = "0.3"
 clap = "3.0.0-beta.2"
 dirs = "3"
 futures = "0.3"
-menmos-client = {version = "0.0.5"}
-menmos-interface = { version = "0.0.5"}
+menmos-client = {version = "^0.0.7"}
+menmos-interface = { version = "^0.0.7"}
 serde = {version = "1", features = ["derive"]}
 tokio = {version = "1.2", features = ["full"]}
 walkdir = "2.3"

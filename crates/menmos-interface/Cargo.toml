@@ -1,6 +1,6 @@
 [package]
 name = "menmos-interface"
-version = "0.0.5"
+version = "0.0.7"
 license = "Apache-2.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
@@ -20,7 +20,7 @@ async-trait = "0.1.42"
 chrono = {version = "0.4", features = ["serde"]}
 futures = "0.3"
 headers = "=0.3.3"
-rapidquery = {version = "0.0.5", features=["bitvec_span"]}
+rapidquery = {version = "^0.0.7", features=["bitvec_span"]}
 reqwest = {version = "0.11", features = ["json", "stream"]}
 serde = {version = "1.0", features = ["derive"]}
 warp = "0.3"
