@@ -13,7 +13,7 @@ use warp::Filter;
 
 use crate::server::Context;
 
-#[cfg(not(debug))]
+#[cfg(not(debug_assertions))]
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
@@ -28,7 +28,7 @@ pub fn all(
         .with(warp::log("directory::api"))
 }
 
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
@@ -46,7 +46,5 @@ pub fn all(
                 .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "OPTIONS"]),
         )
         .with(warp::log("directory::api"))
-        .recover(apikit::reject::recover);
-
-    filters
+        .recover(apikit::reject::recover)
 }
