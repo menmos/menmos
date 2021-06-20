@@ -42,7 +42,7 @@ pub fn all(
         .with(
             warp::cors()
                 .allow_any_origin()
-                .allow_headers(vec!["Content-Type", "x-blob-meta"])
+                .allow_headers(vec!["Content-Type", "x-blob-meta", "Authorization"])
                 .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "OPTIONS"]),
         )
         .with(warp::log("directory::api"))
