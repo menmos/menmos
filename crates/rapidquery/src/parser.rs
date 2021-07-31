@@ -167,8 +167,12 @@ fn parsed_expr(i: &str) -> IResult<&str, ParsedExpr> {
 }
 
 pub fn expression(i: &str) -> IResult<&str, Expression> {
-    let (rest, expr) = parsed_expr(i)?;
-    Ok((rest, expr.into()))
+    if i.is_empty() {
+        Ok(("", Expression::default()))
+    } else {
+        let (rest, expr) = parsed_expr(i)?;
+        Ok((rest, expr.into()))
+    }
 }
 
 #[cfg(test)]
