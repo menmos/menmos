@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+use std::iter::FromIterator;
 use std::net::IpAddr;
 
 use anyhow::Result;
@@ -662,6 +664,72 @@ async fn add_blob_routing_key_missing_storage_node() -> Result<()> {
         )
         .await
         .is_err());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn register_basic() -> Result<()> {
+    let node = mock::node();
+
+    assert!(!node.user().has_user("test").await?);
+
+    node.user().register("test", "asdf").await?;
+
+    assert!(node.user().has_user("test").await?);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn login_correct_password() -> Result<()> {
+    let node = mock::node();
+
+    node.user().register("test", "asdf").await?;
+    assert!(node.user().login("test", "asdf").await?);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn login_incorrect_password() -> Result<()> {
+    let node = mock::node();
+
+    node.user().register("test", "asdf").await?;
+    assert!(!node.user().login("test", "bad password").await?);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn list_users() -> Result<()> {
+    let node = mock::node();
+
+    node.user().register("testa", "testa").await?;
+    node.user().register("testb", "testb").await?;
+
+    let results: HashSet<String> = HashSet::from_iter(node.user().list().await.into_iter());
+
+    assert!(results.contains("testa"));
+    assert!(results.contains("testb"));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn register_empty_username() -> Result<()> {
+    let node = mock::node();
+
+    assert!(node.user().register("", "password").await.is_err());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn register_empty_password() -> Result<()> {
+    let node = mock::node();
+
+    assert!(node.user().register("someuser", "").await.is_err());
 
     Ok(())
 }

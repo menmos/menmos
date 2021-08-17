@@ -56,7 +56,7 @@ pub struct DirectoryHostConfig {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServerSetting {
     pub certificate_storage_path: PathBuf,
-    pub subnet_mask: IpAddr, // TODO: Move subnet mask in redirect instructions since it's used only for that.
+    pub subnet_mask: IpAddr, // FIXME: Move subnet mask in redirect instructions since it's used only for that.
     pub port: u16,
 }
 

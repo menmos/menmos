@@ -17,7 +17,7 @@ pub enum BuildError {
     MissingPassword,
 
     #[snafu(display("failed to build: {}", source))]
-    ClientBuildError { source: ClientError },
+    FailedToBuild { source: ClientError },
 }
 
 pub struct ClientBuilder {
@@ -104,9 +104,7 @@ impl ClientBuilder {
             metadata_detection: self.metadata_detection,
         };
 
-        Client::new_with_params(params)
-            .await
-            .context(ClientBuildError)
+        Client::new_with_params(params).await.context(FailedToBuild)
     }
 }
 

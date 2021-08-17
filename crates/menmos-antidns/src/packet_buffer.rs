@@ -187,7 +187,7 @@ impl BytePacketBuffer {
         ensure!(self.pos + l < 512, EndOfBuffer);
 
         let byte_slice = &mut self.buf[self.pos..self.pos + l];
-        byte_slice.copy_from_slice(&bytes);
+        byte_slice.copy_from_slice(bytes);
         Ok(())
     }
 

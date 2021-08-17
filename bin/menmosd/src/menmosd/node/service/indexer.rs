@@ -73,7 +73,7 @@ impl interface::BlobIndexer for IndexerService {
         // function and index::storage() returns a ref to the storage provider, the borrow checker can't guarantee that there
         // won't be concurrent accesses to the storage provider. Doing it in two lines makes it explicit that the ref. to the
         // storage provider is dropped before the await point.
-        let node_id_maybe = self.storage.get_node_for_blob(&blob_id)?;
+        let node_id_maybe = self.storage.get_node_for_blob(blob_id)?;
         if let Some(node_id) = node_id_maybe {
             Ok(self.router.get_node(&node_id).await)
         } else {

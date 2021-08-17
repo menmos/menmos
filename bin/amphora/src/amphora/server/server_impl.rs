@@ -25,7 +25,6 @@ impl<N> NodeServer<N>
 where
     N: StorageNode + Send + Sync + 'static,
 {
-    // TODO: Refactor config into node & server configs so this isn't such a hack.
     pub fn new(node: Arc<N>, config: Config, cert_paths: Option<CertPath>) -> Self {
         let (tx_stop, rx) = oneshot::channel();
 

@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use async_trait::async_trait;
 
 use crate::node::store::iface::DynUserStore;
@@ -20,6 +20,9 @@ impl interface::UserManagement for UserService {
     }
 
     async fn register(&self, user: &str, password: &str) -> Result<()> {
+        ensure!(!user.is_empty(), "user name cannot be empty");
+        ensure!(!password.is_empty(), "password cannot be empty");
+
         self.store.add_user(user, password)
     }
 

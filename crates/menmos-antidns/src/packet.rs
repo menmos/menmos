@@ -7,9 +7,9 @@ use crate::{
 
 #[derive(Debug, Snafu)]
 pub enum PacketError {
-    InvalidHeader { source: HeaderError },
-    InvalidQuestion { source: QuestionError },
-    InvalidRecord { source: RecordError },
+    FailedToParseHeader { source: HeaderError },
+    UnexpectedQuestion { source: QuestionError },
+    FailedToParseRecord { source: RecordError },
 }
 
 type Result<T> = std::result::Result<T, PacketError>;
@@ -37,26 +37,26 @@ impl DnsPacket {
         log::trace!("deserializing packet from buffer");
 
         let mut result = DnsPacket::new();
-        result.header.read(buffer).context(InvalidHeader)?;
+        result.header.read(buffer).context(FailedToParseHeader)?;
 
         for _ in 0..result.header.questions {
             let mut question = DnsQuestion::new(String::new(), QueryType::UNKNOWN(0));
-            question.read(buffer).context(InvalidQuestion)?;
+            question.read(buffer).context(UnexpectedQuestion)?;
             result.questions.push(question);
         }
 
         for i in 0..result.header.answers {
             log::trace!("deserializing answer {}", i);
-            let rec = DnsRecord::read(buffer).context(InvalidRecord)?;
+            let rec = DnsRecord::read(buffer).context(FailedToParseRecord)?;
             result.answers.push(rec);
         }
 
         for _ in 0..result.header.authoritative_entries {
-            let rec = DnsRecord::read(buffer).context(InvalidRecord)?;
+            let rec = DnsRecord::read(buffer).context(FailedToParseRecord)?;
             result.authorities.push(rec);
         }
         for _ in 0..result.header.resource_entries {
-            let rec = DnsRecord::read(buffer).context(InvalidRecord)?;
+            let rec = DnsRecord::read(buffer).context(FailedToParseRecord)?;
             result.resources.push(rec);
         }
 
@@ -69,19 +69,19 @@ impl DnsPacket {
         self.header.authoritative_entries = self.authorities.len() as u16;
         self.header.resource_entries = self.resources.len() as u16;
 
-        self.header.write(buffer).context(InvalidHeader)?;
+        self.header.write(buffer).context(FailedToParseHeader)?;
 
         for question in &self.questions {
-            question.write(buffer).context(InvalidQuestion)?;
+            question.write(buffer).context(UnexpectedQuestion)?;
         }
         for rec in &self.answers {
-            rec.write(buffer).context(InvalidRecord)?;
+            rec.write(buffer).context(FailedToParseRecord)?;
         }
         for rec in &self.authorities {
-            rec.write(buffer).context(InvalidRecord)?;
+            rec.write(buffer).context(FailedToParseRecord)?;
         }
         for rec in &self.resources {
-            rec.write(buffer).context(InvalidRecord)?;
+            rec.write(buffer).context(FailedToParseRecord)?;
         }
 
         Ok(())

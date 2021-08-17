@@ -39,7 +39,7 @@ impl S3Repository {
         cache_path: P,
         max_nb_of_cached_files: usize,
     ) -> Result<Self> {
-        let client = S3Client::new(Region::UsEast1); // TODO: Make configurable.
+        let client = S3Client::new(Region::UsEast1); // FIXME: Make configurable.
         let bucket_str: String = bucket.into();
 
         let file_cache = FileCache::new(
@@ -143,14 +143,12 @@ impl Repository for S3Repository {
 
         let result = self.client.get_object(get_request).await?;
 
-        let (chunk_size, total_size) = if range.is_some() {
-            let chunk_size = result.content_length.unwrap() as u64; // TODO: No unwraps + handle numeric cast.
-            let total_size = get_total_length(&result.content_range.as_ref().unwrap())?;
-            (chunk_size, total_size)
+        let chunk_size = result.content_length.unwrap() as u64; // FIXME: No unwraps + handle numeric cast.
+
+        let total_size = if range.is_some() {
+            get_total_length(result.content_range.as_ref().unwrap())?
         } else {
-            // If the user didnt request a range, the chunk size and the file size are equal.
-            let content_length = result.content_length.unwrap() as u64; // TODO: No unwraps please and numeric cast.
-            (content_length, content_length)
+            chunk_size
         };
 
         if let Some(bytestream) = result.body {
@@ -179,8 +177,8 @@ impl Repository for S3Repository {
     }
 
     async fn fsync(&self, id: String) -> Result<()> {
-        // TODO: Trigger fsync asynchronously so it doesn't block the call.
-        // TODO: Trigger fsync periodically for cache keys, and every time on cache eviction.
+        // FIXME: Trigger fsync asynchronously so it doesn't block the call.
+        // FIXME: Trigger fsync periodically for cache keys, and every time on cache eviction.
         if let Some(path) = self.file_cache.contains(&id).await {
             log::info!("begin fsync on {}", &id);
             let f = fs::File::open(&path).await?;

@@ -86,7 +86,7 @@ impl Repository for DiskRepository {
         blob_id: &str,
         range: Option<(Bound<u64>, Bound<u64>)>,
     ) -> Result<ChunkedStreamInfo> {
-        let file_path = self.get_path_for_blob(&blob_id);
+        let file_path = self.get_path_for_blob(blob_id);
         ensure!(
             file_path.exists() && file_path.is_file(),
             "File doesn't exist"
