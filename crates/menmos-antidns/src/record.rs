@@ -331,7 +331,6 @@ impl DnsRecord {
                 log::debug!("writing nothing instead of CAA record");
             }
             DnsRecord::UNKNOWN { .. } => {
-                // TODO: Replace with log crate.
                 log::warn!("skipping record: {:?}", self);
             }
         }

@@ -1,26 +1,19 @@
 #[derive(PartialEq, Eq, Debug, Clone, Hash, Copy)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum QueryType {
-    #[allow(clippy::upper_case_acronyms)]
     UNKNOWN(u16),
-    #[allow(clippy::upper_case_acronyms)]
-    A, // 1
-    #[allow(clippy::upper_case_acronyms)]
-    NS, // 2
-    #[allow(clippy::upper_case_acronyms)]
+    A,     // 1
+    NS,    // 2
     CNAME, // 5
-    #[allow(clippy::upper_case_acronyms)]
-    MX, // 15
-    #[allow(clippy::upper_case_acronyms)]
-    TXT, // 16
-    #[allow(clippy::upper_case_acronyms)]
-    AAAA, // 28
-    #[allow(clippy::upper_case_acronyms)]
-    CAA, // 257
+    MX,    // 15
+    TXT,   // 16
+    AAAA,  // 28
+    CAA,   // 257
 }
 
 impl QueryType {
-    pub fn to_num(&self) -> u16 {
-        match *self {
+    pub fn to_num(self) -> u16 {
+        match self {
             QueryType::UNKNOWN(x) => x,
             QueryType::A => 1,
             QueryType::NS => 2,

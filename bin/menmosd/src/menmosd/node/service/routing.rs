@@ -93,7 +93,7 @@ impl interface::RoutingConfigManager for RoutingService {
                     continue;
                 }
 
-                let destination_node_maybe = self.router.get_node(&dst_node_id).await;
+                let destination_node_maybe = self.router.get_node(dst_node_id).await;
                 if destination_node_maybe.is_none() {
                     // This is not an error, this is simply that the node we need to move blobs to is not
                     // online right now. We'll skip it and try again later.

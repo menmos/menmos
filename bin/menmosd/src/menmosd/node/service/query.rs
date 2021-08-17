@@ -52,7 +52,7 @@ impl QueryService {
 #[async_trait]
 impl interface::QueryExecutor for QueryService {
     async fn query(&self, query: &Query, username: &str) -> Result<QueryResponse> {
-        let result_bitvector = self.get_resulting_bitvector(&query, username)?;
+        let result_bitvector = self.get_resulting_bitvector(query, username)?;
 
         // The number of true bits in the bitvector is the total number of query hits.
         let total = result_bitvector.count_ones(); // Total number of query hits.

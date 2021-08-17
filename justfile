@@ -3,7 +3,6 @@ docker:
     docker build -t menmos/amphora --target amphora .
 
 lint:
-    rm -rf target
     cargo check
     cargo clippy
 

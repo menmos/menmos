@@ -150,7 +150,7 @@ impl MetadataStore for SledMetadataStore {
             // We need to purge tags, parents, and k/v pairs that were _removed_ from the meta
             // so they don't come up in searches anymore.
             let old_info: BlobInfo = bincode::deserialize(last_meta_ivec.as_ref())?;
-            self.diff_and_purge_on_meta_update(old_info, &info, id)?;
+            self.diff_and_purge_on_meta_update(old_info, info, id)?;
         }
 
         // Save tags in the reverse map.

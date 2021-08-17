@@ -4,7 +4,7 @@ use bitvec::prelude::*;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
-#[allow(clippy::clippy::unnecessary_wraps)]
+#[allow(clippy::unnecessary_wraps)]
 fn concatenate_merge(
     _key: &[u8],              // the key being merged
     old_value: Option<&[u8]>, // the previous value, if one existed

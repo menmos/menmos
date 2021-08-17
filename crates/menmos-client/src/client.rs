@@ -297,7 +297,7 @@ impl Client {
 
         let new_url = String::from_utf8_lossy(new_location.as_bytes());
         log::debug!("redirect to {}", new_url);
-        return Ok(new_url.to_string());
+        Ok(new_url.to_string())
     }
 
     async fn login(
@@ -598,10 +598,10 @@ impl Client {
         if status.is_success() {
             // Our upload got through.
             // Deserialize the body to get the content ID.
-            return Ok(());
+            Ok(())
         } else {
             // An error occurred.
-            return Err(extract_error(response).await);
+            Err(extract_error(response).await)
         }
     }
 
@@ -738,10 +738,10 @@ impl Client {
         let status = response.status();
         if status.is_success() {
             // Our delete got through.
-            return Ok(());
+            Ok(())
         } else {
             // An error occurred.
-            return Err(extract_error(response).await);
+            Err(extract_error(response).await)
         }
     }
 

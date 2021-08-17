@@ -11,7 +11,7 @@ use snafu::{ensure, Snafu};
 #[derive(Debug, Snafu)]
 pub enum Error {
     NameWithoutIp,
-    ParseError { message: String },
+    FailedToParse { message: String },
     IncompleteParse,
 }
 
@@ -31,7 +31,7 @@ pub fn ip_address_from_url<S: AsRef<str>>(url: S) -> Result<Ipv4Addr, Error> {
     ensure!(splitted.len() >= 2, NameWithoutIp);
 
     let ip_segment = *splitted.first().unwrap();
-    let (rest, ip) = ip_address(ip_segment).map_err(|e| Error::ParseError {
+    let (rest, ip) = ip_address(ip_segment).map_err(|e| Error::FailedToParse {
         message: e.to_string(),
     })?;
     ensure!(rest.is_empty(), IncompleteParse);

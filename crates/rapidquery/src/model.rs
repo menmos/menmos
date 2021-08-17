@@ -111,10 +111,10 @@ impl Expression {
     {
         match self {
             Expression::Empty => resolver.resolve_empty(),
-            Expression::Tag { tag } => resolver.resolve_tag(&tag),
-            Expression::KeyValue { key, value } => resolver.resolve_key_value(&key, &value),
-            Expression::HasKey { key } => resolver.resolve_key(&key),
-            Expression::Parent { parent } => resolver.resolve_children(&parent),
+            Expression::Tag { tag } => resolver.resolve_tag(tag),
+            Expression::KeyValue { key, value } => resolver.resolve_key_value(key, value),
+            Expression::HasKey { key } => resolver.resolve_key(key),
+            Expression::Parent { parent } => resolver.resolve_children(parent),
             Expression::Not { not } => {
                 let mut all_bv = resolver.resolve_empty()?;
                 all_bv &= not.evaluate(resolver)?;
