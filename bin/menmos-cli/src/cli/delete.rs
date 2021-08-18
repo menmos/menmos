@@ -1,3 +1,5 @@
+use std::io::{self, BufRead};
+
 use anyhow::Result;
 use clap::Clap;
 use menmos_client::Client;
@@ -18,7 +20,15 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub async fn run(self, cli: OutputManager, client: Client) -> Result<()> {
-        cli.step(format!("Delete {} blobs", self.blob_ids.len()));
+        let blob_ids = if self.blob_ids.is_empty() {
+            // Get from stdin
+            let stdin = io::stdin();
+            stdin.lock().lines().filter_map(|l| l.ok()).collect()
+        } else {
+            self.blob_ids.clone()
+        };
+
+        cli.step(format!("Delete {} blobs", blob_ids.len()));
 
         let confirmed = if self.yes {
             true
@@ -29,7 +39,7 @@ impl DeleteCommand {
         if !confirmed {
             cli.success("Aborted")
         } else {
-            service::delete::delete(cli.push(), self.blob_ids, self.concurrency, client).await?;
+            service::delete::delete(cli.push(), blob_ids, self.concurrency, client).await?;
             cli.success("Done");
         }
 

@@ -143,7 +143,13 @@ impl Repository for S3Repository {
 
         let result = self.client.get_object(get_request).await?;
 
-        let chunk_size = result.content_length.unwrap() as u64; // FIXME: No unwraps + handle numeric cast.
+        let raw_content_length: i64 = result
+            .content_length
+            .ok_or_else(|| anyhow!("missing content length from GetObject response"))?;
+
+        ensure!(raw_content_length >= 0, "content length cannot be negative");
+
+        let chunk_size = raw_content_length as u64;
 
         let total_size = if range.is_some() {
             get_total_length(result.content_range.as_ref().unwrap())?
