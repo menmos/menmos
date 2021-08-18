@@ -37,4 +37,17 @@ where
         let guard = self.data.lock().await;
         guard.iter().cloned().collect()
     }
+
+    /// Fetches the head of the list and swaps it to the back of the list atomically.
+    pub async fn fetch_swap(&self) -> Option<T> {
+        let mut guard = self.data.lock().await;
+        match guard.pop_front() {
+            Some(v) => {
+                let value_copy = v.clone();
+                guard.push_back(v);
+                Some(value_copy)
+            }
+            None => None,
+        }
+    }
 }

@@ -103,11 +103,9 @@ impl NodeRouter {
         loop {
             let node_id = self
                 .round_robin
-                .pop_front()
+                .fetch_swap()
                 .await
                 .ok_or_else(|| anyhow!("no storage node defined"))?;
-
-            self.round_robin.push_back(node_id.clone()).await;
 
             if let Some(node) = self.get_node_if_fresh(&node_id).await {
                 return Ok(node);
