@@ -8,7 +8,10 @@ mod download;
 mod push;
 mod query;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Clap)]
+#[clap(version = VERSION, author = "Menmos Team")]
 pub struct Root {
     /// Whether to use verbose output.
     #[clap(short = 'v', long = "verbose", global = true)]
