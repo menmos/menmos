@@ -1,6 +1,6 @@
 [package]
 name = "menmos-repository"
-version = "0.0.7"
+version = "0.0.8"
 license = "Apache-2.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
@@ -17,10 +17,10 @@ anyhow = "1"
 async-trait = "0.1.42"
 bytes = "1"
 futures = "0.3"
-lfan = {version = "^0.0.7", features = ["async"]}
+lfan = {version = "^0.0.8", features = ["async"]}
 log = "0.4"
-menmos-betterstreams = {version = "^0.0.7"}
-menmos-interface = {version = "^0.0.7"}
+menmos-betterstreams = {version = "^0.0.8"}
+menmos-interface = {version = "^0.0.8"}
 rusoto_core = "0.46"
 rusoto_s3 = "0.46"
 tokio = {version = "1.2", features = ["full"]}

@@ -1,6 +1,6 @@
 [package]
 name = "menmos-client"
-version = "0.0.7"
+version = "0.0.8"
 license = "Apache-2.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
@@ -15,9 +15,9 @@ dirs = "3"
 futures = "0.3"
 hyper = "0.14"
 log = "0.4"
-menmos-apikit = {version = "^0.0.7"}
-menmos-interface = {version = "^0.0.7"}
-menmos-protocol = {version = "^0.0.7"}
+menmos-apikit = {version = "^0.0.8"}
+menmos-interface = {version = "^0.0.8"}
+menmos-protocol = {version = "^0.0.8"}
 mpart-async = "0.5"
 reqwest = {version = "0.11", features = ["json"]}
 serde = {version = "1", features = ["derive"]}
