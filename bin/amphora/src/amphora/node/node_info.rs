@@ -2,18 +2,14 @@ use std::net::IpAddr;
 
 use anyhow::{anyhow, Result};
 
-use interface::StorageNodeInfo;
-
 use public_ip::{dns, http, BoxToResolver, ToResolver};
 
 use crate::RedirectIp;
 
-pub async fn get_info<S: AsRef<str>>(
-    port: u16,
+pub async fn get_redirect_info(
     subnet_mask: IpAddr,
-    name: S,
     redirect_instructions: RedirectIp,
-) -> Result<StorageNodeInfo> {
+) -> Result<interface::RedirectInfo> {
     match redirect_instructions {
         RedirectIp::Automatic => {
             let resolver = vec![
@@ -31,22 +27,14 @@ pub async fn get_info<S: AsRef<str>>(
                 local_ipaddress::get().ok_or_else(|| anyhow!("failed to get local IP"))?;
             let local_address = local_address_str.parse::<IpAddr>()?;
 
-            Ok(StorageNodeInfo {
-                id: name.as_ref().to_string(),
-                redirect_info: interface::RedirectInfo::Automatic {
-                    public_address,
-                    local_address,
-                    subnet_mask,
-                },
-                port,
+            Ok(interface::RedirectInfo::Automatic {
+                public_address,
+                local_address,
+                subnet_mask,
             })
         }
-        RedirectIp::Static(static_redirect) => Ok(StorageNodeInfo {
-            id: name.as_ref().to_string(),
-            redirect_info: interface::RedirectInfo::Static {
-                static_address: static_redirect,
-            },
-            port,
+        RedirectIp::Static(static_redirect) => Ok(interface::RedirectInfo::Static {
+            static_address: static_redirect,
         }),
     }
 }

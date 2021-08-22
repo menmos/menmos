@@ -147,6 +147,8 @@ impl Menmos {
                 static_address: IpAddr::from([127, 0, 0, 1]),
             },
             port: 8081,
+            size: 0,
+            available_space: 1000 * 1000,
         };
 
         let req = reqwest_client

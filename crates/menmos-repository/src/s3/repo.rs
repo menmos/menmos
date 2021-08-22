@@ -206,4 +206,8 @@ impl Repository for S3Repository {
 
         Ok(())
     }
+
+    async fn available_space(&self) -> Result<Option<u64>> {
+        Ok(None)
+    }
 }

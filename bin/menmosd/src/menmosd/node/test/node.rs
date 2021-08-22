@@ -22,6 +22,8 @@ fn get_storage_node_info(name: &str) -> StorageNodeInfo {
             static_address: IpAddr::from([192, 168, 0, 1]),
         },
         port: 3031,
+        size: 0,
+        available_space: 1000 * 1000,
     }
 }
 

@@ -2,16 +2,16 @@ use std::io::{self, SeekFrom};
 use std::ops::Bound;
 use std::path::{Path, PathBuf};
 
-use anyhow::{ensure, Result};
+use anyhow::{bail, ensure, Result};
 use async_trait::async_trait;
 use betterstreams::ChunkedStreamInfo;
 use bytes::Bytes;
 use futures::prelude::*;
+use sysinfo::{DiskExt, System, SystemExt};
+use tokio::fs::{self, OpenOptions};
+use tokio::io::AsyncSeekExt;
 use tokio::io::AsyncWriteExt;
-use tokio::{
-    fs::{self, OpenOptions},
-    io::AsyncSeekExt,
-};
+use tokio::sync::Mutex;
 
 use super::iface::Repository;
 use crate::util;
@@ -19,19 +19,22 @@ use crate::util;
 /// Represents a blob repository stored on disk.
 pub struct DiskRepository {
     path: PathBuf,
+    system: Mutex<System>,
 }
 
 impl DiskRepository {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let p = PathBuf::from(path.as_ref());
-
-        if !p.exists() {
-            std::fs::create_dir(path)?;
+        if !path.as_ref().exists() {
+            std::fs::create_dir(&path)?;
         }
+
+        let p = PathBuf::from(path.as_ref()).canonicalize()?;
 
         ensure!(p.is_dir(), "Path is not a directory");
 
-        Ok(Self { path: p })
+        let system = Mutex::new(System::default());
+
+        Ok(Self { path: p, system })
     }
 
     fn get_path_for_blob(&self, blob_id: &str) -> PathBuf {
@@ -110,5 +113,45 @@ impl Repository for DiskRepository {
     async fn fsync(&self, _id: String) -> Result<()> {
         // Nothing to do for us.
         Ok(())
+    }
+
+    async fn available_space(&self) -> Result<Option<u64>> {
+        let mut sys = self.system.lock().await;
+        sys.refresh_disks_list();
+        sys.refresh_disks();
+
+        let eligible_disks = sys
+            .disks_mut()
+            .iter_mut()
+            .filter(|d| {
+                log::info!("mount pont: {:?} path: {:?}", d.mount_point(), self.path);
+                self.path.starts_with(d.mount_point())
+            })
+            .collect::<Vec<_>>();
+
+        log::info!("eligible disks: {}", eligible_disks.len());
+
+        if eligible_disks.len() == 1 {
+            // No need for complex stuff if only a single disk is a prefix of our path.
+            return Ok(Some(eligible_disks.first().unwrap().available_space()));
+        }
+
+        // It's possible that one disk is mounted as a child of another (e.g. /dev/sda1 => / , /dev/sda2 => /home).
+        // In this case, we loop over all the disks and attempt to find one that's not the child of another disk.
+        // This could be made faster, but unless the machine has a ton of disks it's not really a problem.
+        for disk_a in eligible_disks.iter() {
+            let mut skip_disk = false;
+            for disk_b in eligible_disks.iter() {
+                if disk_a != disk_b && disk_b.mount_point().starts_with(disk_a.mount_point()) {
+                    skip_disk = true
+                }
+            }
+
+            if !skip_disk {
+                return Ok(Some(disk_a.available_space()));
+            }
+        }
+
+        bail!("no disk found");
     }
 }

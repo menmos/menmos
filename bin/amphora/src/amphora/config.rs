@@ -76,6 +76,8 @@ pub struct NodeSetting {
 
     pub checkin_frequency_seconds: u64,
     pub move_request_buffer_size: usize,
+
+    pub maximum_capacity: Option<u64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
