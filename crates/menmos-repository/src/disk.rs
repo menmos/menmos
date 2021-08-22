@@ -40,6 +40,20 @@ impl DiskRepository {
     fn get_path_for_blob(&self, blob_id: &str) -> PathBuf {
         self.path.join(blob_id.to_string()).with_extension("blob")
     }
+
+    #[cfg(windows)]
+    fn is_path_prefix_of(a: &Path, b: &Path) -> bool {
+        const WEIRD_WINDOWS_VOLUME_PREFIX: &str = "\\\\?\\";
+        let a = PathBuf::from(
+            WEIRD_WINDOWS_VOLUME_PREFIX.to_string() + a.to_string_lossy().to_string().as_ref(),
+        );
+        b.starts_with(a)
+    }
+
+    #[cfg(unix)]
+    fn is_path_prefix_of(a: &Path, b: &Path) -> bool {
+        b.starts_with(a)
+    }
 }
 
 #[async_trait]
@@ -123,13 +137,10 @@ impl Repository for DiskRepository {
         let eligible_disks = sys
             .disks_mut()
             .iter_mut()
-            .filter(|d| {
-                log::info!("mount pont: {:?} path: {:?}", d.mount_point(), self.path);
-                self.path.starts_with(d.mount_point())
-            })
+            .filter(|d| Self::is_path_prefix_of(d.mount_point(), &self.path))
             .collect::<Vec<_>>();
 
-        log::info!("eligible disks: {}", eligible_disks.len());
+        log::trace!("eligible disks: {}", eligible_disks.len());
 
         if eligible_disks.len() == 1 {
             // No need for complex stuff if only a single disk is a prefix of our path.
@@ -142,7 +153,9 @@ impl Repository for DiskRepository {
         for disk_a in eligible_disks.iter() {
             let mut skip_disk = false;
             for disk_b in eligible_disks.iter() {
-                if disk_a.mount_point() != disk_b.mount_point() && disk_b.mount_point().starts_with(disk_a.mount_point()) {
+                if disk_a.mount_point() != disk_b.mount_point()
+                    && disk_b.mount_point().starts_with(disk_a.mount_point())
+                {
                     skip_disk = true
                 }
             }
