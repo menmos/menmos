@@ -142,7 +142,7 @@ impl Repository for DiskRepository {
         for disk_a in eligible_disks.iter() {
             let mut skip_disk = false;
             for disk_b in eligible_disks.iter() {
-                if disk_a != disk_b && disk_b.mount_point().starts_with(disk_a.mount_point()) {
+                if disk_a.mount_point() != disk_b.mount_point() && disk_b.mount_point().starts_with(disk_a.mount_point()) {
                     skip_disk = true
                 }
             }
