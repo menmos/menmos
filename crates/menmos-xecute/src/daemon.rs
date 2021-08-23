@@ -4,6 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use clap::{App, Arg};
 use tokio::runtime;
+use tracing::instrument;
 
 use crate::logging;
 
@@ -25,12 +26,15 @@ fn worker_thread_count() -> usize {
     core_count.max(MINIMUM_WORKER_THREAD_COUNT)
 }
 
+#[instrument(level = "trace")]
 fn init_runtime() -> Result<runtime::Runtime> {
+    let threads = worker_thread_count();
     let rt = runtime::Builder::new_multi_thread()
         .enable_io()
         .enable_time()
-        .worker_threads(worker_thread_count())
+        .worker_threads(threads)
         .build()?;
+    tracing::trace!(threads = threads, "initialized tokio runtime");
     Ok(rt)
 }
 
@@ -81,7 +85,7 @@ impl DaemonProcess {
         let log_config: Option<PathBuf> = matches.value_of_t("log_config").ok();
 
         if let Err(e) = main_loop(cfg, log_config, daemon) {
-            log::error!("fatal: {}", e);
+            tracing::error!("fatal: {}", e);
         }
     }
 }

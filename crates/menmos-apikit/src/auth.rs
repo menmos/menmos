@@ -1,4 +1,6 @@
 //! Everything related to authentication.
+use std::fmt::Debug;
+
 use branca::Branca;
 
 use serde::de::DeserializeOwned;
@@ -53,11 +55,21 @@ pub struct StorageNodeIdentity {
 /// Represents a user identity.
 ///
 /// This is the body of user tokens.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct UserIdentity {
     pub username: String,
     pub admin: bool,
     pub blobs_whitelist: Option<Vec<String>>, // If none, all blobs are allowed.
+}
+
+impl Debug for UserIdentity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.admin {
+            write!(f, "{} (admin)", &self.username)
+        } else {
+            write!(f, "{}", &self.username)
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -90,7 +102,7 @@ fn strip_bearer(tok: &str) -> Result<&str, warp::Rejection> {
     const BEARER: &str = "Bearer ";
 
     if !tok.starts_with(BEARER) {
-        log::debug!("invalid token");
+        tracing::debug!("invalid token");
         return Err(reject::Forbidden.into());
     }
 

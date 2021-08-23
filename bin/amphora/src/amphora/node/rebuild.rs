@@ -12,7 +12,7 @@ pub struct Params {
 }
 
 pub async fn execute(parameters: Params, proxy: Arc<DirectoryProxy>, db: Arc<Index>) -> Result<()> {
-    log::info!("starting node rebuild");
+    tracing::info!("starting node rebuild");
 
     // Step 1 - Get a set of keys to push (so we dont re-push documents that are indexed during the rebuild).
     let keys = db.get_all_keys();
@@ -25,9 +25,9 @@ pub async fn execute(parameters: Params, proxy: Arc<DirectoryProxy>, db: Arc<Ind
         async move {
             let info_maybe = cloned_db.get(&key)?;
             if info_maybe.is_none() {
-                log::warn!(
-                    "seemingly missing blob: {} - was it deleted during the rebuild?",
-                    &key
+                tracing::warn!(
+                    blob_id= ?key,
+                    "seemingly missing blob - was it deleted during the rebuild?",
                 );
                 return Ok(());
             }
@@ -36,7 +36,7 @@ pub async fn execute(parameters: Params, proxy: Arc<DirectoryProxy>, db: Arc<Ind
                 .index_blob(&key, info_maybe.unwrap(), &cloned_node_id)
                 .await?;
 
-            log::info!("rebuilt {}", &key);
+            tracing::debug!("rebuilt {}", &key);
             Ok(())
         }
     }))
@@ -52,6 +52,6 @@ pub async fn execute(parameters: Params, proxy: Arc<DirectoryProxy>, db: Arc<Ind
         .rebuild_complete(&parameters.storage_node_name)
         .await?;
 
-    log::info!("rebuild complete");
+    tracing::info!("rebuild complete");
     Ok(())
 }

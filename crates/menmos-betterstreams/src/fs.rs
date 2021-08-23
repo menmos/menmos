@@ -117,7 +117,7 @@ pub async fn read_range<P: AsRef<Path>>(
             let mut f = match result {
                 Ok(f) => f,
                 Err(f) => {
-                    log::error!("unexpected state in stream: {}", f);
+                    tracing::error!("unexpected state in stream: {}", f);
                     panic!("find out why this is reached");
                 }
             };
@@ -132,13 +132,13 @@ pub async fn read_range<P: AsRef<Path>>(
                 let n = match ready!(poll_read_buf(Pin::new(&mut f), cx, &mut buf)) {
                     Ok(n) => n as u64,
                     Err(err) => {
-                        log::trace!("file read error: {}", err);
+                        tracing::debug!("file read error: {}", err);
                         return Poll::Ready(Some(Err(err)));
                     }
                 };
 
                 if n == 0 {
-                    log::trace!("file read found EOF before expected length");
+                    tracing::debug!("file read found EOF before expected length");
                     return Poll::Ready(None);
                 }
 

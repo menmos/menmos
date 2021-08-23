@@ -138,9 +138,9 @@ impl Storage {
             // TODO: Hold a join handle to this and refuse stopping the storage node until it completes.
             tokio::task::spawn(async move {
                 if let Err(e) = rebuild::execute(params, proxy_cloned, db_cloned).await {
-                    log::error!("rebuild failed: {}", e);
+                    tracing::error!("rebuild failed: {}", e);
                 } else {
-                    log::info!("rebuild complete");
+                    tracing::info!("rebuild complete");
                 }
             });
         }

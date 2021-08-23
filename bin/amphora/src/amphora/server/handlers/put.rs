@@ -54,6 +54,7 @@ fn prepare_stream(
     Ok(Box::from(io_stream))
 }
 
+#[tracing::instrument(skip(node, mime, meta, body))]
 pub async fn put<N: StorageNode>(
     user: UserIdentity,
     node: Arc<N>,
@@ -72,7 +73,7 @@ pub async fn put<N: StorageNode>(
     if meta_request.blob_type == interface::Type::Directory && stream.is_some() {
         return Err(warp::reject::custom(BadRequest));
     } else if meta_request.blob_type == interface::Type::File && stream.is_none() {
-        log::info!("setting default empty stream");
+        tracing::debug!("setting default empty stream");
         stream = Some(Box::from(futures::stream::empty()))
     }
 

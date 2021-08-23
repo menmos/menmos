@@ -13,7 +13,7 @@ bitvec_span = ["bitvec"]
 
 [dependencies]
 bitvec = {version = "0.20", features = ["serde"], optional = true}
-log = "0.4"
 nom = {version = "6.1"}
 serde = {version = "1", features = ["derive"]}
 snafu = "0.6"
+tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_info"]}

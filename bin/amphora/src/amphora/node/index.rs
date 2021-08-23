@@ -54,7 +54,10 @@ impl Index {
                     match bincode::deserialize::<BlobInfo>(value_ivec.as_ref()) {
                         Ok(e) => Some(e.meta.size),
                         Err(e) => {
-                            log::warn!("failed to deserialize blob during size computation: {}", e);
+                            tracing::warn!(
+                                "failed to deserialize blob during size computation: {}",
+                                e
+                            );
                             None
                         }
                     }

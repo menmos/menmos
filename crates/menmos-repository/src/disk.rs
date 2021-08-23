@@ -65,6 +65,7 @@ impl Repository for DiskRepository {
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
     ) -> Result<()> {
         let file_path = self.get_path_for_blob(&id);
+        tracing::trace!(path = ?file_path, "begin writing to file");
 
         if let Err(e) = betterstreams::fs::write_all(&file_path, stream).await {
             fs::remove_file(&file_path).await?;
@@ -84,6 +85,8 @@ impl Repository for DiskRepository {
 
         let old_length = file_path.metadata()?.len();
         let new_length = (start + end).max(old_length);
+
+        tracing::trace!(old_length = old_length, new_length = new_length, offset = start, path = ?file_path, "begin writing to file");
 
         {
             let mut f = OpenOptions::new()
@@ -110,6 +113,9 @@ impl Repository for DiskRepository {
         );
 
         let size = file_path.metadata()?.len() as u64;
+
+        tracing::trace!(size=size, path=?file_path, "begin read");
+
         betterstreams::fs::read_range(&file_path, range.map(|r| util::bounds_to_range(r, 0, size)))
             .await
     }
@@ -119,6 +125,7 @@ impl Repository for DiskRepository {
 
         if blob_path.exists() {
             fs::remove_file(&blob_path).await?;
+            tracing::trace!(path=?blob_path, "file deleted");
         }
 
         Ok(())
@@ -140,11 +147,13 @@ impl Repository for DiskRepository {
             .filter(|d| Self::is_path_prefix_of(d.mount_point(), &self.path))
             .collect::<Vec<_>>();
 
-        log::trace!("eligible disks: {}", eligible_disks.len());
+        tracing::trace!(count = eligible_disks.len(), "found eligible disks");
 
         if eligible_disks.len() == 1 {
             // No need for complex stuff if only a single disk is a prefix of our path.
-            return Ok(Some(eligible_disks.first().unwrap().available_space()));
+            let disk = eligible_disks.first().unwrap();
+            tracing::trace!(disk = ?disk.name(), "found disk");
+            return Ok(Some(disk.available_space()));
         }
 
         // It's possible that one disk is mounted as a child of another (e.g. /dev/sda1 => / , /dev/sda2 => /home).
@@ -161,6 +170,7 @@ impl Repository for DiskRepository {
             }
 
             if !skip_disk {
+                tracing::trace!(disk = ?disk_a.name(), "found disk");
                 return Ok(Some(disk_a.available_space()));
             }
         }

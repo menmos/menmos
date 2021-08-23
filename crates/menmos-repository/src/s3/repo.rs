@@ -186,7 +186,6 @@ impl Repository for S3Repository {
         // FIXME: Trigger fsync asynchronously so it doesn't block the call.
         // FIXME: Trigger fsync periodically for cache keys, and every time on cache eviction.
         if let Some(path) = self.file_cache.contains(&id).await {
-            log::info!("begin fsync on {}", &id);
             let f = fs::File::open(&path).await?;
             let file_length = path.metadata()?.len();
             let _result = self
@@ -201,7 +200,7 @@ impl Repository for S3Repository {
                     ..Default::default()
                 })
                 .await?;
-            log::info!("fsync on {} complete", id);
+            tracing::debug!(file_length = file_length, "complete");
         }
 
         Ok(())

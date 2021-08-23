@@ -1,30 +1,120 @@
 use std::path::PathBuf;
+use std::{fs, path::Path};
 
 use anyhow::Result;
 
-use log::LevelFilter;
+use serde::{Deserialize, Serialize};
 
-use log4rs::append::console::ConsoleAppender;
-use log4rs::config::{Appender, Config, Root};
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-fn get_default_config() -> Result<Config> {
-    let stdout = ConsoleAppender::builder().build();
-    let config = Config::builder()
-        .appender(Appender::builder().build("stdout", Box::new(stdout)))
-        .build(Root::builder().appender("stdout").build(LevelFilter::Info))?;
-    Ok(config)
+const DEFAULT_TRACKED_CRATES: &[&str] = &[
+    "menmosd",
+    "amphora",
+    "xecute",
+    "rapidquery",
+    "antidns",
+    "lfan",
+    "apikit",
+    "menmos-client",
+    "betterstreams",
+    "repository",
+    "menmos-std",
+    "warp::filters::trace",
+];
+
+#[cfg(debug_assertions)]
+const NORMAL_CRATE_LEVEL: &str = "debug";
+
+#[cfg(not(debug_assertions))]
+const NORMAL_CRATE_LEVEL: &str = "info";
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LogLevel {
+    Normal,
+    Trace,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+enum LogStructure {
+    Preset(LogLevel),
+    Explicit(Vec<String>),
+}
+
+fn default_json() -> bool {
+    false
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct LoggingConfig {
+    pub level: LogStructure,
+
+    #[serde(default = "default_json")]
+    pub json: bool,
+}
+
+impl Default for LoggingConfig {
+    fn default() -> Self {
+        Self {
+            level: LogStructure::Preset(LogLevel::Normal),
+            json: false,
+        }
+    }
+}
+
+impl LoggingConfig {
+    fn get_filter(&self) -> EnvFilter {
+        let directives = match &self.level {
+            LogStructure::Explicit(dirs) => dirs.clone(),
+            &LogStructure::Preset(LogLevel::Normal) => DEFAULT_TRACKED_CRATES
+                .iter()
+                .map(|crate_name| format!("{}={}", crate_name, NORMAL_CRATE_LEVEL))
+                .collect::<Vec<_>>(),
+            LogStructure::Preset(LogLevel::Trace) => DEFAULT_TRACKED_CRATES
+                .iter()
+                .map(|crate_name| format!("{}={}", crate_name, "trace"))
+                .collect::<Vec<_>>(),
+        };
+
+        let joined_directives = directives.join(",");
+        println!("dirs: {:?}", joined_directives);
+
+        EnvFilter::new(joined_directives)
+    }
+}
+
+fn load_log_config_file(path: &Path) -> Result<LoggingConfig> {
+    let f = fs::File::open(path)?;
+    let cfg: LoggingConfig = serde_json::from_reader(f)?;
+    Ok(cfg)
+}
+
+fn get_logging_config(path: &Option<PathBuf>) -> LoggingConfig {
+    path.as_ref()
+        .map(|p| load_log_config_file(&p).ok())
+        .flatten()
+        .unwrap_or_default()
 }
 
 pub fn init_logger(log_cfg_path: &Option<PathBuf>) -> Result<()> {
-    match &log_cfg_path {
-        Some(log_path) => {
-            log4rs::init_file(log_path, Default::default())?;
-        }
-        None => {
-            let config = get_default_config()?;
-            log4rs::init_config(config)?;
-        }
-    };
+    let cfg = get_logging_config(log_cfg_path);
+
+    let env_filter = cfg.get_filter();
+
+    if cfg.json {
+        FmtSubscriber::builder()
+            .with_env_filter(env_filter)
+            .json()
+            .finish()
+            .init();
+    } else {
+        FmtSubscriber::builder()
+            .with_env_filter(env_filter)
+            .finish()
+            .init();
+    }
 
     Ok(())
 }

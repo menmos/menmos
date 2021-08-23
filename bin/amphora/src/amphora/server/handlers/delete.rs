@@ -6,6 +6,7 @@ use interface::StorageNode;
 
 use warp::reply;
 
+#[tracing::instrument(skip(node))]
 pub async fn delete<N: StorageNode>(
     user: UserIdentity,
     node: Arc<N>,
