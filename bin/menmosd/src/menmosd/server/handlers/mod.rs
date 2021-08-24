@@ -6,5 +6,4 @@ pub mod query;
 pub mod routing;
 pub mod storage;
 
-#[cfg(feature = "webui")]
 pub mod webui;

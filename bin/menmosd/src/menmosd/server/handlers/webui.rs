@@ -1,4 +1,5 @@
 use headers::HeaderValue;
+#[cfg(feature = "webui")]
 use include_dir::{include_dir, Dir};
 
 use warp::hyper::Body;
@@ -21,6 +22,29 @@ fn serve(text: &str, content_type: &'static str) -> warp::http::Response<Body> {
     http_resp
 }
 
+#[cfg(feature = "webui")]
+pub fn get_response(file_name: &str) -> warp::http::Response<Body> {
+    match STATIC_FILE_DIR.get_file(file_name) {
+        Some(file_path) => {
+            let body = Body::from(file_path.contents().to_vec());
+            warp::reply::Response::new(body)
+        }
+        None => serve(
+            "<html><body><h1>Not Found</h1></body></html>",
+            "application/html",
+        ),
+    }
+}
+
+#[cfg(not(feature =  "webui"))]
+pub fn get_response(file_name: &str) -> warp::http::Response<Body> {
+    tracing::warn!("menmos-web is not enabled");
+    serve(
+        "<html><body><h1>Not Found</h1></body></html>",
+        "application/html",
+    )
+}
+
 #[tracing::instrument]
 pub async fn serve_static(path: warp::path::Tail) -> Result<impl warp::Reply, warp::Rejection> {
     let file_name = if path.as_str().is_empty() {
@@ -29,22 +53,5 @@ pub async fn serve_static(path: warp::path::Tail) -> Result<impl warp::Reply, wa
         path.as_str()
     };
 
-    if cfg!(feature = "webui") {
-        match STATIC_FILE_DIR.get_file(file_name) {
-            Some(file_path) => {
-                let body = Body::from(file_path.contents().to_vec());
-                Ok(warp::reply::Response::new(body))
-            }
-            None => Ok(serve(
-                "<html><body><h1>Not Found</h1></body></html>",
-                "application/html",
-            )),
-        }
-    } else {
-        tracing::warn!("menmos-web is not enabled");
-        Ok(serve(
-            "<html><body><h1>Not Found</h1></body></html>",
-            "application/html",
-        ))
-    }
+    Ok(get_response(file_name))
 }
