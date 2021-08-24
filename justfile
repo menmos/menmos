@@ -6,6 +6,9 @@ lint:
     cargo check
     cargo clippy
 
+bundle $MENMOS_WEBUI="latest" +args="":
+    cargo build --features "webui" -p menmosd {{args}}
+
 unit +args="":
     cargo test --workspace --lib {{args}}
 

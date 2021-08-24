@@ -7,6 +7,8 @@ mod routing;
 mod storage;
 mod util;
 
+mod webui;
+
 use std::convert::Infallible;
 
 use warp::Filter;
@@ -24,6 +26,7 @@ pub fn all(
         .or(query::all(context.clone()))
         .or(auth::all(context.clone()))
         .or(routing::all(context))
+        .or(webui::serve_static())
         .recover(apikit::reject::recover)
         .with(warp::log::custom(
             |info| tracing::info!(status = ?info.status(), elapsed = ?info.elapsed(), "{} {}", info.method(), info.path()),
@@ -41,6 +44,7 @@ pub fn all(
         .or(query::all(context.clone()))
         .or(auth::all(context.clone()))
         .or(routing::all(context))
+        .or(webui::serve_static())
         .with(
             warp::cors()
                 .allow_any_origin()
