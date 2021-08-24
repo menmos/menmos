@@ -5,6 +5,7 @@ use warp::reply;
 
 use crate::server::context::Context;
 
+#[tracing::instrument(skip(context))]
 pub async fn delete(
     user: UserIdentity,
     context: Context,

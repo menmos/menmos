@@ -6,9 +6,6 @@ use std::time::Duration;
 use anyhow::{anyhow, ensure, Result};
 
 use interface::StorageNodeInfo;
-use log::LevelFilter;
-use log4rs::append::console::ConsoleAppender;
-use log4rs::config::{Appender, Config as LogConfig, Root};
 use menmos_client::{Client, Meta};
 use menmosd::config::{HttpParameters, ServerSetting};
 use menmosd::{Config, Server};
@@ -21,12 +18,7 @@ static INIT: Once = Once::new();
 
 fn init_logger() {
     INIT.call_once(|| {
-        let stdout = ConsoleAppender::builder().build();
-        let config = LogConfig::builder()
-            .appender(Appender::builder().build("stdout", Box::new(stdout)))
-            .build(Root::builder().appender("stdout").build(LevelFilter::Info))
-            .unwrap();
-        log4rs::init_config(config).unwrap();
+        xecute::logging::init_logger(&None).unwrap();
     });
 }
 

@@ -29,16 +29,22 @@ const NORMAL_CRATE_LEVEL: &str = "debug";
 #[cfg(not(debug_assertions))]
 const NORMAL_CRATE_LEVEL: &str = "info";
 
+#[cfg(debug_assertions)]
+const DETAILED_CRATE_LEVEL: &str = "trace";
+
+#[cfg(not(debug_assertions))]
+const DETAILED_CRATE_LEVEL: &str = "debug";
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevel {
     Normal,
-    Trace,
+    Detailed,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
-enum LogStructure {
+pub enum LogStructure {
     Preset(LogLevel),
     Explicit(Vec<String>),
 }
@@ -48,7 +54,7 @@ fn default_json() -> bool {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct LoggingConfig {
+pub struct LoggingConfig {
     pub level: LogStructure,
 
     #[serde(default = "default_json")]
@@ -72,14 +78,13 @@ impl LoggingConfig {
                 .iter()
                 .map(|crate_name| format!("{}={}", crate_name, NORMAL_CRATE_LEVEL))
                 .collect::<Vec<_>>(),
-            LogStructure::Preset(LogLevel::Trace) => DEFAULT_TRACKED_CRATES
+            LogStructure::Preset(LogLevel::Detailed) => DEFAULT_TRACKED_CRATES
                 .iter()
-                .map(|crate_name| format!("{}={}", crate_name, "trace"))
+                .map(|crate_name| format!("{}={}", crate_name, DETAILED_CRATE_LEVEL))
                 .collect::<Vec<_>>(),
         };
 
         let joined_directives = directives.join(",");
-        println!("dirs: {:?}", joined_directives);
 
         EnvFilter::new(joined_directives)
     }
@@ -93,7 +98,7 @@ fn load_log_config_file(path: &Path) -> Result<LoggingConfig> {
 
 fn get_logging_config(path: &Option<PathBuf>) -> LoggingConfig {
     path.as_ref()
-        .map(|p| load_log_config_file(&p).ok())
+        .map(|p| load_log_config_file(p).ok())
         .flatten()
         .unwrap_or_default()
 }

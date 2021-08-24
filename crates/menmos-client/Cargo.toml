@@ -14,7 +14,6 @@ bytes = "1"
 dirs = "3"
 futures = "0.3"
 hyper = "0.14"
-log = "0.4"
 menmos-apikit = {version = "^0.0.8"}
 menmos-interface = {version = "^0.0.8"}
 menmos-protocol = {version = "^0.0.8"}
@@ -25,3 +24,4 @@ serde_json = "1"
 snafu = "0.6"
 tokio = {version = "1.2", features = ["full"]}
 toml = "0.5"
+tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_debug"]}

@@ -169,7 +169,7 @@ impl Repository for S3Repository {
     }
 
     async fn delete(&self, blob_id: &str) -> Result<()> {
-        self.file_cache.invalidate(&blob_id).await?;
+        self.file_cache.invalidate(blob_id).await?;
 
         let delete_request = DeleteObjectRequest {
             bucket: self.bucket.clone(),

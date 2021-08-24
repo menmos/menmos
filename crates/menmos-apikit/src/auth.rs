@@ -52,6 +52,12 @@ pub struct StorageNodeIdentity {
     pub id: String,
 }
 
+impl Debug for StorageNodeIdentity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "storage({})", &self.id)
+    }
+}
+
 /// Represents a user identity.
 ///
 /// This is the body of user tokens.

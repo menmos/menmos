@@ -105,7 +105,7 @@ impl interface::BlobIndexer for IndexerService {
                 "blob node is different from the storage node id that requested deletion"
             )
         } else {
-            log::error!("no node found for blob_id={}", blob_id)
+            tracing::error!("no node found for blob_id={}", blob_id);
         }
 
         // This is tricky, because since our internal document IDs are sequential, we can't just delete the blob from the index and call it a day.

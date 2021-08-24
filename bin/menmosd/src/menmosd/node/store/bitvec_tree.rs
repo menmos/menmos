@@ -11,10 +11,16 @@ fn concatenate_merge(
     merged_bytes: &[u8],      // the new bytes being merged in
 ) -> Option<Vec<u8>> {
     let new_max_index = merged_bytes.as_ref().read_u32::<LittleEndian>().unwrap() as usize;
+    tracing::trace!("new max index: {}", new_max_index);
 
     let mut bv: BitVec = if let Some(v) = old_value {
         let mut b: BitVec = bincode::deserialize(v).unwrap();
         if b.len() <= (new_max_index + 1) {
+            tracing::trace!(
+                "old bitvector length is {}, resizing to {}",
+                b.len(),
+                new_max_index + 1
+            );
             b.resize(new_max_index + 1, false);
         }
         b
@@ -26,12 +32,14 @@ fn concatenate_merge(
         // Safe because we allocate the bitvector with a size above this index on the line above.
         *bv.get_unchecked_mut(new_max_index as usize) = true;
     }
+    tracing::trace!(index = new_max_index, "flipped bit to true");
 
     Some(bincode::serialize(&bv).unwrap())
 }
 
 pub struct BitvecTree {
     tree: sled::Tree,
+    name: String,
 }
 
 impl BitvecTree {
@@ -39,24 +47,31 @@ impl BitvecTree {
         let tree = db.open_tree(name)?;
         tree.set_merge_operator(concatenate_merge);
 
-        Ok(Self { tree })
+        Ok(Self {
+            tree,
+            name: String::from(name),
+        })
     }
 
+    #[tracing::instrument(level = "trace", skip(self, serialized_idx), fields(name = %self.name))]
     pub fn insert(&self, key: &str, serialized_idx: &[u8]) -> Result<()> {
         self.tree
             .merge(key.to_lowercase().as_bytes(), serialized_idx)?;
         Ok(())
     }
 
+    #[tracing::instrument(level = "trace", skip(self), fields(name = %self.name))]
     pub fn load(&self, key: &str) -> Result<BitVec> {
         if let Some(ivec) = self.tree.get(key.to_lowercase().as_bytes())? {
             let bv: BitVec = bincode::deserialize_from(ivec.as_ref())?;
+            tracing::trace!(count = bv.count_ones(), "loaded");
             Ok(bv)
         } else {
             Ok(BitVec::default())
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(self, key), fields(name = %self.name))]
     pub fn purge_key<K: AsRef<[u8]>>(&self, key: K, idx: u32) -> Result<()> {
         self.tree.update_and_fetch(key, |f| {
             let ivec = f.unwrap();
@@ -77,6 +92,7 @@ impl BitvecTree {
         Ok(())
     }
 
+    #[tracing::instrument(level = "trace", skip(self), fields(name = %self.name))]
     pub fn purge(&self, idx: u32) -> Result<()> {
         for (k, _) in self.tree.iter().filter_map(|f| f.ok()) {
             self.purge_key(k, idx)?;
@@ -99,6 +115,7 @@ impl BitvecTree {
 
     pub fn clear(&self) -> Result<()> {
         self.tree.clear()?;
+        tracing::trace!(name = %self.name, "cleared tree");
         Ok(())
     }
 }

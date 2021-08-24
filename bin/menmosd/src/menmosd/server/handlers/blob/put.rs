@@ -21,6 +21,7 @@ fn parse_metadata(header_value: String) -> Result<BlobMetaRequest> {
     Ok(meta)
 }
 
+#[tracing::instrument(skip(context, meta, addr))]
 pub async fn put(
     user: UserIdentity,
     context: Context,
@@ -49,7 +50,7 @@ pub async fn put(
     )
     .map_err(InternalServerError::from)?;
 
-    log::info!("redirecting to {}", &node_address);
+    tracing::debug!("redirecting to {}", &node_address);
 
     Ok(warp::redirect::temporary(node_address).into_response())
 }

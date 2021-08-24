@@ -39,7 +39,7 @@ async fn interruptible_delay(dur: Duration, stop_rx: &mut mpsc::Receiver<()>) ->
             false
         }
         _ = stop_signal => {
-            log::info!("interruptible delay received stop signal");
+            tracing::info!("interruptible delay received stop signal");
             true
         }
     }
@@ -64,11 +64,11 @@ async fn wait_for_server_stop(http_handle: JoinHandle<()>, https_handle: JoinHan
     let (http_ok, https_ok) = tokio::join!(join_http, join_https);
 
     if !http_ok {
-        log::error!("redirect layer failed to stop in time and was killed");
+        tracing::error!("redirect layer failed to stop in time and was killed");
     }
 
     if !https_ok {
-        log::error!("https layer failed to stop in time and was killed.")
+        tracing::error!("https layer failed to stop in time and was killed.")
     }
 }
 
@@ -86,7 +86,7 @@ pub async fn use_tls(
         nb_of_concurrent_requests: cfg.dns.nb_of_concurrent_requests,
     });
 
-    log::debug!("waiting for DNS server to come up...");
+    tracing::debug!("waiting for DNS server to come up");
     tokio::time::sleep(Duration::from_secs(2)).await;
 
     let pem_name = cfg
@@ -106,15 +106,15 @@ pub async fn use_tls(
     let persist = acme_lib::persist::FilePersist::new(&cfg.certificate_storage_path);
     let dir = acme_lib::Directory::from_url(persist, url)?;
 
-    log::debug!("getting letsencrypt account...");
+    tracing::debug!("getting letsencrypt account");
     let account = dir.account(&cfg.letsencrypt_email)?;
-    log::debug!("account ok");
+    tracing::debug!("account ok");
 
     loop {
         const TMIN: Duration = Duration::from_secs(60 * 60 * 24 * 30);
 
         let time_to_exp = time_to_expiration(&pem_name);
-        log::debug!(
+        tracing::debug!(
             "the time to expiration of {:?} is {:?}",
             pem_name,
             time_to_exp
@@ -122,7 +122,7 @@ pub async fn use_tls(
 
         if time_to_exp.filter(|&t| t > TMIN).is_none() {
             // TODO: Don't do a new order with every boot.
-            log::info!("sending an ACME order for a new certificate");
+            tracing::debug!("sending an ACME order for a new certificate");
             let mut new_order = account.new_order(&format!("*.{}", cfg.dns.root_domain), &[])?;
             let ord_csr = loop {
                 if let Some(ord_csr) = new_order.confirm_validations() {
@@ -158,12 +158,12 @@ pub async fn use_tls(
         let certificate_info = CertificateInfo::from_path(&pem_name, &key_name)?;
 
         // Spawn redirect server.
-        log::info!("starting http redirect layer on port {}", cfg.http_port);
+        tracing::debug!("starting http redirect layer on port {}", cfg.http_port);
         let (tx80, rx80) = oneshot::channel();
         let http_handle = {
             let domain = cfg.dns.host_name.to_string();
             let redirect = warp::path::tail().map(move |path: warp::path::Tail| {
-                log::info!("redirect to https://{}/{}", domain, path.as_str());
+                tracing::debug!("redirect to https://{}/{}", domain, path.as_str());
                 warp::redirect::redirect(
                     warp::http::Uri::from_str(&format!("https://{}/{}", &domain, path.as_str()))
                         .expect("problem with uri"),
@@ -172,15 +172,15 @@ pub async fn use_tls(
             let http_srv = warp::serve(redirect)
                 .bind_with_graceful_shutdown(([0, 0, 0, 0], cfg.http_port), async {
                     rx80.await.ok();
-                    log::info!("redirect layer stop signal received");
+                    tracing::info!("redirect layer stop signal received");
                 })
                 .1;
 
             spawn(http_srv)
         };
-        log::info!("redirect layer started");
+        tracing::debug!("redirect layer started");
 
-        log::info!("starting https layer on port {}", cfg.https_port);
+        tracing::debug!("starting https layer on port {}", cfg.https_port);
         let (tx, rx) = oneshot::channel();
         let https_handle = {
             let key_name = key_name.clone();
@@ -197,13 +197,15 @@ pub async fn use_tls(
                 .key_path(&key_name)
                 .bind_with_graceful_shutdown(([0, 0, 0, 0], cfg.https_port), async {
                     rx.await.ok();
-                    log::info!("https layer stop signal received");
+                    tracing::info!("https layer stop signal received");
                 })
                 .1;
             spawn(https_srv)
         };
 
-        log::info!("https layer started");
+        tracing::debug!("https layer started");
+
+        tracing::info!("menmosd is up");
 
         // Now wait until it is time to grab a new certificate.
         let should_quit;
@@ -222,14 +224,14 @@ pub async fn use_tls(
             tx80.send(()).unwrap();
             wait_for_server_stop(http_handle, https_handle).await;
         } else {
-            log::warn!("looks like there is an issue with certificate refresh - waiting an hour before retrying...");
+            tracing::warn!("looks like there is an issue with certificate refresh - waiting an hour before retrying...");
             should_quit = interruptible_delay(Duration::from_secs(60 * 60), &mut stop_rx).await;
         }
 
         if should_quit {
             break Ok(());
         } else {
-            log::info!("attempting a certificate renewal");
+            tracing::debug!("attempting a certificate renewal");
         }
     }
 }

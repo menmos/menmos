@@ -57,6 +57,8 @@ where
             h
         };
 
+        tracing::info!("amphora is up");
+
         Self {
             _node: node,
             handle: ServerProcess {

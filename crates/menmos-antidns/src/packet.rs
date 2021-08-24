@@ -34,7 +34,7 @@ impl DnsPacket {
     }
 
     pub fn from_buffer(buffer: &mut BytePacketBuffer) -> Result<DnsPacket> {
-        log::trace!("deserializing packet from buffer");
+        tracing::trace!("deserializing packet from buffer");
 
         let mut result = DnsPacket::new();
         result.header.read(buffer).context(FailedToParseHeader)?;
@@ -46,7 +46,7 @@ impl DnsPacket {
         }
 
         for i in 0..result.header.answers {
-            log::trace!("deserializing answer {}", i);
+            tracing::trace!("deserializing answer {}", i);
             let rec = DnsRecord::read(buffer).context(FailedToParseRecord)?;
             result.answers.push(rec);
         }

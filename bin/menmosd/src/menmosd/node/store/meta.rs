@@ -75,6 +75,7 @@ impl SledMetadataStore {
         })
     }
 
+    #[tracing::instrument(level = "trace", skip(self, old_meta, new_meta))]
     fn diff_and_purge_on_meta_update(
         &self,
         old_meta: BlobInfo,
@@ -84,18 +85,21 @@ impl SledMetadataStore {
         for tag in old_meta.meta.tags.into_iter() {
             if !new_meta.meta.tags.contains(&tag) {
                 self.tag_map.purge_key(&tag, for_idx)?;
+                tracing::trace!(tag = %tag, index = for_idx, "purged tag");
             }
         }
 
         for (key, value) in old_meta.meta.metadata.into_iter() {
             if new_meta.meta.metadata.get(&key) != Some(&value) {
                 self.kv_map.purge_key(&kv_to_tag(&key, &value), for_idx)?;
+                tracing::trace!(key = %key, value = %value, index = for_idx, "purged key-value");
             }
         }
 
         for parent in old_meta.meta.parents.into_iter() {
             if !new_meta.meta.parents.contains(&parent) {
                 self.parents_map.purge_key(&parent, for_idx)?;
+                tracing::trace!(parent = %parent, index = for_idx, "purged parent");
             }
         }
 
@@ -106,7 +110,7 @@ impl SledMetadataStore {
 #[async_trait]
 impl Flush for SledMetadataStore {
     async fn flush(&self) -> Result<()> {
-        log::debug!("starting flush");
+        tracing::debug!("starting flush");
         let meta_flush = self
             .meta_map
             .flush_async()
@@ -117,21 +121,24 @@ impl Flush for SledMetadataStore {
 
         tokio::try_join!(meta_flush, tag_flush, kv_flush, parents_flush).map(|_u| ())?;
 
-        log::debug!("flush complete");
+        tracing::debug!("flush complete");
         Ok(())
     }
 }
 
 impl MetadataStore for SledMetadataStore {
+    #[tracing::instrument(level = "trace", skip(self))]
     fn get(&self, idx: u32) -> Result<Option<BlobInfo>> {
         if let Some(ivec) = self.meta_map.get(idx.to_le_bytes())? {
             let info: BlobInfo = bincode::deserialize(&ivec)?;
             Ok(Some(info))
         } else {
+            tracing::trace!(index = idx, "not found");
             Ok(None)
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(self, info))]
     fn insert(&self, id: u32, info: &BlobInfo) -> Result<()> {
         // Validate tags are ok.
         for tag in info.meta.tags.iter() {
@@ -147,6 +154,7 @@ impl MetadataStore for SledMetadataStore {
         let serialized = bincode::serialize(&info)?;
         let r: &[u8] = serialized.as_ref();
         if let Some(last_meta_ivec) = self.meta_map.insert(&serialized_id, r)? {
+            tracing::trace!("blob already exists, we need to purge previous tags");
             // We need to purge tags, parents, and k/v pairs that were _removed_ from the meta
             // so they don't come up in searches anymore.
             let old_info: BlobInfo = bincode::deserialize(last_meta_ivec.as_ref())?;
@@ -171,18 +179,22 @@ impl MetadataStore for SledMetadataStore {
         Ok(())
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn load_user_mask(&self, username: &str) -> Result<BitVec> {
         self.user_mask_map.load(username)
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn load_tag(&self, tag: &str) -> Result<BitVec> {
         self.tag_map.load(tag)
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn load_key_value(&self, k: &str, v: &str) -> Result<BitVec> {
         self.kv_map.load(&kv_to_tag(k, v))
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn load_key(&self, k: &str) -> Result<BitVec> {
         // TODO: This is WIP. Computing this at query time is expensive, we could store it at indexing time instead.
         let mut bv = BitVec::default();
@@ -207,10 +219,12 @@ impl MetadataStore for SledMetadataStore {
         Ok(bv)
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn load_children(&self, parent_id: &str) -> Result<BitVec> {
         self.parents_map.load(parent_id)
     }
 
+    #[tracing::instrument(level = "trace", skip(self, mask))]
     fn list_all_tags(&self, mask: Option<&BitVec>) -> Result<HashMap<String, usize>> {
         let mut hsh = HashMap::with_capacity(self.tag_map.tree().len());
 
@@ -226,6 +240,7 @@ impl MetadataStore for SledMetadataStore {
 
             let count = bv.count_ones();
             if count > 0 {
+                tracing::trace!(tag = %tag_str, count = count, "loaded tag");
                 hsh.insert(tag_str, count);
             }
         }
@@ -233,6 +248,7 @@ impl MetadataStore for SledMetadataStore {
         Ok(hsh)
     }
 
+    #[tracing::instrument(level = "trace", skip(self, key_filter, mask))]
     fn list_all_kv_fields(
         &self,
         key_filter: &Option<Vec<String>>,
@@ -260,6 +276,7 @@ impl MetadataStore for SledMetadataStore {
                         let count = bv.count_ones();
 
                         if count > 0 {
+                            tracing::trace!(key=%key, value=%v, count=count, "loaded key-value");
                             hsh.entry(k.to_string())
                                 .or_insert_with(HashMap::default)
                                 .insert(v.to_string(), count);
@@ -282,6 +299,7 @@ impl MetadataStore for SledMetadataStore {
 
                     let count = bv.count_ones();
                     if count > 0 {
+                        tracing::trace!(key=%k, value=%v, count=count, "loaded key-value");
                         hsh.entry(k.to_string())
                             .or_insert_with(HashMap::default)
                             .insert(v.to_string(), count);
@@ -292,6 +310,7 @@ impl MetadataStore for SledMetadataStore {
         Ok(hsh)
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn purge(&self, idx: u32) -> Result<()> {
         let serialized_idx = idx.to_le_bytes();
 
@@ -314,7 +333,7 @@ impl MetadataStore for SledMetadataStore {
         self.tag_map.clear()?;
         self.kv_map.clear()?;
         self.parents_map.clear()?;
-        log::debug!("meta index destroyed");
+        tracing::debug!("meta index destroyed");
         Ok(())
     }
 }

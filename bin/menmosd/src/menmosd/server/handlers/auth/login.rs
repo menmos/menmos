@@ -7,6 +7,7 @@ use warp::reply;
 
 use crate::server::Context;
 
+#[tracing::instrument(skip(context), fields(user = ?request.username))]
 pub async fn login(
     context: Context,
     request: LoginRequest,
