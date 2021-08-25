@@ -144,18 +144,18 @@ impl DnsRecord {
                 })
             }
             QueryType::TXT => {
-                log::debug!("deserializing TXT record");
+                tracing::debug!("deserializing TXT record");
 
                 let mut text = Vec::new();
                 loop {
                     if buffer.pos() == 512 {
-                        log::trace!("reached EOF -> TXT record finished");
+                        tracing::trace!("reached EOF -> TXT record finished");
                         break;
                     }
 
                     let string_length = buffer.read().context(InvalidBuffer)?;
                     if string_length == 0 {
-                        log::trace!("got null terminator -> TXT record finished");
+                        tracing::trace!("got null terminator -> TXT record finished");
                         break;
                     }
 
@@ -164,7 +164,7 @@ impl DnsRecord {
                             .get_range(buffer.pos(), string_length as usize)
                             .context(InvalidBuffer)?;
 
-                        log::debug!(
+                        tracing::debug!(
                             "got TXT string: '{}'",
                             String::from_utf8_lossy(string_bytes)
                         );
@@ -285,7 +285,7 @@ impl DnsRecord {
                 data_len,
                 ref text,
             } => {
-                log::debug!("serializing TXT record");
+                tracing::debug!("serializing TXT record");
                 buffer
                     .write_bytes(domain_bytes.as_ref())
                     .context(InvalidBuffer)?;
@@ -300,7 +300,7 @@ impl DnsRecord {
                 for string in text.iter() {
                     ensure!(string.len() <= 255, StringTooLong);
 
-                    log::trace!(
+                    tracing::trace!(
                         "writing string '{}' with length {}",
                         String::from_utf8_lossy(string.as_ref()),
                         string.len()
@@ -328,10 +328,10 @@ impl DnsRecord {
                 }
             }
             DnsRecord::CAA {} => {
-                log::debug!("writing nothing instead of CAA record");
+                tracing::debug!("writing nothing instead of CAA record");
             }
             DnsRecord::UNKNOWN { .. } => {
-                log::warn!("skipping record: {:?}", self);
+                tracing::warn!("skipping record: {:?}", self);
             }
         }
 

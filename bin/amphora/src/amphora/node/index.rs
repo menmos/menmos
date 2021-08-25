@@ -45,6 +45,27 @@ impl Index {
         self.db.flush_async().await?;
         Ok(())
     }
+
+    pub fn size(&self) -> u64 {
+        self.db
+            .iter()
+            .filter_map(|result| match result {
+                Ok((_key_ivec, value_ivec)) => {
+                    match bincode::deserialize::<BlobInfo>(value_ivec.as_ref()) {
+                        Ok(e) => Some(e.meta.size),
+                        Err(e) => {
+                            tracing::warn!(
+                                "failed to deserialize blob during size computation: {}",
+                                e
+                            );
+                            None
+                        }
+                    }
+                }
+                Err(_) => None,
+            })
+            .sum()
+    }
 }
 
 #[cfg(test)]

@@ -49,7 +49,7 @@ impl Server {
     pub fn start(cfg: Config) -> Server {
         let (tx_stop, rx) = mpsc::channel(1);
 
-        log::info!("starting DNS layer");
+        tracing::info!("starting DNS layer");
 
         let txt_challenge = Arc::from(Mutex::from(String::default()));
         let join_handle: JoinHandle<()> = {
@@ -59,7 +59,7 @@ impl Server {
             })
         };
 
-        log::info!("DNS layer started");
+        tracing::info!("DNS layer started");
 
         Server {
             handle: ServerProcess {
@@ -73,7 +73,7 @@ impl Server {
     pub async fn set_dns_challenge(&self, challenge: &str) -> Result<()> {
         let mut guard = self.txt_challenge.lock().await;
         *guard = challenge.to_string();
-        log::info!("set acme challenge: {}", &*guard);
+        tracing::info!("set acme challenge: {}", &*guard);
         Ok(())
     }
 
@@ -101,7 +101,7 @@ impl Server {
                 let guard = challenge.lock().await;
                 let chall = &*guard.clone();
                 if !chall.is_empty() {
-                    log::info!("query is an ACME challenge");
+                    tracing::info!("query is an ACME challenge");
                     // Resolve the challenge without going to the resolver.
                     packet.questions.push(question);
                     let challenge_bytes = chall.as_bytes().to_vec();
@@ -113,7 +113,7 @@ impl Server {
                     });
                     packet.header.authoritative_answer = true;
                 } else {
-                    log::warn!("got ACME challenge but no challenge is set");
+                    tracing::warn!("got ACME challenge but no challenge is set");
                 }
             } else {
                 match resolver::lookup(&question.name, question.qtype, cfg).await {
@@ -122,23 +122,23 @@ impl Server {
                         packet.header.rescode = result.header.rescode;
 
                         for rec in result.answers {
-                            log::debug!("answer: {:?}", rec);
+                            tracing::debug!("answer: {:?}", rec);
                             packet.answers.push(rec);
                         }
                         for rec in result.authorities {
-                            log::debug!("authority: {:?}", rec);
+                            tracing::debug!("authority: {:?}", rec);
                             packet.authorities.push(rec);
                         }
                         for rec in result.resources {
-                            log::debug!("resource: {:?}", rec);
+                            tracing::debug!("resource: {:?}", rec);
                             packet.resources.push(rec);
                         }
                     }
                     Ok(None) => {
-                        log::debug!("ignoring packet");
+                        tracing::debug!("ignoring packet");
                     }
                     Err(e) => {
-                        log::error!("servfail: {}", e);
+                        tracing::error!("servfail: {}", e);
                         packet.header.rescode = ResultCode::ServFail;
                     }
                 }
@@ -148,7 +148,7 @@ impl Server {
         // need make sure that a question is actually present. If not, we return `FORMERR`
         // to indicate that the sender made something wrong.
         else {
-            log::warn!("FORMERR");
+            tracing::warn!("FORMERR");
             packet.header.rescode = ResultCode::FormErr;
         }
 
@@ -159,7 +159,7 @@ impl Server {
         let len = res_buffer.pos();
         let data = res_buffer.get_range(0, len).context(InvalidBuffer)?;
 
-        log::trace!(
+        tracing::trace!(
             "sending raw packet of length {} as response: {:?}",
             len,
             data
@@ -174,7 +174,7 @@ impl Server {
         let socket = match UdpSocket::bind(cfg.listen).await {
             Ok(s) => Arc::from(s),
             Err(e) => {
-                log::error!("cannot bind to socket: {}", e);
+                tracing::error!("cannot bind to socket: {}", e);
                 return;
             }
         };
@@ -202,11 +202,11 @@ impl Server {
                         match packet_result {
                             Ok((_, addr)) => {
                                 if let Err(e) = req_tx.send((addr, req_buffer)) {
-                                    log::warn!("failed to send request: {}", e);
+                                    tracing::warn!("failed to send request: {}", e);
                                 }
                             }
                             Err(e) => {
-                                log::warn!("packet recv error: {}", e);
+                                tracing::warn!("packet recv error: {}", e);
                             }
                         };
                         false
@@ -214,7 +214,7 @@ impl Server {
                 };
 
                 if should_abort {
-                    log::info!("quitting receive task");
+                    tracing::info!("quitting receive task");
                     break;
                 }
             }
@@ -235,7 +235,7 @@ impl Server {
                         match opt_response {
                             Some((socket_addr, resp_data)) => {
                                 if let Err(e) = socket_copy.send_to(resp_data.as_ref(), &socket_addr).await {
-                                    log::warn!("error sending on socket: {}", e);
+                                    tracing::warn!("error sending on socket: {}", e);
                                 }
                                 false
                             }
@@ -248,7 +248,7 @@ impl Server {
                 };
 
                 if should_abort {
-                    log::info!("quitting send task");
+                    tracing::info!("quitting send task");
                     break;
                 }
             }
@@ -274,16 +274,16 @@ impl Server {
                             let cloned_tx = resp_tx.clone();
 
                             let wait_duration = Instant::now().duration_since(wait_start);
-                            log::debug!("started processing packet from {} (waited {}ms)", socket_addr.ip(), wait_duration.as_millis());
+                            tracing::debug!("started processing packet from {} (waited {}ms)", socket_addr.ip(), wait_duration.as_millis());
                             let _permit_handle = concurrent_query_permit; // 0% useful, except to keep the permit alive until the end of the tokio task.
                             match Server::handle_query(&cloned_cfg, &mut req_buffer, cloned_challenge).await {
                                 Ok(data) => {
                                     if let Err(e) = cloned_tx.send((socket_addr, data)) {
-                                        log::error!("failed to send reply to writer thread: {}", e);
+                                        tracing::error!("failed to send reply to writer thread: {}", e);
                                     }
                                 }
                                 Err(e) => {
-                                    log::error!("uncaught error: {}", e);
+                                    tracing::error!("uncaught error: {}", e);
                                 }
                             }
 
@@ -297,32 +297,32 @@ impl Server {
             };
 
             if should_abort {
-                log::info!("quitting main task");
+                tracing::info!("quitting main task");
                 break;
             }
         }
 
         if let Err(e) = send_stop_tx.send(()).await {
-            log::error!("failed to stop writer task: {}", e);
+            tracing::error!("failed to stop writer task: {}", e);
         }
 
         if let Err(e) = recv_stop_tx.send(()).await {
-            log::error!("failed to stop reader task: {}", e);
+            tracing::error!("failed to stop reader task: {}", e);
         }
 
         if let Err(e) = tokio::try_join!(recv_task_handle, send_task_handle) {
-            log::error!("failed to join tasks: {}", e);
+            tracing::error!("failed to join tasks: {}", e);
         }
     }
 
     pub async fn stop(self) -> Result<()> {
-        log::info!("requesting to quit");
+        tracing::info!("requesting to quit");
         self.handle.tx_stop.send(()).await.unwrap();
         self.handle
             .join_handle
             .await
             .map_err(|_e| ServerError::JoinError)?;
-        log::info!("exited");
+        tracing::info!("exited");
         Ok(())
     }
 }

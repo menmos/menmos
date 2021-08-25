@@ -22,6 +22,7 @@ fn parse_range_header(value: HeaderValue) -> Result<(Bound<u64>, Bound<u64>)> {
     Ok(ranges[0])
 }
 
+#[tracing::instrument(skip(node, body))]
 pub async fn write<N: StorageNode>(
     user: UserIdentity,
     node: Arc<N>,

@@ -31,7 +31,7 @@ where
         let warp_server = warp::serve(filters::all(node.clone(), config.clone()));
 
         let join_handle = if let Some(certs) = cert_paths {
-            log::info!("starting https layer");
+            tracing::debug!("starting https layer");
             let h = spawn(
                 warp_server
                     .tls()
@@ -42,10 +42,10 @@ where
                     })
                     .1,
             );
-            log::info!("https layer started");
+            tracing::debug!("https layer started");
             h
         } else {
-            log::info!("starting http layer");
+            tracing::debug!("starting http layer");
             let h = spawn(
                 warp_server
                     .bind_with_graceful_shutdown(([0, 0, 0, 0], config.server.port), async {
@@ -53,9 +53,11 @@ where
                     })
                     .1,
             );
-            log::info!("http layer started");
+            tracing::debug!("http layer started");
             h
         };
+
+        tracing::info!("amphora is up");
 
         Self {
             _node: node,

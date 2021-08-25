@@ -1,6 +1,6 @@
 //! Library for spawning pre-configured processes.
 
 mod daemon;
-mod logging;
+pub mod logging;
 
 pub use daemon::{Daemon, DaemonProcess};

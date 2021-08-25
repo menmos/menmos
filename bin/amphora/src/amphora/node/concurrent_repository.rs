@@ -85,4 +85,8 @@ impl Repository for ConcurrentRepository {
         let _r_guard = mtx.read().await;
         self.repo.fsync(id).await
     }
+
+    async fn available_space(&self) -> Result<Option<u64>> {
+        self.repo.available_space().await
+    }
 }

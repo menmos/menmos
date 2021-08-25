@@ -44,7 +44,9 @@ where
         .or(fsync(node.clone(), config.clone()))
         .or(flush(node, config))
         .or(version())
-        .with(warp::log("storage::api"))
+        .with(warp::log::custom(
+            |info| tracing::info!(status = ?info.status(), elapsed = ?info.elapsed(), "{} {}", info.method(), info.path()),
+        ))
         .recover(apikit::reject::recover)
 }
 

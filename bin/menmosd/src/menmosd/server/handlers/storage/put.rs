@@ -34,6 +34,7 @@ fn get_request_from_move_info(
     })
 }
 
+#[tracing::instrument(skip(context, addr, info))]
 pub async fn put(
     identity: apikit::auth::StorageNodeIdentity,
     context: Context,

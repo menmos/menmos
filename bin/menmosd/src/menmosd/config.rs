@@ -156,11 +156,6 @@ impl Config {
 
         let cfg: Config = loader.try_into()?;
 
-        println!(
-            "Loaded configuration: \n{}",
-            serde_json::to_string_pretty(&cfg)?
-        );
-
         Ok(cfg)
     }
 }

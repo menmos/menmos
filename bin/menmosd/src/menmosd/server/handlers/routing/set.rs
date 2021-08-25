@@ -7,6 +7,7 @@ use warp::reply;
 
 use crate::server::context::Context;
 
+#[tracing::instrument(skip(context))]
 pub async fn set(
     user: UserIdentity,
     context: Context,

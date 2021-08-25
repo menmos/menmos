@@ -6,11 +6,17 @@ use warp::reply;
 
 use crate::server::Context;
 
+#[tracing::instrument(skip(context, req))]
 pub async fn list(
     user: UserIdentity,
     context: Context,
     req: ListMetadataRequest,
 ) -> Result<reply::Response, warp::Rejection> {
+    tracing::trace!(
+        tags = %&req.tags.clone().unwrap_or_default().join(","),
+        keys = %&req.meta_keys.clone().unwrap_or_default().join(","),
+        "list metadata request"
+    );
     let response = context
         .node
         .query()

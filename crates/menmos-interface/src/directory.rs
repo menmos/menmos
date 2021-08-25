@@ -70,6 +70,8 @@ pub struct StorageNodeInfo {
     pub id: String,
     pub redirect_info: RedirectInfo,
     pub port: u16,
+    pub size: u64,
+    pub available_space: u64,
 }
 
 /// Data sent back to the storage node from the directory.

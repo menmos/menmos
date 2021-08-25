@@ -28,4 +28,6 @@ pub trait Repository {
     async fn delete(&self, blob_id: &str) -> Result<()>;
 
     async fn fsync(&self, id: String) -> Result<()>;
+
+    async fn available_space(&self) -> Result<Option<u64>>;
 }

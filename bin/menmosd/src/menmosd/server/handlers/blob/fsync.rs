@@ -10,6 +10,7 @@ use warp::Reply;
 use crate::network::get_storage_node_address;
 use crate::server::Context;
 
+#[tracing::instrument(skip(context, addr))]
 pub async fn fsync(
     _user: UserIdentity,
     context: Context,

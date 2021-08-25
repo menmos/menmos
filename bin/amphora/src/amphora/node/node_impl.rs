@@ -8,12 +8,14 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use chrono::Utc;
 use futures::{stream::empty, Stream};
-use interface::{Blob, BlobInfo, BlobInfoRequest, CertificateInfo, StorageNode, Type};
+use interface::{
+    Blob, BlobInfo, BlobInfoRequest, CertificateInfo, StorageNode, StorageNodeInfo, Type,
+};
 use repository::{Repository, StreamInfo};
 use tokio::sync::Mutex;
 
 use super::{
-    directory_proxy::DirectoryProxy, index::Index, node_info::get_info, rebuild,
+    directory_proxy::DirectoryProxy, index::Index, node_info::get_redirect_info, rebuild,
     transfer::TransferManager, ConcurrentRepository, Config,
 };
 
@@ -70,18 +72,41 @@ impl Storage {
     }
 
     pub async fn update_registration(&self) -> Result<()> {
+        let redirect_info = get_redirect_info(
+            self.config.server.subnet_mask,
+            self.config.node.redirect_ip.clone(),
+        )
+        .await?;
+
+        let current_size = self.index.size();
+        let repo_available_space = self.repo.available_space().await?.unwrap_or(u64::MAX);
+
+        let constraint_available_space = self
+            .config
+            .node
+            .maximum_capacity
+            .map(|max_cap| {
+                if current_size <= max_cap {
+                    max_cap - current_size
+                } else {
+                    0
+                }
+            })
+            .unwrap_or(u64::MAX);
+
+        let real_available_space = constraint_available_space.min(repo_available_space);
+
+        let node_info = StorageNodeInfo {
+            id: self.config.node.name.clone(),
+            redirect_info,
+            port: self.config.server.port,
+            size: self.index.size(),
+            available_space: real_available_space,
+        };
+
         let response = self
             .directory
-            .register_storage_node(
-                get_info(
-                    self.config.server.port,
-                    self.config.server.subnet_mask,
-                    self.config.node.name.clone(),
-                    self.config.node.redirect_ip.clone(),
-                )
-                .await?,
-                &self.config.server.certificate_storage_path,
-            )
+            .register_storage_node(node_info, &self.config.server.certificate_storage_path)
             .await?;
 
         // Update the certificate info.
@@ -113,9 +138,9 @@ impl Storage {
             // TODO: Hold a join handle to this and refuse stopping the storage node until it completes.
             tokio::task::spawn(async move {
                 if let Err(e) = rebuild::execute(params, proxy_cloned, db_cloned).await {
-                    log::error!("rebuild failed: {}", e);
+                    tracing::error!("rebuild failed: {}", e);
                 } else {
-                    log::info!("rebuild complete");
+                    tracing::info!("rebuild complete");
                 }
             });
         }

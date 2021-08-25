@@ -4,6 +4,7 @@ use apikit::{auth::UserIdentity, reject::InternalServerError};
 
 use interface::{BlobInfoRequest, BlobMetaRequest, StorageNode};
 
+#[tracing::instrument(skip(node, meta_request))]
 pub async fn update_meta<N: StorageNode>(
     user: UserIdentity,
     node: Arc<N>,

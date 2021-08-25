@@ -53,7 +53,7 @@ impl StorageMappingStore for SledStorageMappingStore {
 
     fn clear(&self) -> Result<()> {
         self.tree.clear()?;
-        log::debug!("storage index destroyed");
+        tracing::debug!("storage index destroyed");
         Ok(())
     }
 }

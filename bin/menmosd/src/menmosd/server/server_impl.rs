@@ -39,12 +39,12 @@ impl Server {
                 match use_tls(node_cloned, config, https_cfg, stop_rx).await {
                     Ok(_) => {}
                     Err(e) => {
-                        log::error!("async error: {}", e)
+                        tracing::error!("async error: {}", e)
                     }
                 }
             }),
             ServerSetting::Http(http_cfg) => {
-                log::info!("starting http layer");
+                tracing::debug!("starting http layer");
                 let server_context = Context {
                     node: node.clone(),
                     config,
@@ -56,7 +56,8 @@ impl Server {
                         stop_rx.recv().await;
                     });
 
-                log::info!("http layer started");
+                tracing::debug!("http layer started");
+                tracing::info!("menmosd is up");
                 spawn(srv)
             }
         };
@@ -69,11 +70,11 @@ impl Server {
     }
 
     pub async fn stop(self) -> Result<()> {
-        log::info!("requesting to quit");
+        tracing::info!("requesting to quit");
         self.stop_tx.send(()).await?;
         self.handle.await?;
         self.node.flush().await?;
-        log::info!("exited");
+        tracing::info!("exited");
 
         Ok(())
     }

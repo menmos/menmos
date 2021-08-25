@@ -40,27 +40,28 @@ impl FileCache {
         self.file_path_cache.get(blob_id.as_ref()).await
     }
 
-    pub async fn invalidate<S: AsRef<str>>(&self, blob_id: S) -> Result<()> {
-        let file_path = self.root_path.join(blob_id.as_ref());
+    pub async fn invalidate(&self, blob_id: &str) -> Result<()> {
+        let file_path = self.root_path.join(blob_id);
         if file_path.exists() {
             fs::remove_file(&file_path).await?;
+            tracing::trace!(path = ?file_path, "file existed and was removed");
         }
-        self.file_path_cache.invalidate(blob_id.as_ref()).await;
+        self.file_path_cache.invalidate(blob_id).await;
 
         Ok(())
     }
 
-    async fn download_blob<S: AsRef<str>>(&self, blob_id: S) -> Result<PathBuf> {
+    async fn download_blob(&self, blob_id: &str) -> Result<PathBuf> {
         let get_request = GetObjectRequest {
             bucket: self.bucket.clone(),
-            key: blob_id.as_ref().to_string(),
+            key: blob_id.to_string(),
             ..Default::default()
         };
 
         let result = self.client.get_object(get_request).await?;
         let mut bytestream = result.body.ok_or_else(|| anyhow!("missing stream"))?;
 
-        let file_path = self.root_path.join(blob_id.as_ref());
+        let file_path = self.root_path.join(blob_id);
 
         let mut f = fs::File::create(&file_path).await?;
 
@@ -73,28 +74,29 @@ impl FileCache {
                 }
             }
         }
-        log::info!(
-            "pulled blob '{}' into the local filecache",
-            blob_id.as_ref()
-        );
+        tracing::debug!("pull successful",);
         Ok(file_path)
     }
 
-    pub async fn get<S: AsRef<str>>(&self, blob_id: S) -> Result<PathBuf> {
+    pub async fn get(&self, blob_id: &str) -> Result<PathBuf> {
         if let Some(cache_hit) = self.contains(&blob_id).await {
+            tracing::trace!("cache hit");
             return Ok(cache_hit);
         }
 
-        let blob_path = self.download_blob(&blob_id).await?;
+        tracing::trace!("cache miss");
+
+        let blob_path = self.download_blob(blob_id.as_ref()).await?;
 
         let (was_inserted, eviction_victim_maybe) = self
             .file_path_cache
-            .insert(blob_id.as_ref().to_string(), blob_path.clone())
+            .insert(blob_id.to_string(), blob_path.clone())
             .await;
 
         if let Some(victim) = eviction_victim_maybe {
             // If a key was evicted from the cache, delete it from disk.
-            fs::remove_file(&victim).await?
+            fs::remove_file(&victim).await?;
+            tracing::trace!(path=?victim, "removed victim from disk");
         }
 
         if !was_inserted {

@@ -141,10 +141,10 @@ impl TransferWorker {
             let mut try_count = 0;
             loop {
                 if let Err(e) = self.transfer_single(&request).await {
-                    log::warn!(
-                        "transferring blob '{}' to '{}' failed: {}",
-                        &request.blob_id,
-                        &request.destination_url,
+                    tracing::warn!(
+                        blob_id= ?request.blob_id,
+                        destination= ?request.destination_url,
+                        "transfer failed: {}",
                         e
                     );
                 } else {
@@ -153,7 +153,7 @@ impl TransferWorker {
 
                 try_count += 1;
                 if try_count >= RETRY_COUNT {
-                    log::error!(
+                    tracing::error!(
                         "exceeded retries while attempting to transfer blob '{}'",
                         request.blob_id
                     );

@@ -76,6 +76,8 @@ pub struct NodeSetting {
 
     pub checkin_frequency_seconds: u64,
     pub move_request_buffer_size: usize,
+
+    pub maximum_capacity: Option<u64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -170,11 +172,6 @@ impl Config {
         )?;
 
         let cfg: Config = loader.try_into()?;
-
-        println!(
-            "Loaded configuration: \n{}",
-            serde_json::to_string_pretty(&cfg)?
-        );
 
         Ok(cfg)
     }

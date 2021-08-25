@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 
 use protocol::directory::storage::MoveRequest;
 use tokio::sync::mpsc::{self, error::TrySendError};
@@ -25,7 +25,7 @@ impl TransferManager {
         let handle = tokio::task::spawn(async move {
             if let Err(e) = TransferWorker::start(rx, repo, index, config.node.encryption_key).await
             {
-                log::error!("transfer manager exited unexpectedly: {}", e);
+                tracing::error!("transfer manager exited unexpectedly: {}", e);
             }
         });
 
@@ -39,7 +39,8 @@ impl TransferManager {
     pub async fn move_blob(&self, move_request: MoveRequest) -> Result<()> {
         if let Some(transfer_guard) = self.pending_transfers.start(&move_request.blob_id)? {
             if let Err(TrySendError::Closed(_)) = self.tx.try_send((move_request, transfer_guard)) {
-                Err(anyhow!("sent sync but sync channel is closed"))
+                tracing::error!("failed to send transfer request");
+                bail!("sent sync but sync channel is closed");
             } else {
                 Ok(())
             }

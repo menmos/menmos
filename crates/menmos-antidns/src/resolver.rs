@@ -13,7 +13,7 @@ pub enum ResolveError {
 type Result<T> = std::result::Result<T, ResolveError>;
 
 fn in_house_resolution(qname: &str, ip: IpAddr) -> Result<DnsPacket> {
-    log::info!("resolving {} in-house to {}", qname, ip);
+    tracing::info!("resolving {} in-house to {}", qname, ip);
 
     match ip {
         IpAddr::V4(ip) => {
@@ -36,7 +36,7 @@ fn in_house_resolution(qname: &str, ip: IpAddr) -> Result<DnsPacket> {
 }
 
 pub async fn lookup(qname: &str, qtype: QueryType, cfg: &Config) -> Result<Option<DnsPacket>> {
-    log::debug!("lookup [{:?}] on {}", qtype, qname);
+    tracing::debug!("lookup [{:?}] on {}", qtype, qname);
     // Attempt to forward A queries that have a serialized IP in their domain to the IP itself.
     if qtype == QueryType::A {
         if let Ok(ip) = extract::ip_address_from_url(qname) {
@@ -51,11 +51,11 @@ pub async fn lookup(qname: &str, qtype: QueryType, cfg: &Config) -> Result<Optio
         // This means that any public CA has the authority to emit certificates for your domain.
         // If you really _need_ CAA, you should probably be using something more serious than this
         // embedded DNS server.
-        log::debug!("skipping resolution of a CAA query");
+        tracing::debug!("skipping resolution of a CAA query");
         return Ok(Some(DnsPacket::new()));
     }
     if qtype == QueryType::AAAA && qname.ends_with(&cfg.root_domain) {
-        log::debug!("returning blank AAAA response");
+        tracing::debug!("returning blank AAAA response");
         return Ok(Some(DnsPacket::new()));
     }
 

@@ -104,18 +104,35 @@ impl Expression {
     /// let evaluation: bool = expr.evaluate(&resolver)?;
     /// # Ok::<(), std::io::Error>(())
     /// ```
+    #[tracing::instrument(level = "trace", skip(self, resolver))]
     pub fn evaluate<R, V, E>(&self, resolver: &R) -> Result<V, E>
     where
         V: ops::BitAndAssign + ops::BitOrAssign + ops::Not<Output = V> + Span + std::fmt::Display,
         R: Resolver<V, Error = E>,
     {
         match self {
-            Expression::Empty => resolver.resolve_empty(),
-            Expression::Tag { tag } => resolver.resolve_tag(tag),
-            Expression::KeyValue { key, value } => resolver.resolve_key_value(key, value),
-            Expression::HasKey { key } => resolver.resolve_key(key),
-            Expression::Parent { parent } => resolver.resolve_children(parent),
+            Expression::Empty => {
+                tracing::trace!("resolve empty");
+                resolver.resolve_empty()
+            }
+            Expression::Tag { tag } => {
+                tracing::trace!(tag = ?tag, "resolve tag");
+                resolver.resolve_tag(tag)
+            }
+            Expression::KeyValue { key, value } => {
+                tracing::trace!(key=?key, value=?value, "resolve key-value");
+                resolver.resolve_key_value(key, value)
+            }
+            Expression::HasKey { key } => {
+                tracing::trace!(key=?key, "resolve has-key");
+                resolver.resolve_key(key)
+            }
+            Expression::Parent { parent } => {
+                tracing::trace!(parent=?parent, "resolve parent");
+                resolver.resolve_children(parent)
+            }
             Expression::Not { not } => {
+                tracing::trace!("resolve NOT");
                 let mut all_bv = resolver.resolve_empty()?;
                 all_bv &= not.evaluate(resolver)?;
                 let mut negated = !all_bv;
@@ -123,6 +140,7 @@ impl Expression {
                 Ok(negated)
             }
             Expression::And { and } => {
+                tracing::trace!("resolve AND");
                 let (lhs, rhs) = and;
                 let lhs_bv = lhs.evaluate(resolver)?;
                 let rhs_bv = rhs.evaluate(resolver)?;
@@ -136,6 +154,7 @@ impl Expression {
                 Ok(biggest)
             }
             Expression::Or { or } => {
+                tracing::trace!("resolve OR");
                 let (lhs, rhs) = or;
                 let lhs_bv = lhs.evaluate(resolver)?;
                 let rhs_bv = rhs.evaluate(resolver)?;
