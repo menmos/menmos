@@ -65,7 +65,7 @@ async fn fetch_urls(
                 new_hits.push(hit.clone());
             }
             Err(e) => {
-                log::warn!("error getting blob uri for {}: {}", hit.id, e);
+                tracing::warn!(blob_id = ?hit.id, "error getting blob uri: {}", e);
             }
         }
     }
@@ -76,6 +76,7 @@ async fn fetch_urls(
     Ok(())
 }
 
+#[tracing::instrument(skip(context, addr, query_request))]
 pub async fn query(
     user: UserIdentity,
     context: Context,
@@ -85,6 +86,7 @@ pub async fn query(
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
 
     let query = Query::try_from(query_request).map_err(|_| BadRequest)?;
+    tracing::debug!(query = ?query.expression, "query request");
 
     let mut query_response = context
         .node

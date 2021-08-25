@@ -231,7 +231,7 @@ impl Client {
             {
                 Ok(r) => return Ok(r),
                 Err(e) => {
-                    log::debug!(
+                    tracing::debug!(
                         "request failed: {} - retrying in {}ms",
                         e,
                         self.retry_interval.as_millis()
@@ -296,7 +296,7 @@ impl Client {
             .ok_or(ClientError::MissingRedirect)?;
 
         let new_url = String::from_utf8_lossy(new_location.as_bytes());
-        log::debug!("redirect to {}", new_url);
+        tracing::debug!("redirect to {}", new_url);
         Ok(new_url.to_string())
     }
 

@@ -14,6 +14,7 @@ use warp::{reply, Reply};
 use crate::network::get_storage_node_address;
 use crate::server::Context;
 
+#[tracing::instrument(skip(context, addr, _body))]
 pub async fn write(
     _user: UserIdentity,
     context: Context,

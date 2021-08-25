@@ -28,7 +28,7 @@ impl NodeRouter {
         if let Some(node_id) = self.round_robin.pop_back().await {
             self.storage_nodes.remove(&node_id).await;
         } else {
-            log::warn!("called pruned_last_node with an empty node list");
+            tracing::warn!("called pruned_last_node with an empty node list");
         }
     }
 
@@ -73,6 +73,7 @@ impl NodeRouter {
             .collect()
     }
 
+    #[tracing::instrument(skip(self, meta_request, routing_config))]
     async fn route_routing_key(
         &self,
         meta_request: &BlobMetaRequest,
@@ -95,10 +96,12 @@ impl NodeRouter {
                     anyhow!("routing configuration routes to node '{}' but node is unreachable")
                 })
         } else {
+            tracing::trace!("found no storage node from routing config");
             Ok(None)
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     async fn route_round_robin(&self) -> Result<StorageNodeInfo> {
         loop {
             let node_id = self
@@ -108,6 +111,7 @@ impl NodeRouter {
                 .ok_or_else(|| anyhow!("no storage node defined"))?;
 
             if let Some(node) = self.get_node_if_fresh(&node_id).await {
+                tracing::trace!("routed to {}", &node.id);
                 return Ok(node);
             } else {
                 self.prune_last_node().await;
@@ -115,6 +119,7 @@ impl NodeRouter {
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(self, meta_request, routing_config))]
     pub async fn route_blob(
         &self,
         _blob_id: &str,

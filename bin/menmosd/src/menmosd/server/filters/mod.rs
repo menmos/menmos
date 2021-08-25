@@ -25,7 +25,9 @@ pub fn all(
         .or(auth::all(context.clone()))
         .or(routing::all(context))
         .recover(apikit::reject::recover)
-        .with(warp::log("directory::api"))
+        .with(warp::log::custom(
+            |info| tracing::info!(status = ?info.status(), elapsed = ?info.elapsed(), "{} {}", info.method(), info.path()),
+        ))
 }
 
 #[cfg(debug_assertions)]
@@ -45,6 +47,8 @@ pub fn all(
                 .allow_headers(vec!["Content-Type", "x-blob-meta", "Authorization"])
                 .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "OPTIONS"]),
         )
-        .with(warp::log("directory::api"))
+        .with(warp::log::custom(
+            |info| tracing::info!(status = ?info.status(), elapsed = ?info.elapsed(), "{} {}", info.method(), info.path()),
+        ))
         .recover(apikit::reject::recover)
 }

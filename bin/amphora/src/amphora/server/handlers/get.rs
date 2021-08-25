@@ -56,6 +56,7 @@ fn parse_range_header(value: HeaderValue) -> Result<(Bound<u64>, Bound<u64>)> {
     Ok(ranges[0])
 }
 
+#[tracing::instrument(level = "info", skip(node, range_header))]
 pub async fn get<N: StorageNode>(
     user: UserIdentity,
     node: Arc<N>,

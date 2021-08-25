@@ -18,10 +18,10 @@ async-trait = "0.1.42"
 bytes = "1"
 futures = "0.3"
 lfan = {version = "^0.0.8", features = ["async"]}
-log = "0.4"
 menmos-betterstreams = {version = "^0.0.8"}
 menmos-interface = {version = "^0.0.8"}
 rusoto_core = "0.46"
 rusoto_s3 = "0.46"
 sysinfo = "0.20"
 tokio = {version = "1.2", features = ["full"]}
+tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_debug"]}

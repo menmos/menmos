@@ -5,6 +5,7 @@ use warp::reply;
 
 use crate::server::Context;
 
+#[tracing::instrument(skip(context))]
 pub async fn rebuild_complete(
     identity: StorageNodeIdentity,
     context: Context,

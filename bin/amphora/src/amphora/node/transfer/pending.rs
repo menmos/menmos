@@ -13,7 +13,7 @@ impl Drop for TransferGuard {
         if let Ok(mut guard) = self.pending_transfers.lock() {
             guard.remove(&self.blob_id);
         } else {
-            log::error!("error during drop: poisoned mutex");
+            tracing::error!("error during drop: poisoned mutex");
         }
     }
 }

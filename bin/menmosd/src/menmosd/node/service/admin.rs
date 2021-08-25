@@ -52,9 +52,9 @@ impl interface::NodeAdminController for NodeAdminService {
 
     async fn start_rebuild(&self) -> Result<()> {
         let storage_nodes = self.router.list_nodes().await;
-        log::info!("starting rebuild for {} nodes", storage_nodes.len());
+        tracing::info!(node_count = storage_nodes.len(), "starting rebuild");
 
-        log::debug!("nuking the whole index");
+        tracing::debug!("nuking the whole index");
         self.indexer_service.clear().await?;
 
         let mut rebuild_queue_guard = self.rebuild_queue.lock().map_err(|e| anyhow!("{}", e))?;
@@ -66,7 +66,7 @@ impl interface::NodeAdminController for NodeAdminService {
     async fn rebuild_complete(&self, storage_node_id: &str) -> Result<()> {
         let mut rebuild_queue_guard = self.rebuild_queue.lock().map_err(|e| anyhow!("{}", e))?;
         rebuild_queue_guard.retain(|item| item.id != storage_node_id);
-        log::info!("finished rebuild for node id={}", storage_node_id);
+        tracing::info!("finished rebuild for node id={}", storage_node_id);
         Ok(())
     }
 

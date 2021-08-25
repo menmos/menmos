@@ -7,6 +7,7 @@ use warp::reply;
 
 use crate::server::Context;
 
+#[tracing::instrument(skip(context, blob_info))]
 pub async fn create(
     identity: StorageNodeIdentity,
     context: Context,

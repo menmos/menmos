@@ -55,10 +55,10 @@ impl SledDocumentIdStore {
 #[async_trait]
 impl Flush for SledDocumentIdStore {
     async fn flush(&self) -> Result<()> {
-        log::debug!("beginning flush");
+        tracing::debug!("beginning flush");
         self.doc_map.flush_async().await?;
         self.doc_reverse_map.flush_async().await?;
-        log::debug!("flush complete");
+        tracing::debug!("flush complete");
         Ok(())
     }
 }
@@ -141,7 +141,7 @@ impl DocumentIdStore for SledDocumentIdStore {
         self.doc_map.clear()?;
         self.doc_reverse_map.clear()?;
         self.recycling_store.clear()?;
-        log::debug!("document index destroyed");
+        tracing::debug!("document index destroyed");
         Ok(())
     }
 }

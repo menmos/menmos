@@ -72,10 +72,10 @@ impl RebootableServer {
                 loop {
                     match node_cloned.update_registration().await {
                         Ok(_) => {
-                            log::info!("directory registration complete")
+                            tracing::debug!("directory registration complete")
                         }
                         Err(e) => {
-                            log::error!("failed to update registration: {}", e)
+                            tracing::error!("failed to update registration: {}", e)
                         }
                     }
 
@@ -126,16 +126,23 @@ impl RebootableServer {
                 false
             }
             _ = stop_signal => {
-                log::info!("received stop signal");
+                tracing::info!("received stop signal");
                 true
             }
         };
 
+        tracing::debug!("waiting for storage server to stop");
         s.stop().await?;
-        storage_node.stop_transfers().await?;
+        tracing::debug!("storage server stopped");
 
+        tracing::debug!("waiting for transfers to stop");
+        storage_node.stop_transfers().await?;
+        tracing::debug!("transfers stopped");
+
+        tracing::debug!("waiting for registration thread to stop");
         registration_stop.send(()).await?;
         registration_handle.await?;
+        tracing::debug!("registration thread stopped");
 
         Ok(should_terminate)
     }
@@ -149,7 +156,7 @@ impl RebootableServer {
                     }
                 }
                 Err(e) => {
-                    log::error!("error with the main server loop: {}", e);
+                    tracing::error!("error with the main server loop: {}", e);
                     return;
                 }
             }

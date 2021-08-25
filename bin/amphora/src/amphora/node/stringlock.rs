@@ -48,7 +48,7 @@ impl StringLock {
     ) {
         if let Some(trigger) = self.cleanup_trigger {
             if guard.len() > trigger {
-                log::debug!(
+                tracing::debug!(
                     "map size is over threshold - file lock cleanup triggered automatically"
                 );
                 self.cleanup_internal(guard);
@@ -77,7 +77,7 @@ impl StringLock {
         guard.retain(|_key, entry| now.duration_since(entry.last_accessed) < self.lifetime);
         let end_time = Instant::now();
 
-        log::debug!(
+        tracing::debug!(
             "file lock cleanup took {}ms",
             end_time.duration_since(now).as_millis()
         );

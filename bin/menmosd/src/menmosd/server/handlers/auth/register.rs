@@ -12,7 +12,7 @@ pub async fn register(
     context: Context,
     request: RegisterRequest,
 ) -> Result<reply::Response, warp::Rejection> {
-    log::debug!("identity: {:?}", identity);
+    tracing::debug!("identity: {:?}", identity);
     if !identity.admin {
         return Err(Forbidden.into());
     }

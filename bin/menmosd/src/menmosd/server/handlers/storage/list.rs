@@ -6,6 +6,7 @@ use warp::reply;
 
 use crate::server::context::Context;
 
+#[tracing::instrument(skip(context))]
 pub async fn list(
     _user: UserIdentity,
     context: Context,
