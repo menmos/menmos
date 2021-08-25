@@ -5,6 +5,7 @@ use std::{
 
 use anyhow::{bail, ensure, Result};
 
+// TODO: Allow override via env var.
 const WEB_REPO_PATH: &str = "https://github.com/menmos/menmos-web.git";
 
 const LOCAL_PATH: &str = "menmos-web";
