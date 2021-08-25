@@ -1004,15 +1004,9 @@ checksum = "acd94fdbe1d4ff688b67b04eee2e17bd50995534a61539e45adfefb45e5e5503"
 
 [[package]]
 name = "httpdate"
-<<<<<<< HEAD
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6456b8a6c8f33fee7d958fcd1b60d55b11940a79e63ae87013e6d22e26034440"
-=======
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "494b4d60369511e7dea41cf646832512a94e542f68bb9c49e54518e0f468eb47"
->>>>>>> 4112ee7 (Add tracing everywhere else)
 
 [[package]]
 name = "hyper"
@@ -1322,11 +1316,7 @@ name = "menmos-antidns"
 version = "0.0.8"
 dependencies = [
  "anyhow",
-<<<<<<< HEAD
  "nom 6.2.1",
-=======
- "nom 6.1.2",
->>>>>>> 4112ee7 (Add tracing everywhere else)
  "portpicker",
  "serde 1.0.129",
  "snafu",
@@ -2569,11 +2559,7 @@ dependencies = [
  "form_urlencoded",
  "itoa",
  "ryu",
-<<<<<<< HEAD
  "serde 1.0.129",
-=======
- "serde 1.0.123",
->>>>>>> 4112ee7 (Add tracing everywhere else)
 ]
 
 [[package]]
@@ -3315,15 +3301,9 @@ checksum = "9337591893a19b88d8d87f2cec1e73fad5cdfd10e5a6f349f498ad6ea2ffb1e3"
 
 [[package]]
 name = "unicode-xid"
-<<<<<<< HEAD
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
-=======
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
->>>>>>> 4112ee7 (Add tracing everywhere else)
 
 [[package]]
 name = "untrusted"

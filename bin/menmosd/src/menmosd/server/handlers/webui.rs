@@ -36,8 +36,8 @@ pub fn get_response(file_name: &str) -> warp::http::Response<Body> {
     }
 }
 
-#[cfg(not(feature =  "webui"))]
-pub fn get_response(file_name: &str) -> warp::http::Response<Body> {
+#[cfg(not(feature = "webui"))]
+pub fn get_response(_file_name: &str) -> warp::http::Response<Body> {
     tracing::warn!("menmos-web is not enabled");
     serve(
         "<html><body><h1>Not Found</h1></body></html>",
