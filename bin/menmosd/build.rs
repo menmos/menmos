@@ -27,7 +27,7 @@ impl<S: AsRef<str>> AsRef<str> for Target<S> {
 }
 
 fn run(args: &[&str]) -> Result<()> {
-    ensure!(args.len() > 0);
+    ensure!(args.is_empty());
     let mut handle = Command::new(args[0]).args(&args[1..]).spawn()?;
     let result = handle.wait()?;
     ensure!(result.success(), "command failed: {}", result.to_string());
