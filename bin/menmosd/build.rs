@@ -5,8 +5,6 @@ use std::{
 
 use anyhow::{bail, ensure, Result};
 
-// TODO: Allow override by env.
-// TODO: Checkout at same version tag as menmosd.
 const WEB_REPO_PATH: &str = "https://github.com/menmos/menmos-web.git";
 
 const LOCAL_PATH: &str = "menmos-web";
@@ -65,9 +63,6 @@ fn npm_build() -> Result<()> {
 
 fn parse_env_var(val: &str) -> Result<Target<String>> {
     match val {
-        "latest" => {
-            bail!("TODO: implement tag detection");
-        }
         s if s.starts_with("tag=") => Ok(Target::Tag(
             s.strip_prefix("tag=").unwrap_or_default().to_string(),
         )),
