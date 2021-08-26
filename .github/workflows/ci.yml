@@ -38,7 +38,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features
 
       - name: Test
         uses: actions-rs/cargo@v1
@@ -71,6 +70,11 @@ jobs:
         shell: pwsh
 
       - uses: Swatinem/rust-cache@v1
+
+      - name: Increase file handle limit
+        if: matrix.os == 'macos-latest'
+        run: |
+          ulimit -n 10240
 
       - name: Test
         uses: actions-rs/cargo@v1

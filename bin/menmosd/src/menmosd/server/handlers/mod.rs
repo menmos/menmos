@@ -5,3 +5,5 @@ pub mod blobmeta;
 pub mod query;
 pub mod routing;
 pub mod storage;
+
+pub mod webui;
