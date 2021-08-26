@@ -60,7 +60,7 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install OpenSSL
+      - name: [windows] Install OpenSSL
         if: matrix.os == 'windows-latest'
         run: |
           git clone https://github.com/microsoft/vcpkg
@@ -70,6 +70,11 @@ jobs:
         shell: pwsh
 
       - uses: Swatinem/rust-cache@v1
+
+      - name: [macos] Increase file handle limit
+        if: matrix.os == "macos-latest"
+        run: |
+          ulimit -n 10240
 
       - name: Test
         uses: actions-rs/cargo@v1
