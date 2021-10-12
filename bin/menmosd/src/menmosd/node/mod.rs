@@ -37,35 +37,34 @@ pub fn make_node(c: &Config) -> Result<Directory> {
     let user_idx = Box::from(SledUserStore::new(&db)?);
 
     // Init the services.
-    let users_service: Arc<Box<dyn interface::UserManagement + Send + Sync>> =
-        Arc::new(Box::from(UserService::new(user_idx)));
-    let query_service: Arc<Box<dyn interface::QueryExecutor + Send + Sync>> =
-        Arc::new(Box::from(QueryService::new(
+    let users_service: Arc<dyn interface::UserManagement + Send + Sync> =
+        Arc::new(UserService::new(user_idx));
+    let query_service: Arc<dyn interface::QueryExecutor + Send + Sync> =
+        Arc::new(QueryService::new(
             documents_idx.clone(),
             metadata_idx.clone(),
             storage_idx.clone(),
-        )));
-    let routing_service: Arc<Box<dyn interface::RoutingConfigManager + Send + Sync>> =
-        Arc::new(Box::from(RoutingService::new(
+        ));
+    let routing_service: Arc<dyn interface::RoutingConfigManager + Send + Sync> =
+        Arc::new(RoutingService::new(
             routing_idx,
             documents_idx.clone(),
             metadata_idx.clone(),
             router.clone(),
             users_service.clone(),
             query_service.clone(),
-        )));
-    let indexer_service: Arc<Box<dyn interface::BlobIndexer + Send + Sync>> =
-        Arc::new(Box::from(IndexerService::new(
+        ));
+    let indexer_service: Arc<dyn interface::BlobIndexer + Send + Sync> =
+        Arc::new(IndexerService::new(
             documents_idx,
             metadata_idx,
             storage_idx,
             routing_service.clone(),
             router.clone(),
-        )));
+        ));
 
-    let admin_service: Arc<Box<dyn interface::NodeAdminController + Send + Sync>> = Arc::new(
-        Box::from(NodeAdminService::new(indexer_service.clone(), router)),
-    );
+    let admin_service: Arc<dyn interface::NodeAdminController + Send + Sync> =
+        Arc::new(NodeAdminService::new(indexer_service.clone(), router));
 
     let node = Directory::new(
         indexer_service,

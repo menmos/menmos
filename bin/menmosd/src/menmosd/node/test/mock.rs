@@ -465,41 +465,36 @@ pub fn node() -> Directory {
 
     let routing_store: DynRoutingStore = Box::from(MockRoutingStore::default());
 
-    let query_svc: Arc<Box<dyn QueryExecutor + Send + Sync>> =
-        Arc::new(Box::from(QueryService::new(
-            document_id_store.clone(),
-            meta_store.clone(),
-            storage_store.clone(),
-        )));
-
-    let users_svc: Arc<Box<dyn UserManagement + Send + Sync>> = Arc::new(Box::from(
-        UserService::new(Box::from(MockUserStore::default())),
+    let query_svc: Arc<dyn QueryExecutor + Send + Sync> = Arc::new(QueryService::new(
+        document_id_store.clone(),
+        meta_store.clone(),
+        storage_store.clone(),
     ));
+
+    let users_svc: Arc<dyn UserManagement + Send + Sync> =
+        Arc::new(UserService::new(Box::from(MockUserStore::default())));
 
     let node_router = Arc::from(NodeRouter::new());
 
-    let routing_svc: Arc<Box<dyn RoutingConfigManager + Send + Sync>> =
-        Arc::new(Box::from(RoutingService::new(
-            routing_store,
-            document_id_store.clone(),
-            meta_store.clone(),
-            node_router.clone(),
-            users_svc.clone(),
-            query_svc.clone(),
-        )));
-
-    let index_svc: Arc<Box<dyn BlobIndexer + Send + Sync>> =
-        Arc::new(Box::from(IndexerService::new(
-            document_id_store,
-            meta_store,
-            storage_store,
-            routing_svc.clone(),
-            node_router.clone(),
-        )));
-
-    let admin_svc: Arc<Box<dyn NodeAdminController + Send + Sync>> = Arc::new(Box::from(
-        NodeAdminService::new(index_svc.clone(), node_router),
+    let routing_svc: Arc<dyn RoutingConfigManager + Send + Sync> = Arc::new(RoutingService::new(
+        routing_store,
+        document_id_store.clone(),
+        meta_store.clone(),
+        node_router.clone(),
+        users_svc.clone(),
+        query_svc.clone(),
     ));
+
+    let index_svc: Arc<dyn BlobIndexer + Send + Sync> = Arc::new(IndexerService::new(
+        document_id_store,
+        meta_store,
+        storage_store,
+        routing_svc.clone(),
+        node_router.clone(),
+    ));
+
+    let admin_svc: Arc<dyn NodeAdminController + Send + Sync> =
+        Arc::new(NodeAdminService::new(index_svc.clone(), node_router));
 
     Directory::new(index_svc, routing_svc, admin_svc, users_svc, query_svc)
 }

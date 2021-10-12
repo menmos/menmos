@@ -11,13 +11,13 @@ use crate::node::routing::NodeRouter;
 pub struct NodeAdminService {
     rebuild_queue: Mutex<Vec<StorageNodeInfo>>,
 
-    indexer_service: Arc<Box<dyn interface::BlobIndexer + Send + Sync>>,
+    indexer_service: Arc<dyn interface::BlobIndexer + Send + Sync>,
     router: Arc<NodeRouter>,
 }
 
 impl NodeAdminService {
     pub fn new(
-        indexer_service: Arc<Box<dyn interface::BlobIndexer + Send + Sync>>,
+        indexer_service: Arc<dyn interface::BlobIndexer + Send + Sync>,
         router: Arc<NodeRouter>,
     ) -> Self {
         Self {

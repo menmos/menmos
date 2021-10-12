@@ -18,6 +18,7 @@ path = "src/menmosd/lib.rs"
 [features]
 default = []
 webui = ["include_dir"]
+menmos_debug = []
 
 [dev-dependencies]
 amphora = {path = "../amphora"}

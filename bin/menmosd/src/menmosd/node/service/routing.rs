@@ -21,8 +21,8 @@ pub struct RoutingService {
     document_store: Arc<DynDocumentIDStore>,
     metadata_store: Arc<DynMetadataStore>,
     router: Arc<NodeRouter>,
-    users_service: Arc<Box<dyn UserManagement + Send + Sync>>,
-    query_service: Arc<Box<dyn QueryExecutor + Send + Sync>>,
+    users_service: Arc<dyn UserManagement + Send + Sync>,
+    query_service: Arc<dyn QueryExecutor + Send + Sync>,
 }
 
 impl RoutingService {
@@ -31,8 +31,8 @@ impl RoutingService {
         document_store: Arc<DynDocumentIDStore>,
         metadata_store: Arc<DynMetadataStore>,
         router: Arc<NodeRouter>,
-        users_service: Arc<Box<dyn UserManagement + Send + Sync>>,
-        query_service: Arc<Box<dyn QueryExecutor + Send + Sync>>,
+        users_service: Arc<dyn UserManagement + Send + Sync>,
+        query_service: Arc<dyn QueryExecutor + Send + Sync>,
     ) -> Self {
         Self {
             store,

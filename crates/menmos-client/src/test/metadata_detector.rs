@@ -12,7 +12,7 @@ fn detect_file_mime_type() {
 
     meta_detector.populate(path, &mut meta).unwrap();
 
-    assert_eq!(meta.metadata.keys().count(), 1);
+    assert_eq!(meta.metadata.keys().count(), 2);
 }
 
 #[test]
@@ -25,5 +25,5 @@ fn detect_no_mime_type() {
 
     meta_detector.populate(path, &mut meta).unwrap();
 
-    assert_eq!(meta.metadata.keys().count(), 0);
+    assert_eq!(meta.metadata.keys().count(), 1);
 }

@@ -12,7 +12,7 @@ use crate::config::{Config, ServerSetting};
 use super::{context::Context, filters, ssl::use_tls};
 
 pub struct Server {
-    node: Arc<Box<dyn DirectoryNode + Send + Sync>>,
+    node: Arc<dyn DirectoryNode + Send + Sync>,
     handle: JoinHandle<()>,
     stop_tx: mpsc::Sender<()>,
 }
@@ -22,7 +22,7 @@ impl Server {
         cfg: Config,
         node: N,
     ) -> Result<Server> {
-        let node: Arc<Box<dyn DirectoryNode + Send + Sync>> = Arc::new(Box::new(node));
+        let node: Arc<dyn DirectoryNode + Send + Sync> = Arc::new(node);
 
         // Create the admin user.
         node.user()
