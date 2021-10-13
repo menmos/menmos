@@ -34,6 +34,10 @@ impl Default for RedirectIp {
     }
 }
 
+fn default_region() -> String {
+    String::from("us-east-1")
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "type")]
 pub enum BlobStorageImpl {
@@ -42,6 +46,9 @@ pub enum BlobStorageImpl {
     },
     S3 {
         bucket: String,
+        #[serde(default = "default_region")]
+        region: String,
+
         cache_path: PathBuf,
         cache_size: usize,
     },
@@ -56,8 +63,14 @@ pub struct DirectoryHostConfig {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServerSetting {
     pub certificate_storage_path: PathBuf,
-    pub subnet_mask: IpAddr, // FIXME: Move subnet mask in redirect instructions since it's used only for that.
     pub port: u16,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RedirectSetting {
+    #[serde(default = "RedirectIp::default")]
+    pub ip: RedirectIp,
+    pub subnet_mask: IpAddr,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -65,9 +78,6 @@ pub struct NodeSetting {
     pub name: String,
     pub db_path: PathBuf,
     pub encryption_key: String,
-
-    #[serde(default = "RedirectIp::default")]
-    pub redirect_ip: RedirectIp,
 
     pub blob_storage: BlobStorageImpl,
 
@@ -85,6 +95,7 @@ pub struct Config {
     pub directory: DirectoryHostConfig,
     pub node: NodeSetting,
     pub server: ServerSetting,
+    pub redirect: RedirectSetting,
 }
 
 impl Config {
@@ -104,7 +115,7 @@ impl Config {
         fs::create_dir_all(&data_dir)?;
 
         loader.set_default("server.port", DEFAULT_SERVER_PORT)?;
-        loader.set_default("server.subnet_mask", DEFAULT_SUBNET_MASK)?;
+        loader.set_default("redirect.subnet_mask", DEFAULT_SUBNET_MASK)?;
         loader.set_default(
             "server.certificate_storage_path",
             data_dir.join("storage_certs").to_string_lossy().to_string(),

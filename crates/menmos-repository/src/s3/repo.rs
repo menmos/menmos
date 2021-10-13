@@ -1,6 +1,7 @@
 use std::io::{self, SeekFrom};
 use std::ops::{Bound, RangeBounds};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
@@ -28,29 +29,26 @@ fn get_total_length(range_string: &str) -> Result<u64> {
 
 pub struct S3Repository {
     bucket: String,
-    client: S3Client,
 
+    client: S3Client,
     file_cache: FileCache,
 }
 
 impl S3Repository {
-    pub fn new<S: Into<String>, P: Into<PathBuf>>(
-        bucket: S,
-        cache_path: P,
+    pub fn new(
+        bucket: &str,
+        region: &str,
+        cache_path: &Path,
         max_nb_of_cached_files: usize,
     ) -> Result<Self> {
-        let client = S3Client::new(Region::UsEast1); // FIXME: Make configurable.
-        let bucket_str: String = bucket.into();
+        let region = Region::from_str(region)?;
+        let client = S3Client::new(region);
 
-        let file_cache = FileCache::new(
-            cache_path,
-            max_nb_of_cached_files,
-            &bucket_str,
-            client.clone(),
-        )?;
+        let file_cache =
+            FileCache::new(cache_path, max_nb_of_cached_files, bucket, client.clone())?;
 
         Ok(Self {
-            bucket: bucket_str,
+            bucket: String::from(bucket),
             client,
             file_cache,
         })
