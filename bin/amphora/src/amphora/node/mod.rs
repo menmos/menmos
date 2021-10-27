@@ -26,8 +26,9 @@ pub async fn make_node(cfg: Config, certs: Option<CertificateInfo>) -> Result<St
             bucket,
             cache_path,
             cache_size,
+            region,
         } => {
-            let r = repository::S3Repository::new(bucket, cache_path, *cache_size)?;
+            let r = repository::S3Repository::new(bucket, region, cache_path, *cache_size)?;
             Box::from(r)
         }
     };

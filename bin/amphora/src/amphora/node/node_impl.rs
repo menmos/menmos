@@ -73,8 +73,8 @@ impl Storage {
 
     pub async fn update_registration(&self) -> Result<()> {
         let redirect_info = get_redirect_info(
-            self.config.server.subnet_mask,
-            self.config.node.redirect_ip.clone(),
+            self.config.redirect.subnet_mask,
+            self.config.redirect.ip.clone(),
         )
         .await?;
 
