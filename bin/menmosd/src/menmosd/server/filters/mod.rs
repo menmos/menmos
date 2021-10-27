@@ -15,7 +15,7 @@ use warp::Filter;
 
 use crate::server::Context;
 
-#[cfg(not(debug_assertions))]
+#[cfg(not(any(debug_assertions, feature = "menmos_debug")))]
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
@@ -33,7 +33,7 @@ pub fn all(
         ))
 }
 
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, feature = "menmos_debug"))]
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {

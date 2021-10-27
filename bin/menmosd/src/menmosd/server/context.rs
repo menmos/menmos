@@ -8,5 +8,5 @@ use crate::Config;
 pub struct Context {
     pub certificate_info: Arc<Option<CertificateInfo>>,
     pub config: Arc<Config>,
-    pub node: Arc<Box<dyn DirectoryNode + Send + Sync>>,
+    pub node: Arc<dyn DirectoryNode + Send + Sync>,
 }

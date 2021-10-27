@@ -16,7 +16,7 @@ pub struct IndexerService {
     metadata: Arc<DynMetadataStore>,
     storage: Arc<DynStorageMappingStore>,
 
-    routing_service: Arc<Box<dyn interface::RoutingConfigManager + Send + Sync>>,
+    routing_service: Arc<dyn interface::RoutingConfigManager + Send + Sync>,
     router: Arc<NodeRouter>,
 }
 
@@ -25,7 +25,7 @@ impl IndexerService {
         documents: Arc<DynDocumentIDStore>,
         metadata: Arc<DynMetadataStore>,
         storage: Arc<DynStorageMappingStore>,
-        routing_service: Arc<Box<dyn interface::RoutingConfigManager + Send + Sync>>,
+        routing_service: Arc<dyn interface::RoutingConfigManager + Send + Sync>,
         router: Arc<NodeRouter>,
     ) -> Self {
         Self {

@@ -73,7 +73,7 @@ async fn wait_for_server_stop(http_handle: JoinHandle<()>, https_handle: JoinHan
 }
 
 pub async fn use_tls(
-    n: Arc<Box<dyn DirectoryNode + Send + Sync>>,
+    n: Arc<dyn DirectoryNode + Send + Sync>,
     node_cfg: Arc<Config>,
     cfg: HttpsParameters,
     mut stop_rx: mpsc::Receiver<()>,

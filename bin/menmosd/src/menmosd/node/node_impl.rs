@@ -9,20 +9,20 @@ use interface::{
 };
 
 pub struct Directory {
-    indexer: Arc<Box<dyn BlobIndexer + Send + Sync>>,
-    router: Arc<Box<dyn RoutingConfigManager + Send + Sync>>,
-    admin: Arc<Box<dyn NodeAdminController + Send + Sync>>,
-    user: Arc<Box<dyn UserManagement + Send + Sync>>,
-    query: Arc<Box<dyn QueryExecutor + Send + Sync>>,
+    indexer: Arc<dyn BlobIndexer + Send + Sync>,
+    router: Arc<dyn RoutingConfigManager + Send + Sync>,
+    admin: Arc<dyn NodeAdminController + Send + Sync>,
+    user: Arc<dyn UserManagement + Send + Sync>,
+    query: Arc<dyn QueryExecutor + Send + Sync>,
 }
 
 impl Directory {
     pub fn new(
-        indexer: Arc<Box<dyn BlobIndexer + Send + Sync>>,
-        router: Arc<Box<dyn RoutingConfigManager + Send + Sync>>,
-        admin: Arc<Box<dyn NodeAdminController + Send + Sync>>,
-        user: Arc<Box<dyn UserManagement + Send + Sync>>,
-        query: Arc<Box<dyn QueryExecutor + Send + Sync>>,
+        indexer: Arc<dyn BlobIndexer + Send + Sync>,
+        router: Arc<dyn RoutingConfigManager + Send + Sync>,
+        admin: Arc<dyn NodeAdminController + Send + Sync>,
+        user: Arc<dyn UserManagement + Send + Sync>,
+        query: Arc<dyn QueryExecutor + Send + Sync>,
     ) -> Self {
         Self {
             indexer,
@@ -36,19 +36,19 @@ impl Directory {
 
 #[async_trait]
 impl DirectoryNode for Directory {
-    fn indexer(&self) -> Arc<Box<dyn BlobIndexer + Send + Sync>> {
+    fn indexer(&self) -> Arc<dyn BlobIndexer + Send + Sync> {
         self.indexer.clone()
     }
-    fn routing(&self) -> Arc<Box<dyn RoutingConfigManager + Send + Sync>> {
+    fn routing(&self) -> Arc<dyn RoutingConfigManager + Send + Sync> {
         self.router.clone()
     }
-    fn admin(&self) -> Arc<Box<dyn NodeAdminController + Send + Sync>> {
+    fn admin(&self) -> Arc<dyn NodeAdminController + Send + Sync> {
         self.admin.clone()
     }
-    fn user(&self) -> Arc<Box<dyn UserManagement + Send + Sync>> {
+    fn user(&self) -> Arc<dyn UserManagement + Send + Sync> {
         self.user.clone()
     }
-    fn query(&self) -> Arc<Box<dyn QueryExecutor + Send + Sync>> {
+    fn query(&self) -> Arc<dyn QueryExecutor + Send + Sync> {
         self.query.clone()
     }
 
