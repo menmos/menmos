@@ -29,7 +29,7 @@ bytes = "1.0"
 chrono = "0.4"
 clap = {version = "3.0.0-rc.9", features = ["derive"]}
 config = {git = "https://github.com/dalloriam/config-rs", branch = "parse-env-numbers"}
-dirs = "3"
+dirs = "4"
 futures = "0.3"
 headers = "=0.3.5"
 http = "=0.2.5"
