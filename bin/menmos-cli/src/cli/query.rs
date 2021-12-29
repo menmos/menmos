@@ -1,9 +1,9 @@
 use anyhow::Result;
-use clap::Clap;
+use clap::Parser;
 use menmos_client::Client;
 use rood::cli::OutputManager;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct QueryCommand {
     /// The query expression.
     expression: Option<String>,

@@ -2,11 +2,11 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::Result;
-use clap::Clap;
+use clap::Parser;
 use menmos_client::Client;
 use rood::cli::OutputManager;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct PushCommand {
     /// The maximum number of concurrent requests.
     #[clap(long = "concurrency", short = 'c', default_value = "4")]

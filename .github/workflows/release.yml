@@ -8,6 +8,8 @@ on:
 jobs:
   artifacts:
     runs-on: ${{ matrix.os }}
+    env:
+      MENMOS_WEBUI: branch=master
     strategy:
       matrix:
         include:
@@ -39,6 +41,10 @@ jobs:
         with:
           toolchain: stable
 
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
       - name: Install OpenSSL
         if: matrix.os == 'windows-latest'
         run: |
@@ -52,7 +58,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --workspace
+          args: --features "webui" --release --workspace
 
       - name: Prepare Assets
         run: |

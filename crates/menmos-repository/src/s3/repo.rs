@@ -1,6 +1,6 @@
 use std::io::{self, SeekFrom};
 use std::ops::{Bound, RangeBounds};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::str::FromStr;
 
 use anyhow::{anyhow, ensure, Result};

@@ -4,7 +4,9 @@ ADD . /build
 
 WORKDIR /build
 
-RUN cargo build -p menmosd -p amphora --release
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && apt-get update && apt-get install -y nodejs
+
+RUN MENMOS_WEBUI="branch=master" cargo build --features "webui" -p menmosd -p amphora --release
 
 FROM ubuntu:latest as menmosd
 WORKDIR /app
