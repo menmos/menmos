@@ -1,6 +1,6 @@
 [package]
 name = "menmos-protocol"
-version = "0.0.9"
+version = "0.0.10"
 license = "Apache-2.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
@@ -14,6 +14,6 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = "1"
-menmos-interface = {version = "^0.0.9"}
-rapidquery = {version = "^0.0.9", features=["bitvec_span"]}
+menmos-interface = {version = "^0.0.10"}
+rapidquery = {version = "^0.0.10", features=["bitvec_span"]}
 serde = {version = "1", features = ["derive"]}

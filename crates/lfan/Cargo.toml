@@ -2,7 +2,7 @@
 name = "lfan"
 description = "Generic Caching Library"
 license = "MIT"
-version = "0.0.9"
+version = "0.0.10"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
 
