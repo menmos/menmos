@@ -21,7 +21,7 @@ lfan = {version = "^0.0.10", features = ["async"]}
 menmos-betterstreams = {version = "^0.0.10"}
 menmos-interface = {version = "^0.0.10"}
 rusoto_core = "0.46"
-rusoto_s3 = "0.46"
+rusoto_s3 = "0.47"
 sysinfo = "0.22"
 tokio = {version = "1.2", features = ["full"]}
 tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_debug"]}
