@@ -19,7 +19,7 @@ path = "src/service/lib.rs"
 anyhow = "1"
 async-stream = "0.3"
 clap = {version = "3.0.0-rc.9", features=["derive"]}
-dirs = "3"
+dirs = "4"
 futures = "0.3"
 menmos-client = {version = "^0.0.10"}
 menmos-interface = { version = "^0.0.10"}

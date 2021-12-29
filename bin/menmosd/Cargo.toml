@@ -43,7 +43,7 @@ bytes = "1.0"
 chrono = {version = "0.4", features = ["serde"]}
 clap = {version = "3.0.0-rc.9", features = ["derive"]}
 config = {git = "https://github.com/dalloriam/config-rs", branch = "parse-env-numbers"}
-dirs = "3"
+dirs = "4"
 external-ip = "=4.1.0"
 futures = "0.3"
 headers = "=0.3.3"
