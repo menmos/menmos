@@ -232,7 +232,7 @@ pub struct BlobInfo {
 }
 
 pub struct Blob {
-    pub stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync>,
+    pub stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send>,
     pub current_chunk_size: u64,
     pub total_blob_size: u64,
     pub info: BlobInfo,

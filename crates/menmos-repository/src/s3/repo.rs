@@ -5,12 +5,10 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
+use aws_config::meta::region::RegionProviderChain;
+use aws_sdk_s3::{Client, Region};
 use bytes::Bytes;
 use futures::prelude::*;
-use rusoto_core::Region;
-use rusoto_s3::{
-    DeleteObjectRequest, GetObjectRequest, PutObjectRequest, S3Client, StreamingBody, S3,
-};
 use tokio::fs::{self, OpenOptions};
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 
@@ -35,14 +33,18 @@ pub struct S3Repository {
 }
 
 impl S3Repository {
-    pub fn new(
+    pub async fn new(
         bucket: &str,
         region: &str,
         cache_path: &Path,
         max_nb_of_cached_files: usize,
     ) -> Result<Self> {
-        let region = Region::from_str(region)?;
-        let client = S3Client::new(region);
+        let region_provider = RegionProviderChain::first_try(Region::new(region))
+            .or_default_provider()
+            .or_else(Region::new("us-east-1"));
+
+        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        let client = Client::new(&shared_config);
 
         let file_cache =
             FileCache::new(cache_path, max_nb_of_cached_files, bucket, client.clone())?;
