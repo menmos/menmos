@@ -2240,9 +2240,9 @@ dependencies = [
 
 [[package]]
 name = "rood"
-version = "0.4.2"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ddc718c2b4dc7f622621decb8ae3e6c97640814f2e522331604dcbb53ec98f3"
+checksum = "b127a85e28387fbc6da6401dd19555d6d524d16ccbcad3b01fca597b1d7d14bc"
 dependencies = [
  "atty",
  "colored",
