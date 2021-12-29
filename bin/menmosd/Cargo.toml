@@ -47,7 +47,7 @@ dirs = "3"
 external-ip = "=4.1.0"
 futures = "0.3"
 headers = "=0.3.3"
-ipnetwork = "0.17"
+ipnetwork = "0.18"
 menmos-antidns = {version = "^0.0.10"}
 menmos-apikit = {version = "^0.0.10"}
 menmos-interface = {version = "^0.0.10"}
