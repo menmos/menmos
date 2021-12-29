@@ -10,6 +10,18 @@ const WEB_REPO_PATH: &str = "https://github.com/menmos/menmos-web.git";
 
 const LOCAL_PATH: &str = "menmos-web";
 
+#[cfg(windows)]
+fn npm() -> Command {
+    let mut cmd = Command::new("cmd");
+    cmd.arg("/c").arg("npm.cmd");
+    cmd
+}
+
+#[cfg(not(windows))]
+fn npm() -> Command {
+    Command::new("npm")
+}
+
 enum Target<S>
 where
     S: AsRef<str>,
@@ -26,12 +38,17 @@ impl<S: AsRef<str>> AsRef<str> for Target<S> {
     }
 }
 
-fn run(args: &[&str]) -> Result<()> {
-    ensure!(!args.is_empty());
-    let mut handle = Command::new(args[0]).args(&args[1..]).spawn()?;
+fn runcmd(mut command: Command, args: &[&str]) -> Result<()> {
+    let mut handle = command.args(args).spawn()?;
     let result = handle.wait()?;
     ensure!(result.success(), "command failed: {}", result.to_string());
     Ok(())
+}
+
+fn run(args: &[&str]) -> Result<()> {
+    ensure!(!args.is_empty());
+    let cmd = Command::new(args[0]);
+    runcmd(cmd, &args[1..])
 }
 
 fn ensure_clone<S: AsRef<str>>(target: Target<S>) -> Result<()> {
@@ -57,9 +74,9 @@ fn ensure_clone<S: AsRef<str>>(target: Target<S>) -> Result<()> {
 
 fn npm_build() -> Result<()> {
     // Do the build
-    run(&["npm", "install"])?;
-    run(&["npm", "run", "build"])?;
-    run(&["npm", "run", "export"])
+    runcmd(npm(), &["install"])?;
+    runcmd(npm(), &["run", "build"])?;
+    runcmd(npm(), &["run", "export"])
 }
 
 fn parse_env_var(val: &str) -> Result<Target<String>> {
