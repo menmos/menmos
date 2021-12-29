@@ -2,7 +2,7 @@
 name = "rapidquery"
 version = "0.0.10"
 authors = ["William Dussault <dalloriam@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "Rapid Query Executor"
 license = "Apache-2.0"
 
