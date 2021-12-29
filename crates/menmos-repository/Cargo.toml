@@ -17,13 +17,12 @@ anyhow = "1"
 async-trait = "0.1.42"
 aws-config = "0.3.0"
 aws-sdk-s3 = "0.3.0"
+aws-smithy-http = {version = "0.33", features = ["rt-tokio"]}
 bytes = "1"
 futures = "0.3"
 lfan = {version = "^0.0.10", features = ["async"]}
 menmos-betterstreams = {version = "^0.0.10"}
 menmos-interface = {version = "^0.0.10"}
-rusoto_core = "0.47"
-rusoto_s3 = "0.47"
 sysinfo = "0.22"
 tokio = {version = "1.2", features = ["full"]}
 tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_debug"]}

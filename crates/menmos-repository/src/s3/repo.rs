@@ -1,13 +1,15 @@
-use std::io::{self, SeekFrom};
+use std::io::{self, SeekFrom, Write};
 use std::ops::{Bound, RangeBounds};
 use std::path::Path;
-use std::str::FromStr;
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use async_trait::async_trait;
 use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_s3::{Client, Region};
-use bytes::Bytes;
+use aws_sdk_s3::model::{CompletedMultipartUpload, CompletedPart};
+use aws_sdk_s3::{ByteStream, Client, Region};
+use betterstreams::DynIoStream;
+use bytes::buf::Writer;
+use bytes::{BufMut, Bytes, BytesMut};
 use futures::prelude::*;
 use tokio::fs::{self, OpenOptions};
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
@@ -28,7 +30,7 @@ fn get_total_length(range_string: &str) -> Result<u64> {
 pub struct S3Repository {
     bucket: String,
 
-    client: S3Client,
+    client: Client,
     file_cache: FileCache,
 }
 
@@ -39,7 +41,7 @@ impl S3Repository {
         cache_path: &Path,
         max_nb_of_cached_files: usize,
     ) -> Result<Self> {
-        let region_provider = RegionProviderChain::first_try(Region::new(region))
+        let region_provider = RegionProviderChain::first_try(Region::new(String::from(region)))
             .or_default_provider()
             .or_else(Region::new("us-east-1"));
 
@@ -55,6 +57,78 @@ impl S3Repository {
             file_cache,
         })
     }
+
+    async fn flush_part(
+        &self,
+        running_size: usize,
+        buf_writer: Writer<BytesMut>,
+        part_id: i32,
+        upload_id: &str,
+        id: &str,
+    ) -> Result<CompletedPart> {
+        let result = self
+            .client
+            .upload_part()
+            .bucket(&self.bucket)
+            .content_length(running_size as i64)
+            .key(id)
+            .body(ByteStream::from(buf_writer.into_inner().freeze()))
+            .part_number(part_id)
+            .upload_id(upload_id)
+            .send()
+            .await?;
+
+        Ok(CompletedPart::builder()
+            .set_e_tag(result.e_tag)
+            .part_number(part_id)
+            .build())
+    }
+
+    async fn do_multipart(
+        &self,
+        id: String,
+        upload_id: String,
+        mut stream: Box<
+            dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static,
+        >,
+    ) -> Result<CompletedMultipartUpload> {
+        let mut part_id = 1;
+
+        let mut parts_builder = CompletedMultipartUpload::builder();
+
+        let mut buf_writer = BytesMut::new().writer();
+        let mut running_size = 0;
+
+        while let Some(part) = stream.try_next().await? {
+            buf_writer.write_all(&part)?;
+            running_size += part.len();
+
+            if running_size <= 5 * 1024 * 1024 {
+                continue;
+            }
+
+            let completed_part = self
+                .flush_part(running_size, buf_writer, part_id, &upload_id, &id)
+                .await?;
+
+            parts_builder = parts_builder.parts(completed_part);
+
+            part_id += 1;
+            running_size = 0;
+            buf_writer = BytesMut::new().writer();
+        }
+
+        // Flush the last part if required
+        if running_size > 0 {
+            let completed_part = self
+                .flush_part(running_size, buf_writer, part_id, &upload_id, &id)
+                .await?;
+
+            parts_builder = parts_builder.parts(completed_part);
+        }
+
+        Ok(parts_builder.build())
+    }
 }
 
 #[async_trait]
@@ -62,21 +136,51 @@ impl Repository for S3Repository {
     async fn save(
         &self,
         id: String,
-        size: u64,
+        _size: u64, // TODO: Remove? or use to validate that the multipart upload worked?
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
     ) -> Result<()> {
         self.file_cache.invalidate(&id).await?;
 
-        let _result = self
+        let mp_upload = self
             .client
-            .put_object(PutObjectRequest {
-                bucket: self.bucket.clone(),
-                key: id,
-                body: Some(StreamingBody::new(stream)),
-                content_length: Some(size as i64),
-                ..Default::default()
-            })
+            .create_multipart_upload()
+            .bucket(&self.bucket)
+            .key(&id)
+            .send()
             .await?;
+
+        let upload_id = mp_upload
+            .upload_id
+            .ok_or_else(|| anyhow!("missing upload ID"))?;
+
+        match self
+            .do_multipart(id.clone(), upload_id.clone(), stream)
+            .await
+        {
+            Ok(completed_parts) => {
+                let _result = self
+                    .client
+                    .complete_multipart_upload()
+                    .bucket(self.bucket.clone())
+                    .key(id.clone())
+                    .upload_id(&upload_id)
+                    .multipart_upload(completed_parts)
+                    .send()
+                    .await?;
+            }
+            Err(e) => {
+                self.client
+                    .abort_multipart_upload()
+                    .bucket(&self.bucket)
+                    .key(&id)
+                    .upload_id(&upload_id)
+                    .send()
+                    .await?;
+
+                bail!("failed upload: {}", e.to_string());
+            }
+        }
+
         Ok(())
     }
 
@@ -118,11 +222,11 @@ impl Repository for S3Repository {
         }
 
         // Else we carry on to S3.
-        let mut get_request = GetObjectRequest {
-            bucket: self.bucket.clone(),
-            key: blob_id.to_string(),
-            ..Default::default()
-        };
+        let mut req_builder = self
+            .client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(blob_id.to_string());
 
         if let Some(r) = range.as_ref() {
             let min_value = match r.start_bound() {
@@ -138,14 +242,12 @@ impl Repository for S3Repository {
             };
 
             let range_str = format!("bytes={}-{}", min_value, fmt_max_value);
-            get_request.range = Some(range_str)
+            req_builder = req_builder.range(range_str);
         }
 
-        let result = self.client.get_object(get_request).await?;
+        let result = req_builder.send().await?;
 
-        let raw_content_length: i64 = result
-            .content_length
-            .ok_or_else(|| anyhow!("missing content length from GetObject response"))?;
+        let raw_content_length: i64 = result.content_length;
 
         ensure!(raw_content_length >= 0, "content length cannot be negative");
 
@@ -157,27 +259,29 @@ impl Repository for S3Repository {
             chunk_size
         };
 
-        if let Some(bytestream) = result.body {
-            Ok(StreamInfo {
-                stream: Box::from(bytestream),
-                total_size,
-                chunk_size,
-            })
-        } else {
-            Err(anyhow!("missing stream"))
-        }
+        // S3 returns a custom error type, we use io::error. We need to convert the stream lazily to use our errors, if need be.
+        let io_stream: DynIoStream = Box::from(
+            result
+                .body
+                .map(|r| r.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))),
+        );
+
+        Ok(StreamInfo {
+            stream: io_stream,
+            total_size,
+            chunk_size,
+        })
     }
 
     async fn delete(&self, blob_id: &str) -> Result<()> {
         self.file_cache.invalidate(blob_id).await?;
 
-        let delete_request = DeleteObjectRequest {
-            bucket: self.bucket.clone(),
-            key: blob_id.to_string(),
-            ..Default::default()
-        };
-
-        self.client.delete_object(delete_request).await?;
+        self.client
+            .delete_object()
+            .bucket(&self.bucket)
+            .key(blob_id.to_string())
+            .send()
+            .await?;
 
         Ok(())
     }
@@ -188,18 +292,16 @@ impl Repository for S3Repository {
         if let Some(path) = self.file_cache.contains(&id).await {
             let f = fs::File::open(&path).await?;
             let file_length = path.metadata()?.len();
+
             let _result = self
                 .client
-                .put_object(PutObjectRequest {
-                    bucket: self.bucket.clone(),
-                    key: id.clone(),
-                    body: Some(StreamingBody::new_with_size(
-                        betterstreams::util::reader_to_iostream(f),
-                        file_length as usize,
-                    )),
-                    ..Default::default()
-                })
+                .put_object()
+                .bucket(&self.bucket)
+                .key(&id)
+                .body(ByteStream::from_file(f).await?)
+                .send()
                 .await?;
+
             tracing::debug!(file_length = file_length, "complete");
         }
 
