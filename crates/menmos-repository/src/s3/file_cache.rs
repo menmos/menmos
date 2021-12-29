@@ -1,14 +1,14 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+use aws_sdk_s3::Client;
 use futures::StreamExt;
 use lfan::preconfig::concurrent::{new_lru_cache, LruCache};
-use rusoto_s3::{GetObjectRequest, S3Client, S3};
 use tokio::{fs, io::AsyncWriteExt};
 
 pub struct FileCache {
     bucket: String,
-    client: S3Client,
+    client: Client,
     file_path_cache: LruCache<String, PathBuf>,
     root_path: PathBuf,
 }
@@ -18,7 +18,7 @@ impl FileCache {
         directory: P,
         max_nb_of_files: usize,
         bucket: B,
-        client: S3Client,
+        client: Client,
     ) -> Result<Self> {
         let root_path: PathBuf = directory.into();
 
@@ -52,14 +52,14 @@ impl FileCache {
     }
 
     async fn download_blob(&self, blob_id: &str) -> Result<PathBuf> {
-        let get_request = GetObjectRequest {
-            bucket: self.bucket.clone(),
-            key: blob_id.to_string(),
-            ..Default::default()
-        };
-
-        let result = self.client.get_object(get_request).await?;
-        let mut bytestream = result.body.ok_or_else(|| anyhow!("missing stream"))?;
+        let result = self
+            .client
+            .get_object()
+            .bucket(self.bucket.clone())
+            .key(blob_id.to_string())
+            .send()
+            .await?;
+        let mut bytestream = result.body;
 
         let file_path = self.root_path.join(blob_id);
 
