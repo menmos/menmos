@@ -3,8 +3,8 @@ name = "menmos-client"
 version = "0.0.10"
 license = "Apache-2.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
-edition = "2018"
-description = "Menmos entrypoint library"
+edition = "2021"
+description = "Menmos client library"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
