@@ -29,7 +29,7 @@ dependencies = [
 
 [[package]]
 name = "amphora"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1189,7 +1189,7 @@ dependencies = [
 
 [[package]]
 name = "lfan"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "linked-hash-map 0.5.4",
  "tokio",
@@ -1304,7 +1304,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-antidns"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "nom 6.1.2",
@@ -1318,7 +1318,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-apikit"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1331,7 +1331,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-betterstreams"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1343,7 +1343,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-cli"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -1361,7 +1361,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-client"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "base64",
  "bytes",
@@ -1383,7 +1383,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-interface"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1400,7 +1400,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-protocol"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "menmos-interface",
@@ -1410,7 +1410,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-repository"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1428,14 +1428,14 @@ dependencies = [
 
 [[package]]
 name = "menmos-std"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "menmos-testing"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "amphora",
  "anyhow",
@@ -1457,7 +1457,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-xecute"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1472,7 +1472,7 @@ dependencies = [
 
 [[package]]
 name = "menmosd"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "acme-lib",
  "amphora",
@@ -2083,7 +2083,7 @@ dependencies = [
 
 [[package]]
 name = "rapidquery"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "bitvec 0.20.4",
  "nom 6.1.2",
