@@ -4,6 +4,8 @@ ADD . /build
 
 WORKDIR /build
 
+RUN curl -sL https://deb.nodesource.com/setup_16.x | sudo bash -
+
 RUN cargo build -p menmosd -p amphora --release
 
 FROM ubuntu:latest as menmosd
