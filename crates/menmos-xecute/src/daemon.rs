@@ -68,14 +68,14 @@ impl DaemonProcess {
                     .short('c')
                     .long("cfg")
                     .value_name("FILE")
-                    .about("Sets a config file")
+                    .help("Sets a config file")
                     .takes_value(true),
             )
             .arg(
                 Arg::new("log_config")
                     .short('l')
                     .long("log")
-                    .about("Sets the log config file")
+                    .help("Sets the log config file")
                     .takes_value(true),
             )
             .get_matches();

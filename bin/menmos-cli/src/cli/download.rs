@@ -4,14 +4,14 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
-use clap::Clap;
+use clap::Parser;
 use futures::StreamExt;
 use menmos_client::Client;
 use rood::cli::OutputManager;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct DownloadCommand {
     /// The IDs of the blobs to download.
     blob_ids: Vec<String>,

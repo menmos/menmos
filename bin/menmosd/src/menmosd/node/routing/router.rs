@@ -93,7 +93,10 @@ impl NodeRouter {
                 .await
                 .map(Some)
                 .ok_or_else(|| {
-                    anyhow!("routing configuration routes to node '{}' but node is unreachable")
+                    anyhow!(
+                        "routing configuration routes to node '{}' but node is unreachable",
+                        &storage_node_id
+                    )
                 })
         } else {
             tracing::trace!("found no storage node from routing config");

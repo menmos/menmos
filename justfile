@@ -7,6 +7,7 @@ lint:
     cargo clippy
 
 bundle $MENMOS_WEBUI="branch=master" +args="":
+    @echo "Bundle target: $MENMOS_WEBUI"
     cargo build --features "webui" -p menmosd {{args}}
 
 unit +args="":

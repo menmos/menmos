@@ -41,7 +41,7 @@ bitvec = {version = "0.20", features = ["serde"]}
 byteorder = "1.4.2"
 bytes = "1.0"
 chrono = {version = "0.4", features = ["serde"]}
-clap = "3.0.0-beta.2"
+clap = {version = "3.0.0-rc.9", features = ["derive"]}
 config = {git = "https://github.com/dalloriam/config-rs", branch = "parse-env-numbers"}
 dirs = "3"
 external-ip = "=4.1.0"

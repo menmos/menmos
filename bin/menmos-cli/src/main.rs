@@ -1,7 +1,7 @@
 mod cli;
 
 use anyhow::Result;
-use clap::Clap;
+use clap::Parser;
 use rood::cli::OutputManager;
 
 /// This should be called before calling any cli method or printing any output.

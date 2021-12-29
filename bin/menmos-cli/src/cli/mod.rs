@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::Clap;
+use clap::Parser;
 use menmos_client::Client;
 use rood::cli::OutputManager;
 
@@ -10,7 +10,7 @@ mod query;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(version = VERSION, author = "Menmos Team")]
 pub struct Root {
     /// Whether to use verbose output.
@@ -60,7 +60,7 @@ impl Root {
     }
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 enum Command {
     /// Delete a blob from a menmos cluster.
     #[clap(name = "delete")]
