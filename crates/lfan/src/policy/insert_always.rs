@@ -3,13 +3,8 @@ use std::hash::Hash;
 
 use crate::cache::InsertionPolicy;
 
+#[derive(Default)]
 pub struct AlwaysInsertPolicy {}
-
-impl Default for AlwaysInsertPolicy {
-    fn default() -> Self {
-        AlwaysInsertPolicy {}
-    }
-}
 
 impl<K> InsertionPolicy<K> for AlwaysInsertPolicy {
     fn should_add(&mut self, _key: &K) -> bool {
