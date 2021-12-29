@@ -46,7 +46,7 @@ config = {git = "https://github.com/dalloriam/config-rs", branch = "parse-env-nu
 dirs = "3"
 external-ip = "=4.1.0"
 futures = "0.3"
-headers = "=0.3.3"
+headers = "=0.3.5"
 ipnetwork = "0.18"
 menmos-antidns = {version = "^0.0.10"}
 menmos-apikit = {version = "^0.0.10"}
