@@ -3,15 +3,13 @@ name: CI
 on:
   push:
     branches:
-    - master
+      - master
   pull_request:
     types: [opened, synchronize]
 
 jobs:
   unit:
     runs-on: ${{ matrix.os }}
-    env:
-      MENMOS_WEBUI: branch=master
     strategy:
       matrix:
         include:
