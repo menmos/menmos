@@ -4,7 +4,7 @@ version = "0.0.10"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 license = "Apache-2.0"
 description = "Menmos Embedded DNS Server"
-edition = "2018"
+edition = "2021"
 
 [lib]
 name = "antidns"

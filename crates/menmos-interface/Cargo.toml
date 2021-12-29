@@ -3,7 +3,7 @@ name = "menmos-interface"
 version = "0.0.10"
 license = "Apache-2.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "Interface to the menmos nodes"
 
 [lib]
