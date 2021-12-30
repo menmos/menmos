@@ -5,6 +5,7 @@ use rood::cli::OutputManager;
 
 mod delete;
 mod download;
+mod nodes;
 mod push;
 mod query;
 
@@ -54,6 +55,7 @@ impl Root {
             Command::Push(cmd) => cmd.run(cli, client).await?,
             Command::Query(cmd) => cmd.run(cli, client).await?,
             Command::Download(cmd) => cmd.run(cli, client).await?,
+            Command::Nodes(cmd) => cmd.run(cli, client).await?,
         }
 
         Ok(())
@@ -77,4 +79,8 @@ enum Command {
     /// Query an menmos cluster.
     #[clap(name = "query")]
     Query(query::QueryCommand),
+
+    /// List the storage nodes of a menmos cluster.
+    #[clap(name = "nodes")]
+    Nodes(nodes::ListStorageNodesCommand),
 }
