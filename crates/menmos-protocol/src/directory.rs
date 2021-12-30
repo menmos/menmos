@@ -1,5 +1,7 @@
 use std::convert::TryFrom;
 
+use anyhow::anyhow;
+
 use interface::{BlobMeta, CertificateInfo, Query, StorageNodeInfo};
 
 use rapidquery::Expression;
@@ -96,19 +98,96 @@ pub mod storage {
 }
 
 pub mod query {
+
     use super::*;
+
+    #[derive(Clone, Debug, Deserialize, Hash, PartialEq, Eq, Serialize)]
+    #[serde(untagged)]
+    pub enum RawExpression {
+        /// Tag expression.
+        ///
+        /// Evaluates to resolver items where the tag is present.
+        Tag { tag: String },
+        /// Key/Value expression.
+        ///
+        /// Evaluates to resolver items where the given key/value pair is present.
+        KeyValue { key: String, value: String },
+        /// HasKey expression.
+        ///
+        /// Evaluates to resolver items where the given key is present (in any key/value pair).
+        HasKey { key: String },
+        /// Parent expression.
+        ///
+        /// Evaluates to resolver items having the provided value as a parent.
+        Parent { parent: String },
+        /// And expression.
+        ///
+        /// Evaluates to the intersection of its two sub-expressions.
+        And {
+            and: (Box<RawExpression>, Box<RawExpression>),
+        },
+        /// Or expression.
+        /// Evaluates to the union of its two sub-expressions.
+        Or {
+            or: (Box<RawExpression>, Box<RawExpression>),
+        },
+        /// Not expression.
+        /// Evaluates to the negation of its sub-expression.
+        Not { not: Box<RawExpression> },
+
+        /// Raw sub-expression. Will be parsed before being turned in a real expression.
+        Raw { raw: String },
+
+        /// Empty expression.
+        /// Evaluates to all items resolvable by the resolver.
+        Empty,
+    }
+
+    impl TryFrom<RawExpression> for Expression {
+        type Error = anyhow::Error;
+
+        fn try_from(value: RawExpression) -> Result<Self, Self::Error> {
+            let expr = match value {
+                RawExpression::Empty => Self::Empty,
+                RawExpression::Raw { raw } => {
+                    Expression::parse(raw).map_err(|e| anyhow!("{}", e))?
+                }
+                RawExpression::Not { not } => Self::Not {
+                    not: Box::new(Expression::try_from(*not)?),
+                },
+                RawExpression::Or { or: (a, b) } => Self::Or {
+                    or: (
+                        Box::new(Expression::try_from(*a)?),
+                        Box::new(Expression::try_from(*b)?),
+                    ),
+                },
+                RawExpression::And { and: (a, b) } => Self::And {
+                    and: (
+                        Box::new(Expression::try_from(*a)?),
+                        Box::new(Expression::try_from(*b)?),
+                    ),
+                },
+                RawExpression::Parent { parent } => Self::Parent { parent },
+                RawExpression::HasKey { key } => Self::HasKey { key },
+                RawExpression::KeyValue { key, value } => Self::KeyValue { key, value },
+                RawExpression::Tag { tag } => Self::Tag { tag },
+            };
+
+            Ok(expr)
+        }
+    }
 
     #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     #[serde(untagged)]
     pub enum ExpressionRequest {
-        Expr(Expression),
+        Expr(RawExpression),
         Raw(String),
     }
 
     impl Default for ExpressionRequest {
         fn default() -> Self {
-            ExpressionRequest::Expr(Expression::Empty)
+            ExpressionRequest::Expr(RawExpression::Empty)
         }
     }
 
@@ -152,7 +231,7 @@ pub mod query {
 
         fn try_from(request: QueryRequest) -> Result<Self, Self::Error> {
             let expression = match request.expression {
-                ExpressionRequest::Expr(e) => e,
+                ExpressionRequest::Expr(e) => Expression::try_from(e)?,
                 ExpressionRequest::Raw(raw) => Expression::parse(raw)?,
             };
 
@@ -164,5 +243,47 @@ pub mod query {
                 facets: request.facets,
             })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use interface::Expression;
+
+    use super::query::RawExpression;
+
+    #[test]
+    fn mixed_expression_parsing() {
+        let manual_expr = Expression::And {
+            and: (
+                Box::new(Expression::Tag {
+                    tag: String::from("a"),
+                }),
+                Box::new(Expression::And {
+                    and: (
+                        Box::new(Expression::Tag {
+                            tag: String::from("b"),
+                        }),
+                        Box::new(Expression::Tag {
+                            tag: String::from("c"),
+                        }),
+                    ),
+                }),
+            ),
+        };
+
+        let auto_expr = Expression::try_from(RawExpression::And {
+            and: (
+                Box::new(RawExpression::Tag {
+                    tag: String::from("a"),
+                }),
+                Box::new(RawExpression::Raw {
+                    raw: String::from("b && c"),
+                }),
+            ),
+        })
+        .unwrap();
+
+        assert_eq!(manual_expr, auto_expr);
     }
 }
