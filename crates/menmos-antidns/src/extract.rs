@@ -28,13 +28,13 @@ fn ip_address(i: &str) -> IResult<&str, Ipv4Addr> {
 
 pub fn ip_address_from_url<S: AsRef<str>>(url: S) -> Result<Ipv4Addr, Error> {
     let splitted: Vec<_> = url.as_ref().split('.').collect();
-    ensure!(splitted.len() >= 2, NameWithoutIp);
+    ensure!(splitted.len() >= 2, NameWithoutIpSnafu);
 
     let ip_segment = *splitted.first().unwrap();
     let (rest, ip) = ip_address(ip_segment).map_err(|e| Error::FailedToParse {
         message: e.to_string(),
     })?;
-    ensure!(rest.is_empty(), IncompleteParse);
+    ensure!(rest.is_empty(), IncompleteParseSnafu);
 
     Ok(ip)
 }

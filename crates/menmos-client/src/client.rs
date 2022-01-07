@@ -8,27 +8,23 @@ use bytes::Bytes;
 use futures::{Stream, TryStreamExt};
 
 use header::HeaderName;
+
 use interface::{BlobMeta, MetadataList, Query, QueryResponse, RoutingConfig};
 
 use hyper::{header, StatusCode};
 
 use mpart_async::client::MultipartRequest;
 
-use protocol::{
-    directory::{
-        auth::{LoginRequest, LoginResponse, RegisterRequest},
-        blobmeta::{GetMetaResponse, ListMetadataRequest},
-        routing::{GetRoutingConfigResponse, SetRoutingConfigRequest},
-        storage::ListStorageNodesResponse,
-    },
-    storage::PutResponse,
-};
+use protocol::directory::{auth::*, blobmeta::*, routing::*, storage::*};
+use protocol::storage::PutResponse;
+
 use reqwest::{Client as ReqwestClient, Request};
 
 use reqwest::Body;
 
 use serde::de::DeserializeOwned;
-use snafu::{ensure, ResultExt, Snafu};
+
+use snafu::prelude::*;
 
 use crate::{
     metadata_detector::{MetadataDetector, MetadataDetectorError},
@@ -89,13 +85,13 @@ pub enum ClientError {
 }
 
 fn encode_metadata(meta: Meta) -> Result<String> {
-    let serialized_meta = serde_json::to_vec(&meta).context(MetaSerializationError { meta })?;
+    let serialized_meta = serde_json::to_vec(&meta).context(MetaSerializationSnafu { meta })?;
     Ok(base64::encode(&serialized_meta))
 }
 
 async fn extract_body<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> {
-    let body_bytes = response.bytes().await.context(FetchBodyError)?;
-    serde_json::from_slice(body_bytes.as_ref()).context(ResponseDeserializationError)
+    let body_bytes = response.bytes().await.context(FetchBodySnafu)?;
+    serde_json::from_slice(body_bytes.as_ref()).context(ResponseDeserializationSnafu)
 }
 
 async fn extract_error(response: reqwest::Response) -> ClientError {
@@ -180,7 +176,7 @@ impl Client {
             .timeout(params.request_timeout)
             .redirect(reqwest::redirect::Policy::none())
             .build()
-            .context(ClientBuildError)?;
+            .context(ClientBuildSnafu)?;
 
         let (host, username, admin_password) = match params.host_config {
             HostConfig::Host {
@@ -189,7 +185,7 @@ impl Client {
                 admin_password,
             } => (host, username, admin_password),
             HostConfig::Profile { profile } => {
-                let config = Config::load().context(ConfigLoadError)?;
+                let config = Config::load().context(ConfigLoadSnafu)?;
                 let profile = config
                     .profiles
                     .get(&profile)
@@ -205,7 +201,7 @@ impl Client {
         let token = Client::login(&client, &host, &username, &admin_password).await?;
 
         let metadata_detector = if params.metadata_detection {
-            Some(MetadataDetector::new().context(MetadataDetectorErrorInstantiationError)?)
+            Some(MetadataDetector::new().context(MetadataDetectorErrorInstantiationSnafu)?)
         } else {
             None
         };
@@ -227,7 +223,7 @@ impl Client {
                 .client
                 .execute(req_fn()?)
                 .await
-                .context(RequestExecutionError)
+                .context(RequestExecutionSnafu)
             {
                 Ok(r) => return Ok(r),
                 Err(e) => {
@@ -267,14 +263,14 @@ impl Client {
                 .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta)
                 .body(Body::wrap_stream(mpart))
                 .build()
-                .context(RequestBuildError)
+                .context(RequestBuildSnafu)
         } else {
             self.client
                 .post(url)
                 .bearer_auth(&self.token)
                 .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta)
                 .build()
-                .context(RequestBuildError)
+                .context(RequestBuildSnafu)
         }
     }
 
@@ -283,11 +279,11 @@ impl Client {
             .client
             .execute(request)
             .await
-            .context(RequestExecutionError)?;
+            .context(RequestExecutionSnafu)?;
 
         ensure!(
             response.status() == StatusCode::TEMPORARY_REDIRECT,
-            MissingRedirect
+            MissingRedirectSnafu
         );
 
         let new_location = response
@@ -316,7 +312,7 @@ impl Client {
             })
             .send()
             .await
-            .context(RequestExecutionError)?;
+            .context(RequestExecutionSnafu)?;
 
         let resp: LoginResponse = extract(response).await?;
 
@@ -336,7 +332,7 @@ impl Client {
             })
             .send()
             .await
-            .context(RequestExecutionError)?;
+            .context(RequestExecutionSnafu)?;
 
         let resp: LoginResponse = extract(response).await?;
         Ok(resp.token)
@@ -355,7 +351,7 @@ impl Client {
             .bearer_auth(&self.token)
             .header(HeaderName::from_static("x-blob-meta"), meta_b64.clone())
             .build()
-            .context(RequestBuildError)?;
+            .context(RequestBuildSnafu)?;
 
         let redirect_location = self.request_with_redirect(redirect_req).await?;
 
@@ -366,7 +362,7 @@ impl Client {
                     .bearer_auth(&self.token)
                     .header(HeaderName::from_static("x-blob-meta"), &meta_b64)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
@@ -382,7 +378,7 @@ impl Client {
     ) -> Result<String> {
         ensure!(
             path.as_ref().exists(),
-            FileDoesNotExist {
+            FileDoesNotExistSnafu {
                 path: PathBuf::from(path.as_ref())
             }
         );
@@ -390,7 +386,7 @@ impl Client {
         if let Some(metadata_detector) = self.metadata_detector.as_ref() {
             metadata_detector
                 .populate(&path, &mut meta)
-                .context(MetadataDetectorErrorInstantiationError)?;
+                .context(MetadataDetectorErrorInstantiationSnafu)?;
         }
 
         let mut url = base_url;
@@ -405,7 +401,7 @@ impl Client {
                 meta_b64.clone(),
             )
             .build()
-            .context(RequestBuildError)?;
+            .context(RequestBuildSnafu)?;
 
         url = self.request_with_redirect(initial_redirect_request).await?;
 
@@ -424,7 +420,7 @@ impl Client {
         let url = format!("{}/health", self.host);
 
         let response = self
-            .execute(|| self.client.get(&url).build().context(RequestBuildError))
+            .execute(|| self.client.get(&url).build().context(RequestBuildSnafu))
             .await?;
 
         let status = response.status();
@@ -447,7 +443,7 @@ impl Client {
                     .get(&url)
                     .bearer_auth(&self.token)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
@@ -493,7 +489,7 @@ impl Client {
             .json(&ListMetadataRequest { tags, meta_keys })
             .send()
             .await
-            .context(RequestExecutionError)?;
+            .context(RequestExecutionSnafu)?;
 
         extract(response).await
     }
@@ -508,7 +504,7 @@ impl Client {
             .bearer_auth(&self.token)
             .json(&meta)
             .build()
-            .context(RequestBuildError)?;
+            .context(RequestBuildSnafu)?;
 
         let redirect_location = self.request_with_redirect(request).await?;
 
@@ -519,7 +515,7 @@ impl Client {
                     .bearer_auth(&self.token)
                     .json(&meta)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
@@ -541,7 +537,7 @@ impl Client {
             .post(&url)
             .bearer_auth(&self.token)
             .build()
-            .context(RequestBuildError)?;
+            .context(RequestBuildSnafu)?;
 
         let redirect_location = self.request_with_redirect(request).await?;
 
@@ -551,7 +547,7 @@ impl Client {
                     .post(&redirect_location)
                     .bearer_auth(&self.token)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
@@ -575,7 +571,7 @@ impl Client {
                 &format!("bytes={}-{}", offset, offset + (buffer.len() - 1) as u64),
             )
             .build()
-            .context(RequestBuildError)?;
+            .context(RequestBuildSnafu)?;
 
         let redirect_location = self.request_with_redirect(request).await?;
 
@@ -590,7 +586,7 @@ impl Client {
                     )
                     .body(buffer.clone())
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
@@ -615,7 +611,7 @@ impl Client {
                     .get(&url)
                     .bearer_auth(&self.token)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
@@ -632,7 +628,7 @@ impl Client {
             .get(&url)
             .bearer_auth(&self.token)
             .build()
-            .context(RequestBuildError)?;
+            .context(RequestBuildSnafu)?;
 
         let redirect_location = self.request_with_redirect(redirect_request).await?;
 
@@ -642,7 +638,7 @@ impl Client {
                     .get(&redirect_location)
                     .bearer_auth(&self.token)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
@@ -671,7 +667,7 @@ impl Client {
             .bearer_auth(&self.token)
             .header(header::RANGE, &format!("bytes={}-{}", range.0, range.1))
             .build()
-            .context(RequestBuildError)?;
+            .context(RequestBuildSnafu)?;
 
         let redirect_location = self.request_with_redirect(request).await?;
 
@@ -682,13 +678,13 @@ impl Client {
                     .header(header::RANGE, &format!("bytes={}-{}", range.0, range.1))
                     .bearer_auth(&self.token)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
         let status = response.status();
         if status.is_success() {
-            let resp_bytes = response.bytes().await.context(FetchBodyError)?;
+            let resp_bytes = response.bytes().await.context(FetchBodySnafu)?;
             Ok(resp_bytes.to_vec())
         } else {
             Err(extract_error(response).await)
@@ -706,7 +702,7 @@ impl Client {
                     .bearer_auth(&self.token)
                     .json(&query)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
         extract(response).await
@@ -721,7 +717,7 @@ impl Client {
             .delete(&url)
             .bearer_auth(&self.token)
             .build()
-            .context(RequestBuildError)?;
+            .context(RequestBuildSnafu)?;
 
         let redirect_location = self.request_with_redirect(request).await?;
 
@@ -731,7 +727,7 @@ impl Client {
                     .delete(&redirect_location)
                     .bearer_auth(&self.token)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
@@ -754,7 +750,7 @@ impl Client {
                     .get(&url)
                     .bearer_auth(&self.token)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
@@ -775,7 +771,7 @@ impl Client {
                         routing_config: routing_config.clone(),
                     })
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
@@ -795,7 +791,7 @@ impl Client {
                     .delete(&url)
                     .bearer_auth(&self.token)
                     .build()
-                    .context(RequestBuildError)
+                    .context(RequestBuildSnafu)
             })
             .await?;
 
