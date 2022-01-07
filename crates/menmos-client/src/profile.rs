@@ -27,7 +27,7 @@ fn get_config_path() -> Result<PathBuf> {
 
     let cfg_dir_path = root_config_dir.join(CONFIG_DIR_NAME);
     if !cfg_dir_path.exists() {
-        fs::create_dir_all(&cfg_dir_path).context(ConfigDirectoryCreationError)?;
+        fs::create_dir_all(&cfg_dir_path).context(ConfigDirectoryCreationSnafu)?;
     }
 
     Ok(cfg_dir_path.join("client").with_extension("toml"))
@@ -53,8 +53,8 @@ impl Config {
         let config_file = get_config_path()?;
 
         let cfg = if config_file.exists() {
-            let buf = fs::read(config_file).context(ConfigReadError)?;
-            toml::from_slice(&buf).context(ConfigDeserializeError)?
+            let buf = fs::read(config_file).context(ConfigReadSnafu)?;
+            toml::from_slice(&buf).context(ConfigDeserializeSnafu)?
         } else {
             Config::default()
         };
@@ -66,9 +66,9 @@ impl Config {
         self.profiles.insert(name.into(), profile);
 
         let config_file = get_config_path()?;
-        let encoded = toml::to_vec(&self).context(ConfigSerializeError)?;
-        let mut f = fs::File::create(config_file).context(FileCreateError)?;
-        f.write_all(&encoded).context(FileWriteError)?;
+        let encoded = toml::to_vec(&self).context(ConfigSerializeSnafu)?;
+        let mut f = fs::File::create(config_file).context(FileCreateSnafu)?;
+        f.write_all(&encoded).context(FileWriteSnafu)?;
         Ok(())
     }
 }

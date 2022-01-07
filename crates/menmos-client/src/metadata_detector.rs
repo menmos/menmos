@@ -21,7 +21,7 @@ impl MetadataDetector {
     pub fn new() -> Result<Self> {
         let bytes = include_bytes!("data/mime-types.json");
 
-        let mime_types = serde_json::from_slice(bytes).context(MimeTypesDeserializationError)?;
+        let mime_types = serde_json::from_slice(bytes).context(MimeTypesDeserializationSnafu)?;
 
         Ok(Self { mime_types })
     }

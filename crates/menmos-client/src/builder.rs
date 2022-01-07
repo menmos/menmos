@@ -17,7 +17,7 @@ pub enum BuildError {
     MissingPassword,
 
     #[snafu(display("failed to build: {}", source))]
-    FailedToBuild { source: ClientError },
+    BuildError { source: ClientError },
 }
 
 pub struct ClientBuilder {
@@ -85,9 +85,9 @@ impl ClientBuilder {
         let host_config = if let Some(profile) = self.profile {
             HostConfig::Profile { profile }
         } else {
-            ensure!(self.host.is_some(), MissingHost);
-            ensure!(self.admin_password.is_some(), MissingPassword);
-            ensure!(self.username.is_some(), MissingUsername);
+            ensure!(self.host.is_some(), MissingHostSnafu);
+            ensure!(self.admin_password.is_some(), MissingPasswordSnafu);
+            ensure!(self.username.is_some(), MissingUsernameSnafu);
             HostConfig::Host {
                 host: self.host.unwrap(),
                 username: self.username.unwrap(),
@@ -104,7 +104,7 @@ impl ClientBuilder {
             metadata_detection: self.metadata_detection,
         };
 
-        Client::new_with_params(params).await.context(FailedToBuild)
+        Client::new_with_params(params).await.context(BuildSnafu)
     }
 }
 
