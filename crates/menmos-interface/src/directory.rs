@@ -210,6 +210,12 @@ pub struct MoveInformation {
     pub destination_node: StorageNodeInfo,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum RoutingAlgorithm {
+    RoundRobin,
+}
+
 #[async_trait]
 pub trait BlobIndexer {
     async fn pick_node_for_blob(

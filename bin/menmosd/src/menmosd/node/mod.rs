@@ -25,7 +25,7 @@ use std::sync::Arc;
 pub fn make_node(c: &Config) -> Result<Directory> {
     let db = sled::open(&c.node.db_path)?;
 
-    let router = Arc::from(NodeRouter::new());
+    let router = Arc::from(NodeRouter::new(c.node.routing_algorithm));
 
     // Init the indices
     let documents_idx: Arc<DynDocumentIDStore> =

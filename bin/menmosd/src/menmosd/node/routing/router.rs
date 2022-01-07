@@ -2,30 +2,37 @@ use anyhow::{anyhow, Result};
 
 use chrono::{DateTime, Duration, Utc};
 
-use interface::{BlobMetaRequest, RoutingConfig, StorageNodeInfo};
+use interface::{BlobMetaRequest, RoutingAlgorithm, RoutingConfig, StorageNodeInfo};
 
-use menmos_std::collections::{AsyncHashMap, AsyncList};
+use menmos_std::collections::AsyncHashMap;
+
+use super::algorithm::{RoundRobinPolicy, RoutingPolicy};
 
 const NODE_FORGET_DURATION_SECONDS: i64 = 60;
 
 pub struct NodeRouter {
     storage_nodes: AsyncHashMap<String, (StorageNodeInfo, DateTime<Utc>)>,
-    round_robin: AsyncList<String>,
+    routing_policy: Box<dyn RoutingPolicy + Send + Sync>,
 
     node_forget_duration: Duration,
 }
 
 impl NodeRouter {
-    pub fn new() -> Self {
+    pub fn new(routing_algorithm: RoutingAlgorithm) -> Self {
+        let routing_policy: Box<dyn RoutingPolicy + Send + Sync> =
+            Box::from(match routing_algorithm {
+                RoutingAlgorithm::RoundRobin => RoundRobinPolicy::default(),
+            });
+
         Self {
             storage_nodes: AsyncHashMap::new(),
-            round_robin: Default::default(),
+            routing_policy,
             node_forget_duration: Duration::seconds(NODE_FORGET_DURATION_SECONDS),
         }
     }
 
     async fn prune_last_node(&self) {
-        if let Some(node_id) = self.round_robin.pop_back().await {
+        if let Some(node_id) = self.routing_policy.prune_last().await {
             self.storage_nodes.remove(&node_id).await;
         } else {
             tracing::warn!("called pruned_last_node with an empty node list");
@@ -56,7 +63,7 @@ impl NodeRouter {
             .is_some();
 
         if !already_existed {
-            self.round_robin.push_back(node_id).await;
+            self.routing_policy.add_node(node_id).await;
         }
     }
 
@@ -105,11 +112,11 @@ impl NodeRouter {
     }
 
     #[tracing::instrument(level = "trace", skip(self))]
-    async fn route_round_robin(&self) -> Result<StorageNodeInfo> {
+    async fn route_policy(&self) -> Result<StorageNodeInfo> {
         loop {
             let node_id = self
-                .round_robin
-                .fetch_swap()
+                .routing_policy
+                .get_candidate()
                 .await
                 .ok_or_else(|| anyhow!("no storage node defined"))?;
 
@@ -131,7 +138,7 @@ impl NodeRouter {
     ) -> Result<StorageNodeInfo> {
         match self.route_routing_key(meta_request, routing_config).await? {
             Some(v) => Ok(v),
-            None => self.route_round_robin().await,
+            None => self.route_policy().await,
         }
     }
 }
