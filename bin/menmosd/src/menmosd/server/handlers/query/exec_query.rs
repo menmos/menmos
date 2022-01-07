@@ -85,7 +85,7 @@ pub async fn query(
 ) -> Result<reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
 
-    let query = Query::try_from(query_request).map_err(|_| BadRequest)?;
+    let query = Query::try_from(query_request).map_err(BadRequest::from)?;
     tracing::debug!(query = ?query.expression, "query request");
 
     let mut query_response = context

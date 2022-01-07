@@ -40,7 +40,7 @@ fn prepare_stream(
     let boundary = mimetype
         .get_param("boundary")
         .map(|v| v.to_string())
-        .ok_or(apikit::reject::BadRequest)?;
+        .ok_or_else(|| apikit::reject::BadRequest::from("missing boundary"))?;
 
     let stream = MultipartStream::new(
         boundary,
@@ -64,14 +64,16 @@ pub async fn put<N: StorageNode>(
     body: impl Stream<Item = Result<impl Buf, warp::Error>> + Send + Sync + Unpin + 'static,
 ) -> Result<Response, warp::Rejection> {
     // Extract the metadata from the blob.
-    let meta_request = parse_metadata(meta).map_err(|_| BadRequest)?;
+    let meta_request = parse_metadata(meta).map_err(BadRequest::from)?;
 
     // Build our generic stream.
     let mut stream = mime.map(|mime| prepare_stream(mime, body)).transpose()?;
 
     // Directories cannot have streams.
     if meta_request.blob_type == interface::Type::Directory && stream.is_some() {
-        return Err(warp::reject::custom(BadRequest));
+        return Err(warp::reject::custom(BadRequest::from(
+            "directories cannot have streams",
+        )));
     } else if meta_request.blob_type == interface::Type::File && stream.is_none() {
         tracing::debug!("setting default empty stream");
         stream = Some(Box::from(futures::stream::empty()))
