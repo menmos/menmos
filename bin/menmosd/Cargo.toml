@@ -57,7 +57,7 @@ menmos-xecute = {version = "^0.0.10"}
 mime = "0.3"
 rapidquery = {version = "^0.0.10", features=["bitvec_span"]}
 ring = "0.16"
-rust-argon2 = "0.8"
+rust-argon2 = "1.0"
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 sled = {git = "https://github.com/spacejam/sled", branch = "main"}
