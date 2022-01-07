@@ -99,6 +99,8 @@ pub mod storage {
 
 pub mod query {
 
+    use interface::SortOrder;
+
     use super::*;
 
     #[derive(Clone, Debug, Deserialize, Hash, PartialEq, Eq, Serialize)]
@@ -207,6 +209,10 @@ pub mod query {
         false
     }
 
+    fn default_sort_order() -> SortOrder {
+        SortOrder::ChronoAscending
+    }
+
     #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct QueryRequest {
@@ -224,6 +230,9 @@ pub mod query {
 
         #[serde(default = "default_facets")]
         pub facets: bool, // TODO: Permit requesting facets for specific tags instead of doing it for all.
+
+        #[serde(default = "default_sort_order")]
+        pub sort_order: SortOrder,
     }
 
     impl TryFrom<QueryRequest> for Query {
@@ -241,6 +250,7 @@ pub mod query {
                 size: request.size,
                 sign_urls: request.sign_urls,
                 facets: request.facets,
+                sort_order: request.sort_order,
             })
         }
     }

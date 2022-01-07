@@ -88,6 +88,13 @@ pub struct MetadataList {
     pub meta: HashMap<String, HashMap<String, usize>>,
 }
 
+/// A sorting order.
+#[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
+pub enum SortOrder {
+    ChronoAscending,
+    ChronoDescending,
+}
+
 /// A query that can be sent to a Menmos cluster.
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -98,6 +105,7 @@ pub struct Query {
     pub size: usize,
     pub sign_urls: bool,
     pub facets: bool, // TODO: Permit requesting facets for specific tags instead of doing it for all.
+    pub sort_order: SortOrder,
 }
 
 impl Query {
@@ -147,6 +155,11 @@ impl Query {
         self.facets = f;
         self
     }
+
+    pub fn with_sort_order(mut self, sort_order: SortOrder) -> Self {
+        self.sort_order = sort_order;
+        self
+    }
 }
 
 impl Default for Query {
@@ -157,6 +170,7 @@ impl Default for Query {
             size: 30,
             sign_urls: true,
             facets: false,
+            sort_order: SortOrder::ChronoAscending,
         }
     }
 }

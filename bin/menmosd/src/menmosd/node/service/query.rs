@@ -7,7 +7,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use interface::{FacetResponse, Hit, MetadataList, Query, QueryResponse};
+use interface::{FacetResponse, Hit, MetadataList, Query, QueryResponse, SortOrder};
 
 use crate::node::store::iface::{DynDocumentIDStore, DynMetadataStore, DynStorageMappingStore};
 
@@ -99,6 +99,11 @@ impl interface::QueryExecutor for QueryService {
             for idx in &indices[start_point..end_point] {
                 hits.push(self.load_document(*idx)?);
             }
+        }
+
+        // Results are already sorted in chronological order.
+        if query.sort_order == SortOrder::ChronoDescending {
+            hits.reverse();
         }
 
         Ok(QueryResponse {
