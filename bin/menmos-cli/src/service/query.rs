@@ -33,7 +33,7 @@ pub async fn execute(
     output_results(resp, cli.clone());
     from += count;
 
-    if all {
+    if all && count > total {
         loop {
             let query = q.clone().with_from(from);
             let resp = client.query(query.clone()).await?;
