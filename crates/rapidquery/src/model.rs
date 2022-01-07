@@ -2,7 +2,7 @@ use std::ops;
 
 use serde::{Deserialize, Serialize};
 
-use snafu::{ensure, Snafu};
+use snafu::prelude::*;
 
 use crate::{parser, Resolver, Span};
 
@@ -78,7 +78,7 @@ impl Expression {
 
         ensure!(
             rest.is_empty(),
-            ParseError {
+            ParseSnafu {
                 message: "incomplete parse".to_string()
             }
         );

@@ -44,7 +44,7 @@ impl BytePacketBuffer {
     }
 
     pub fn read(&mut self) -> Result<u8> {
-        ensure!(self.pos < 512, EndOfBuffer);
+        ensure!(self.pos < 512, EndOfBufferSnafu);
         let res = self.buf[self.pos];
         self.pos += 1;
 
@@ -52,12 +52,12 @@ impl BytePacketBuffer {
     }
 
     fn get(&mut self, pos: usize) -> Result<u8> {
-        ensure!(pos < 512, EndOfBuffer);
+        ensure!(pos < 512, EndOfBufferSnafu);
         Ok(self.buf[pos])
     }
 
     pub fn get_range(&mut self, start: usize, len: usize) -> Result<&[u8]> {
-        ensure!(start + len < 512, EndOfBuffer);
+        ensure!(start + len < 512, EndOfBufferSnafu);
         Ok(&self.buf[start..start + len as usize])
     }
 
@@ -87,7 +87,7 @@ impl BytePacketBuffer {
             // against such packets.
             ensure!(
                 jumps_performed <= MAX_JUMP_INSTRUCTIONS,
-                TooManyJumps {
+                TooManyJumpsSnafu {
                     limit: MAX_JUMP_INSTRUCTIONS
                 }
             );
@@ -138,7 +138,7 @@ impl BytePacketBuffer {
     }
 
     pub fn write(&mut self, val: u8) -> Result<()> {
-        ensure!(self.pos < 512, EndOfBuffer);
+        ensure!(self.pos < 512, EndOfBufferSnafu);
         self.buf[self.pos] = val;
         self.pos += 1;
         Ok(())
@@ -169,7 +169,7 @@ impl BytePacketBuffer {
     pub fn write_qname(&mut self, qname: &str) -> Result<()> {
         for label in qname.split('.') {
             let len = label.len();
-            ensure!(len <= 0x34, LabelTooLong);
+            ensure!(len <= 0x34, LabelTooLongSnafu);
 
             self.write_u8(len as u8)?;
             for b in label.as_bytes() {
@@ -184,7 +184,7 @@ impl BytePacketBuffer {
 
     pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<()> {
         let l = bytes.len();
-        ensure!(self.pos + l < 512, EndOfBuffer);
+        ensure!(self.pos + l < 512, EndOfBufferSnafu);
 
         let byte_slice = &mut self.buf[self.pos..self.pos + l];
         byte_slice.copy_from_slice(bytes);

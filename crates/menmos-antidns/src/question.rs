@@ -21,19 +21,21 @@ impl DnsQuestion {
     }
 
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<()> {
-        buffer.read_qname(&mut self.name).context(InvalidBuffer)?;
-        self.qtype = QueryType::from_num(buffer.read_u16().context(InvalidBuffer)?); // qtype
-        let _ = buffer.read_u16().context(InvalidBuffer)?; // class
+        buffer
+            .read_qname(&mut self.name)
+            .context(InvalidBufferSnafu)?;
+        self.qtype = QueryType::from_num(buffer.read_u16().context(InvalidBufferSnafu)?); // qtype
+        let _ = buffer.read_u16().context(InvalidBufferSnafu)?; // class
 
         Ok(())
     }
 
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<()> {
-        buffer.write_qname(&self.name).context(InvalidBuffer)?;
+        buffer.write_qname(&self.name).context(InvalidBufferSnafu)?;
 
         let typenum = self.qtype.to_num();
-        buffer.write_u16(typenum).context(InvalidBuffer)?;
-        buffer.write_u16(1).context(InvalidBuffer)?;
+        buffer.write_u16(typenum).context(InvalidBufferSnafu)?;
+        buffer.write_u16(1).context(InvalidBufferSnafu)?;
 
         Ok(())
     }

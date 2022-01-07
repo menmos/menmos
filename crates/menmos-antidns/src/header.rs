@@ -56,9 +56,9 @@ impl DnsHeader {
     }
 
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<()> {
-        self.id = buffer.read_u16().context(InvalidBuffer)?;
+        self.id = buffer.read_u16().context(InvalidBufferSnafu)?;
 
-        let flags = buffer.read_u16().context(InvalidBuffer)?;
+        let flags = buffer.read_u16().context(InvalidBufferSnafu)?;
         let a = (flags >> 8) as u8;
         let b = (flags & 0xFF) as u8;
         self.recursion_desired = (a & (1 << 0)) > 0;
@@ -73,17 +73,17 @@ impl DnsHeader {
         self.z = (b & (1 << 6)) > 0;
         self.recursion_available = (b & (1 << 7)) > 0;
 
-        self.questions = buffer.read_u16().context(InvalidBuffer)?;
-        self.answers = buffer.read_u16().context(InvalidBuffer)?;
-        self.authoritative_entries = buffer.read_u16().context(InvalidBuffer)?;
-        self.resource_entries = buffer.read_u16().context(InvalidBuffer)?;
+        self.questions = buffer.read_u16().context(InvalidBufferSnafu)?;
+        self.answers = buffer.read_u16().context(InvalidBufferSnafu)?;
+        self.authoritative_entries = buffer.read_u16().context(InvalidBufferSnafu)?;
+        self.resource_entries = buffer.read_u16().context(InvalidBufferSnafu)?;
 
         // Return the constant header size
         Ok(())
     }
 
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<()> {
-        buffer.write_u16(self.id).context(InvalidBuffer)?;
+        buffer.write_u16(self.id).context(InvalidBufferSnafu)?;
 
         buffer
             .write_u8(
@@ -93,7 +93,7 @@ impl DnsHeader {
                     | (self.opcode << 3)
                     | ((self.response as u8) << 7) as u8,
             )
-            .context(InvalidBuffer)?;
+            .context(InvalidBufferSnafu)?;
 
         buffer
             .write_u8(
@@ -103,16 +103,18 @@ impl DnsHeader {
                     | ((self.z as u8) << 6)
                     | ((self.recursion_available as u8) << 7),
             )
-            .context(InvalidBuffer)?;
+            .context(InvalidBufferSnafu)?;
 
-        buffer.write_u16(self.questions).context(InvalidBuffer)?;
-        buffer.write_u16(self.answers).context(InvalidBuffer)?;
+        buffer
+            .write_u16(self.questions)
+            .context(InvalidBufferSnafu)?;
+        buffer.write_u16(self.answers).context(InvalidBufferSnafu)?;
         buffer
             .write_u16(self.authoritative_entries)
-            .context(InvalidBuffer)?;
+            .context(InvalidBufferSnafu)?;
         buffer
             .write_u16(self.resource_entries)
-            .context(InvalidBuffer)?;
+            .context(InvalidBufferSnafu)?;
 
         Ok(())
     }

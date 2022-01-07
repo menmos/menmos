@@ -89,13 +89,13 @@ pub enum ClientError {
 }
 
 fn encode_metadata(meta: Meta) -> Result<String> {
-    let serialized_meta = serde_json::to_vec(&meta).context(MetaSerializationError { meta })?;
+    let serialized_meta = serde_json::to_vec(&meta).context(MetaSerializationSnafu { meta })?;
     Ok(base64::encode(&serialized_meta))
 }
 
 async fn extract_body<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> {
-    let body_bytes = response.bytes().await.context(FetchBodyError)?;
-    serde_json::from_slice(body_bytes.as_ref()).context(ResponseDeserializationError)
+    let body_bytes = response.bytes().await.context(FetchBodySnafu)?;
+    serde_json::from_slice(body_bytes.as_ref()).context(ResponseDeserializationSnafu)
 }
 
 async fn extract_error(response: reqwest::Response) -> ClientError {

@@ -84,7 +84,7 @@ impl Server {
     ) -> Result<Vec<u8>> {
         // Next, `DnsPacket::from_buffer` is used to parse the raw bytes into
         // a `DnsPacket`.
-        let mut request = DnsPacket::from_buffer(req_buffer).context(InvalidPacket)?;
+        let mut request = DnsPacket::from_buffer(req_buffer).context(InvalidPacketSnafu)?;
 
         // Create and initialize the response packet
         let mut packet = DnsPacket::new();
@@ -154,10 +154,10 @@ impl Server {
 
         // The only thing remaining is to encode our response and send it off!
         let mut res_buffer = BytePacketBuffer::new();
-        packet.write(&mut res_buffer).context(InvalidPacket)?;
+        packet.write(&mut res_buffer).context(InvalidPacketSnafu)?;
 
         let len = res_buffer.pos();
-        let data = res_buffer.get_range(0, len).context(InvalidBuffer)?;
+        let data = res_buffer.get_range(0, len).context(InvalidBufferSnafu)?;
 
         tracing::trace!(
             "sending raw packet of length {} as response: {:?}",
