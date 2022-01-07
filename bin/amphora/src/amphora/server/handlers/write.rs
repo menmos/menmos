@@ -31,7 +31,7 @@ pub async fn write<N: StorageNode>(
     body: Bytes,
 ) -> Result<reply::Response, warp::Rejection> {
     // Fetch the request content range from the header.
-    let range = parse_range_header(range_header).map_err(|_| BadRequest)?;
+    let range = parse_range_header(range_header).map_err(BadRequest::from)?;
 
     node.write(blob_id, range, body, &user.username)
         .await

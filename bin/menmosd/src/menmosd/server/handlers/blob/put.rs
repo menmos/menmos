@@ -30,7 +30,7 @@ pub async fn put(
 ) -> Result<warp::reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
 
-    let meta = parse_metadata(meta).map_err(|_| BadRequest)?;
+    let meta = parse_metadata(meta).map_err(BadRequest::from)?;
 
     // Pick a storage node for our new blob.
     let new_blob_id = uuid::Uuid::new_v4().to_string();
