@@ -90,6 +90,7 @@ pub struct MetadataList {
 
 /// A sorting order.
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum SortOrder {
     CreationAscending,
     CreationDescending,
