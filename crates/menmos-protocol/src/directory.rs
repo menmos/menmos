@@ -210,7 +210,7 @@ pub mod query {
     }
 
     fn default_sort_order() -> SortOrder {
-        SortOrder::ChronoAscending
+        SortOrder::CreationAscending
     }
 
     #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]

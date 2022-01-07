@@ -145,7 +145,7 @@ async fn query_sorting_order() -> Result<()> {
 
     let results = cluster
         .client
-        .query(Query::default().with_sort_order(SortOrder::ChronoDescending))
+        .query(Query::default().with_sort_order(SortOrder::CreationDescending))
         .await?;
     assert_eq!(results.count, 3);
     assert_eq!(

@@ -63,7 +63,18 @@ impl interface::QueryExecutor for QueryService {
 
         if total > 0 {
             // Get the numerical indices of all documents in the bitvector.
-            let indices: Vec<u32> = result_bitvector.iter_ones().map(|e| e as u32).collect();
+            let indices: Vec<u32> = {
+                let mut ind = result_bitvector
+                    .iter_ones()
+                    .map(|e| e as u32)
+                    .collect::<Vec<_>>();
+
+                if query.sort_order == SortOrder::CreationDescending {
+                    ind.reverse();
+                }
+
+                ind
+            };
 
             // Compute facets on-the-fly
             // TODO: Facets could be made much faster via a structure at indexing time, this is a WIP.
@@ -99,11 +110,6 @@ impl interface::QueryExecutor for QueryService {
             for idx in &indices[start_point..end_point] {
                 hits.push(self.load_document(*idx)?);
             }
-        }
-
-        // Results are already sorted in chronological order.
-        if query.sort_order == SortOrder::ChronoDescending {
-            hits.reverse();
         }
 
         Ok(QueryResponse {

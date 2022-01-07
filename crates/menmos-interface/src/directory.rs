@@ -91,8 +91,8 @@ pub struct MetadataList {
 /// A sorting order.
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 pub enum SortOrder {
-    ChronoAscending,
-    ChronoDescending,
+    CreationAscending,
+    CreationDescending,
 }
 
 /// A query that can be sent to a Menmos cluster.
@@ -170,7 +170,7 @@ impl Default for Query {
             size: 30,
             sign_urls: true,
             facets: false,
-            sort_order: SortOrder::ChronoAscending,
+            sort_order: SortOrder::CreationAscending,
         }
     }
 }
