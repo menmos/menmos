@@ -1,6 +1,7 @@
 //! Test query-related features.
 
 use anyhow::Result;
+use interface::SortOrder;
 use menmos_client::{Meta, Query, Type};
 use protocol::directory::auth::{LoginRequest, LoginResponse};
 use reqwest::StatusCode;
@@ -108,6 +109,53 @@ async fn query_has_up_to_date_datetime() -> Result<()> {
 
     let results = cluster.client.query(Query::default()).await?;
     assert!(results.hits[0].meta.modified_at > created_at);
+
+    cluster.stop_all().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn query_sorting_order() -> Result<()> {
+    let mut cluster = Menmos::new().await?;
+    cluster.add_amphora("alpha").await?;
+
+    cluster
+        .push_document("Document 1", Meta::file("blob_1"))
+        .await?;
+
+    cluster
+        .push_document("Document 2", Meta::file("blob_2"))
+        .await?;
+
+    cluster
+        .push_document("Document 3", Meta::file("blob_3"))
+        .await?;
+
+    let results = cluster.client.query(Query::default()).await?;
+    assert_eq!(results.count, 3);
+    assert_eq!(
+        results
+            .hits
+            .iter()
+            .map(|r| &r.meta.name)
+            .collect::<Vec<_>>(),
+        vec!["blob_1", "blob_2", "blob_3"]
+    );
+
+    let results = cluster
+        .client
+        .query(Query::default().with_sort_order(SortOrder::CreationDescending))
+        .await?;
+    assert_eq!(results.count, 3);
+    assert_eq!(
+        results
+            .hits
+            .iter()
+            .map(|r| &r.meta.name)
+            .collect::<Vec<_>>(),
+        vec!["blob_3", "blob_2", "blob_1"]
+    );
 
     Ok(())
 }

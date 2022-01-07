@@ -7,7 +7,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use interface::{FacetResponse, Hit, MetadataList, Query, QueryResponse};
+use interface::{FacetResponse, Hit, MetadataList, Query, QueryResponse, SortOrder};
 
 use crate::node::store::iface::{DynDocumentIDStore, DynMetadataStore, DynStorageMappingStore};
 
@@ -63,7 +63,18 @@ impl interface::QueryExecutor for QueryService {
 
         if total > 0 {
             // Get the numerical indices of all documents in the bitvector.
-            let indices: Vec<u32> = result_bitvector.iter_ones().map(|e| e as u32).collect();
+            let indices: Vec<u32> = {
+                let mut ind = result_bitvector
+                    .iter_ones()
+                    .map(|e| e as u32)
+                    .collect::<Vec<_>>();
+
+                if query.sort_order == SortOrder::CreationDescending {
+                    ind.reverse();
+                }
+
+                ind
+            };
 
             // Compute facets on-the-fly
             // TODO: Facets could be made much faster via a structure at indexing time, this is a WIP.
