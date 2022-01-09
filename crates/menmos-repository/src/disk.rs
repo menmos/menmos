@@ -38,7 +38,7 @@ impl DiskRepository {
     }
 
     fn get_path_for_blob(&self, blob_id: &str) -> PathBuf {
-        self.path.join(blob_id.to_string()).with_extension("blob")
+        self.path.join(blob_id).with_extension("blob")
     }
 
     #[cfg(windows)]

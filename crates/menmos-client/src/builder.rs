@@ -17,7 +17,7 @@ pub enum BuildError {
     MissingPassword,
 
     #[snafu(display("failed to build: {}", source))]
-    BuildError { source: ClientError },
+    Build { source: ClientError },
 }
 
 pub struct ClientBuilder {

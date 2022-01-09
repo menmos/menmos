@@ -81,29 +81,35 @@ impl BlobMetaRequest {
         }
     }
 
+    #[must_use]
     pub fn file<S: Into<String>>(name: S) -> Self {
         Self::new(name, Type::File)
     }
 
+    #[must_use]
     pub fn directory<S: Into<String>>(name: S) -> Self {
         Self::new(name, Type::Directory)
     }
 
+    #[must_use]
     pub fn with_meta<S: Into<String>, T: Into<String>>(mut self, key: S, value: T) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
     }
 
+    #[must_use]
     pub fn with_tag<S: Into<String>>(mut self, s: S) -> Self {
         self.tags.push(s.into());
         self
     }
 
+    #[must_use]
     pub fn with_parent<S: Into<String>>(mut self, s: S) -> Self {
         self.parents.push(s.into());
         self
     }
 
+    #[must_use]
     pub fn with_size(mut self, size: u64) -> Self {
         self.size = size;
         self
@@ -179,29 +185,35 @@ impl BlobMeta {
         }
     }
 
+    #[must_use]
     pub fn file<S: Into<String>>(name: S) -> Self {
         BlobMeta::new(name, Type::File)
     }
 
+    #[must_use]
     pub fn directory<S: Into<String>>(name: S) -> Self {
         BlobMeta::new(name, Type::Directory)
     }
 
+    #[must_use]
     pub fn with_meta<S: Into<String>, T: Into<String>>(mut self, key: S, value: T) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
     }
 
+    #[must_use]
     pub fn with_tag<S: Into<String>>(mut self, s: S) -> Self {
         self.tags.push(s.into());
         self
     }
 
+    #[must_use]
     pub fn with_parent<S: Into<String>>(mut self, s: S) -> Self {
         self.parents.push(s.into());
         self
     }
 
+    #[must_use]
     pub fn with_size(mut self, size: u64) -> Self {
         self.size = size;
         self

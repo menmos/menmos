@@ -70,7 +70,7 @@ pub async fn get<N: StorageNode>(
     }
 
     // Fetch the request content range from the header if any.
-    let range = range_header.map(|h| parse_range_header(h).ok()).flatten();
+    let range = range_header.and_then(|h| parse_range_header(h).ok());
 
     // Get the blob stream from the backend.
     let blob = node

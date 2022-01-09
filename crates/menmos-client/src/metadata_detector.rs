@@ -41,7 +41,7 @@ impl MetadataDetector {
                 .insert(String::from("content-type"), mime_type);
         }
 
-        if let Some(extension) = path.as_ref().extension().map(|e| e.to_str()).flatten() {
+        if let Some(extension) = path.as_ref().extension().and_then(|e| e.to_str()) {
             meta.metadata
                 .insert(String::from("extension"), String::from(extension));
         }
