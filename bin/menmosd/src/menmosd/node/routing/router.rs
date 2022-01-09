@@ -6,7 +6,7 @@ use interface::{BlobMetaRequest, RoutingAlgorithm, RoutingConfig, StorageNodeInf
 
 use menmos_std::collections::AsyncHashMap;
 
-use super::algorithm::{RoundRobinPolicy, RoutingPolicy};
+use super::algorithm::{MinSizePolicy, RoundRobinPolicy, RoutingPolicy};
 
 const NODE_FORGET_DURATION_SECONDS: i64 = 60;
 
@@ -19,10 +19,10 @@ pub struct NodeRouter {
 
 impl NodeRouter {
     pub fn new(routing_algorithm: RoutingAlgorithm) -> Self {
-        let routing_policy: Box<dyn RoutingPolicy + Send + Sync> =
-            Box::from(match routing_algorithm {
-                RoutingAlgorithm::RoundRobin => RoundRobinPolicy::default(),
-            });
+        let routing_policy: Box<dyn RoutingPolicy + Send + Sync> = match routing_algorithm {
+            RoutingAlgorithm::RoundRobin => Box::new(RoundRobinPolicy::default()),
+            RoutingAlgorithm::MinSize => Box::new(MinSizePolicy::default()),
+        };
 
         Self {
             storage_nodes: AsyncHashMap::new(),
@@ -54,16 +54,17 @@ impl NodeRouter {
     }
 
     pub async fn add_node(&self, storage_node: StorageNodeInfo) {
-        let node_id = storage_node.id.clone();
-
         let already_existed = self
             .storage_nodes
-            .insert(storage_node.id.clone(), (storage_node, chrono::Utc::now()))
+            .insert(
+                storage_node.id.clone(),
+                (storage_node.clone(), chrono::Utc::now()),
+            )
             .await
             .is_some();
 
         if !already_existed {
-            self.routing_policy.add_node(node_id).await;
+            self.routing_policy.add_node(storage_node).await;
         }
     }
 

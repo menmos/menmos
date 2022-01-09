@@ -214,6 +214,7 @@ pub struct MoveInformation {
 #[serde(rename_all = "snake_case")]
 pub enum RoutingAlgorithm {
     RoundRobin,
+    MinSize,
 }
 
 #[async_trait]

@@ -2,9 +2,17 @@ use std::collections::LinkedList;
 
 use tokio::sync::Mutex;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct AsyncList<T> {
     data: Mutex<LinkedList<T>>,
+}
+
+impl<T> Default for AsyncList<T> {
+    fn default() -> Self {
+        Self {
+            data: Mutex::new(LinkedList::new()),
+        }
+    }
 }
 
 impl<T> AsyncList<T> {
