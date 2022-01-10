@@ -24,7 +24,7 @@ menmos-xecute = {version = "^0.0.10"}
 portpicker = "0.1"
 reqwest = {version = "0.11", features = ["json"]}
 serde_json = "1"
-tempfile = "3.2"
+tempfile = "3.3"
 tokio = {version = "1.2", features = ["full"]}
 tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_debug"]}
 tracing-subscriber = "0.3"
