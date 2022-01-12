@@ -18,7 +18,7 @@ path = "src/amphora/lib.rs"
 [dev-dependencies]
 menmos-client = {version = "^0.0.10"}
 portpicker = "0.1"
-tempfile = "3.2"
+tempfile = "3.3"
 
 [dependencies]
 anyhow = "1"
