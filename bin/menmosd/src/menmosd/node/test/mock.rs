@@ -157,7 +157,7 @@ impl DocumentIdStore for MockDocumentIDStore {
 
         // Initialize our bitvector with 1.
         let nb_of_docs = self.get_nb_of_docs() as usize;
-        let mut initial_bv = bitvec![Lsb0, usize; 1; nb_of_docs];
+        let mut initial_bv = bitvec![usize, Lsb0; 1; nb_of_docs];
 
         for idx in recycled.iter() {
             initial_bv.set(*idx as usize, false);
@@ -216,7 +216,7 @@ impl MetadataStore for MockMetadataStore {
             }
             bv.set(id as usize, true);
         } else {
-            let mut bv = bitvec![Lsb0, usize; 0; id as usize + 1];
+            let mut bv = bitvec![usize, Lsb0; 0; id as usize + 1];
             bv.set(id as usize, true);
             users_map.insert(info.owner.clone(), bv);
         }
@@ -238,7 +238,7 @@ impl MetadataStore for MockMetadataStore {
                 }
                 bv.set(id as usize, true);
             } else {
-                let mut bv = bitvec![Lsb0, usize; 0; id as usize + 1];
+                let mut bv = bitvec![usize, Lsb0; 0; id as usize + 1];
                 bv.set(id as usize, true);
                 tag_map.insert(tag.clone(), bv);
             }

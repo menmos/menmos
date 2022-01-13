@@ -25,7 +25,7 @@ fn concatenate_merge(
         }
         b
     } else {
-        bitvec![Lsb0, usize; 0; (new_max_index + 1) as usize]
+        bitvec![usize, Lsb0; 0; (new_max_index + 1) as usize]
     };
 
     unsafe {
@@ -63,7 +63,8 @@ impl BitvecTree {
     #[tracing::instrument(level = "trace", skip(self), fields(name = %self.name))]
     pub fn load(&self, key: &str) -> Result<BitVec> {
         if let Some(ivec) = self.tree.get(key.to_lowercase().as_bytes())? {
-            let bv: BitVec = bincode::deserialize_from(ivec.as_ref())?;
+            let ivec_slice: &[u8] = ivec.as_ref();
+            let bv: BitVec = bincode::deserialize(ivec_slice)?;
             tracing::trace!(count = bv.count_ones(), "loaded");
             Ok(bv)
         } else {
@@ -75,7 +76,7 @@ impl BitvecTree {
     pub fn purge_key<K: AsRef<[u8]>>(&self, key: K, idx: u32) -> Result<()> {
         self.tree.update_and_fetch(key, |f| {
             let ivec = f.unwrap();
-            let mut bv: BitVec = bincode::deserialize_from(ivec).unwrap();
+            let mut bv: BitVec = bincode::deserialize(ivec).unwrap();
 
             // It's possible we just loaded a bitvector that is too small for the index we're
             // trying to purge.
@@ -117,5 +118,21 @@ impl BitvecTree {
         self.tree.clear()?;
         tracing::trace!(name = %self.name, "cleared tree");
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use bitvec::prelude::*;
+
+    #[test]
+    fn bitvec_serialization_loop() {
+        let bv = bitvec![usize, Lsb0; 1; 10];
+
+        let serialized = bincode::serialize(&bv).unwrap();
+        let deserialized: BitVec = bincode::deserialize(&serialized).unwrap();
+
+        assert_eq!(bv, deserialized);
     }
 }

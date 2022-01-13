@@ -118,7 +118,7 @@ impl DocumentIdStore for SledDocumentIdStore {
     fn get_all_documents_mask(&self) -> Result<BitVec> {
         // Initialize our bitvector with 1.
         let nb_of_docs = self.get_nb_of_docs() as usize;
-        let mut initial_bv = bitvec![Lsb0, usize; 1; nb_of_docs];
+        let mut initial_bv = bitvec![usize, Lsb0; 1; nb_of_docs];
 
         // This isn't _super_ efficient at query-time, but it makes indexing much quicker.
         // TODO: Improve the datastructure for keeping recycled IDs if this becomes a bottleneck.
