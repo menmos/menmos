@@ -159,25 +159,18 @@ async fn direct_get_meta() -> Result<()> {
 
 #[tokio::test]
 async fn permissions_write() -> Result<()> {
-    tracing::debug!("PRESTEP");
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
-
-    tracing::debug!("step A");
 
     let blob_id = cluster
         .push_document("bing bong", Meta::file("test.txt"))
         .await?;
-
-    tracing::debug!("step B");
 
     // Write as owner.
     cluster
         .client
         .write(&blob_id, 0, Bytes::copy_from_slice(b"yeet"))
         .await?;
-
-    tracing::debug!("step C");
 
     // Write as non-owner.
     cluster.add_user("john", "bingbong").await?;
@@ -187,8 +180,6 @@ async fn permissions_write() -> Result<()> {
         .await
         .is_err());
 
-    tracing::debug!("step D");
-
     // Make sure only the first write got through.
     let file_stream = cluster.client.get_file(&blob_id).await?;
     let file_bytes = stream_to_bytes(file_stream).await?;
@@ -196,11 +187,7 @@ async fn permissions_write() -> Result<()> {
 
     assert_eq!(file_str, "yeet bong");
 
-    tracing::debug!("step E");
-
     cluster.stop_all().await?;
-
-    tracing::debug!("step F");
 
     Ok(())
 }
