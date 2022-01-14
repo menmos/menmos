@@ -295,5 +295,7 @@ async fn permissions_update_blob() -> Result<()> {
         .await
         .is_err());
 
+    cluster.stop_all().await?;
+
     Ok(())
 }

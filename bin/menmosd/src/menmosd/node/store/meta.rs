@@ -205,7 +205,7 @@ impl MetadataStore for SledMetadataStore {
             .scan_prefix(format!("{}$", k).as_bytes())
             .filter_map(|f| f.ok())
         {
-            let resolved: BitVec = bincode::deserialize_from(v_ivec.as_ref())?;
+            let resolved: BitVec = bincode::deserialize(v_ivec.as_ref())?;
             let (biggest, smallest) = if bv.len() > resolved.len() {
                 (bv, resolved)
             } else {
@@ -232,7 +232,7 @@ impl MetadataStore for SledMetadataStore {
             let (tag, vector) = r?;
 
             let tag_str = String::from_utf8_lossy(tag.as_ref()).to_string();
-            let mut bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
+            let mut bv: BitVec = bincode::deserialize(vector.as_ref())?;
 
             if let Some(user_bitvec) = mask {
                 bv &= user_bitvec.clone();
@@ -267,7 +267,7 @@ impl MetadataStore for SledMetadataStore {
                     {
                         let tag_str = String::from_utf8_lossy(kv_iv.as_ref()).to_string();
                         let (k, v) = tag_to_kv(&tag_str)?;
-                        let mut bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
+                        let mut bv: BitVec = bincode::deserialize(vector.as_ref())?;
 
                         if let Some(user_bitvec) = mask {
                             bv &= user_bitvec.clone();
@@ -291,7 +291,7 @@ impl MetadataStore for SledMetadataStore {
                     let (k_v_pair, vector) = r?;
                     let tag_str = String::from_utf8_lossy(k_v_pair.as_ref()).to_string();
                     let (k, v) = tag_to_kv(&tag_str)?;
-                    let mut bv: BitVec = bincode::deserialize_from(vector.as_ref())?;
+                    let mut bv: BitVec = bincode::deserialize(vector.as_ref())?;
 
                     if let Some(user_bitvec) = mask {
                         bv &= user_bitvec.clone();
