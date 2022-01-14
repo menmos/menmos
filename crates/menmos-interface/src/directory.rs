@@ -115,6 +115,7 @@ impl Query {
         Ok(self)
     }
 
+    #[must_use]
     pub fn and_tag<S: Into<String>>(mut self, tag: S) -> Self {
         let new_expr = Expression::Tag { tag: tag.into() };
         self.expression = Expression::And {
@@ -123,6 +124,7 @@ impl Query {
         self
     }
 
+    #[must_use]
     pub fn and_meta<K: Into<String>, V: Into<String>>(mut self, k: K, v: V) -> Self {
         let new_expr = Expression::KeyValue {
             key: k.into(),
@@ -134,6 +136,7 @@ impl Query {
         self
     }
 
+    #[must_use]
     pub fn and_parent<P: Into<String>>(mut self, p: P) -> Self {
         let new_expr = Expression::Parent { parent: p.into() };
         self.expression = Expression::And {
@@ -142,16 +145,19 @@ impl Query {
         self
     }
 
+    #[must_use]
     pub fn with_from(mut self, f: usize) -> Self {
         self.from = f;
         self
     }
 
+    #[must_use]
     pub fn with_size(mut self, s: usize) -> Self {
         self.size = s;
         self
     }
 
+    #[must_use]
     pub fn with_facets(mut self, f: bool) -> Self {
         self.facets = f;
         self
@@ -194,6 +200,7 @@ impl RoutingConfig {
         }
     }
 
+    #[must_use]
     pub fn with_route<K: Into<String>, V: Into<String>>(
         mut self,
         field_value: K,
@@ -223,6 +230,13 @@ pub struct MoveInformation {
     pub blob_id: String,
     pub owner_username: String,
     pub destination_node: StorageNodeInfo,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum RoutingAlgorithm {
+    RoundRobin,
+    MinSize,
 }
 
 #[async_trait]

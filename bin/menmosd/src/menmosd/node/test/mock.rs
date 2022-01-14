@@ -8,8 +8,8 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 use interface::{
-    BlobIndexer, BlobInfo, NodeAdminController, QueryExecutor, RoutingConfigManager,
-    RoutingConfigState, UserManagement,
+    BlobIndexer, BlobInfo, NodeAdminController, QueryExecutor, RoutingAlgorithm,
+    RoutingConfigManager, RoutingConfigState, UserManagement,
 };
 
 use crate::node::{
@@ -474,7 +474,7 @@ pub fn node() -> Directory {
     let users_svc: Arc<dyn UserManagement + Send + Sync> =
         Arc::new(UserService::new(Box::from(MockUserStore::default())));
 
-    let node_router = Arc::from(NodeRouter::new());
+    let node_router = Arc::from(NodeRouter::new(RoutingAlgorithm::RoundRobin));
 
     let routing_svc: Arc<dyn RoutingConfigManager + Send + Sync> = Arc::new(RoutingService::new(
         routing_store,

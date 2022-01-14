@@ -98,8 +98,7 @@ fn load_log_config_file(path: &Path) -> Result<LoggingConfig> {
 
 fn get_logging_config(path: &Option<PathBuf>) -> LoggingConfig {
     path.as_ref()
-        .map(|p| load_log_config_file(p).ok())
-        .flatten()
+        .and_then(|p| load_log_config_file(p).ok())
         .unwrap_or_default()
 }
 

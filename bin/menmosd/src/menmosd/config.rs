@@ -8,6 +8,8 @@ use config::{Config as ConfigLoader, Environment, File};
 
 use anyhow::{anyhow, Result};
 
+use interface::RoutingAlgorithm;
+
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_DNS_NB_OF_CONCURRENT_QUERIES: i64 = 40;
@@ -69,6 +71,7 @@ pub struct NodeSetting {
     pub db_path: PathBuf,
     pub admin_password: String, // This will be used until we desing & implement proper multi-user support.
     pub encryption_key: String, // TODO: Generate instead?
+    pub routing_algorithm: RoutingAlgorithm,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -109,6 +112,7 @@ impl Config {
                 .to_string()
                 .as_ref(),
         )?;
+        loader.set_default("node.routing_algorithm", "round_robin")?;
         loader.set_default(
             "server.certificate_storage_path",
             data_dir

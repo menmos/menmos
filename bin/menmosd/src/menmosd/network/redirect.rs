@@ -44,12 +44,7 @@ pub fn get_storage_node_address<S: AsRef<str>>(
 
     let fmt_url = match &cfg.server {
         ServerSetting::Http(_http_setting) => {
-            format!(
-                "http://{}:{}/{}",
-                address.to_string(),
-                n.port,
-                path.as_ref()
-            )
+            format!("http://{}:{}/{}", address, n.port, path.as_ref())
         }
         ServerSetting::Https(https_setting) => {
             format!(

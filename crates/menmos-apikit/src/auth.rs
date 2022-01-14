@@ -121,8 +121,7 @@ async fn validate_user_tokens(
     key: String,
 ) -> Result<UserIdentity, warp::Rejection> {
     let token = header_token
-        .map(|t| strip_bearer(&t).map(String::from).ok())
-        .flatten()
+        .and_then(|t| strip_bearer(&t).map(String::from).ok())
         .or(url_signature_token)
         .ok_or(reject::Forbidden)?;
 
