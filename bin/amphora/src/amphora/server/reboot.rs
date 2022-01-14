@@ -152,6 +152,7 @@ impl RebootableServer {
             match RebootableServer::run_until_refresh_or_stop(cfg.clone(), &mut stop_rx).await {
                 Ok(should_terminate) => {
                     if should_terminate {
+                        tracing::debug!("amphora [{}] terminated", &cfg.node.name);
                         return;
                     }
                 }
