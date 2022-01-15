@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 
 use chrono::{DateTime, Duration, Utc};
 
@@ -137,9 +137,23 @@ impl NodeRouter {
         meta_request: &BlobMetaRequest,
         routing_config: &Option<RoutingConfig>,
     ) -> Result<StorageNodeInfo> {
-        match self.route_routing_key(meta_request, routing_config).await? {
-            Some(v) => Ok(v),
-            None => self.route_policy().await,
+        let mut i = 0;
+        let number_of_nodes = self.list_nodes().await.len();
+        loop {
+            let node = match self.route_routing_key(meta_request, routing_config).await? {
+                Some(v) => Ok(v),
+                None => self.route_policy().await,
+            }?;
+
+            if node.available_space >= meta_request.size {
+                return Ok(node);
+            }
+
+            i += 1;
+
+            if i == number_of_nodes {
+                bail!("all nodes are full");
+            }
         }
     }
 }
