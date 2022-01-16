@@ -152,7 +152,7 @@ impl NodeRouter {
             i += 1;
 
             if i == number_of_nodes {
-                bail!("all nodes are full");
+                bail!("no nodes has enough free space for this blob");
             }
         }
     }
