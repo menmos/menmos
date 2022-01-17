@@ -2735,7 +2735,7 @@ checksum = "9def91fd1e018fe007022791f865d0ccc9b3a0d5001e01aabb8b40e46000afb5"
 [[package]]
 name = "sled"
 version = "0.34.6"
-source = "git+https://github.com/spacejam/sled?branch=main#c840fe7e3b3ad27e7de192bde6899e34b44f0a8c"
+source = "git+https://github.com/spacejam/sled?branch=main#17bf21f46e81d568c6969127f7fb138c9b60723b"
 dependencies = [
  "crc32fast",
  "fs2",
