@@ -5,7 +5,7 @@ use include_dir::{include_dir, Dir};
 use warp::hyper::Body;
 
 #[cfg(feature = "webui")]
-const STATIC_FILE_DIR: Dir = include_dir!("./menmos-web/out");
+const STATIC_FILE_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/menmos-web/out");
 
 fn serve(text: &str, content_type: &'static str) -> warp::http::Response<Body> {
     let body = Body::from(text.as_bytes().to_vec());
