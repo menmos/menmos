@@ -26,12 +26,8 @@ use serde::de::DeserializeOwned;
 
 use snafu::prelude::*;
 
-use crate::{
-    metadata_detector::{MetadataDetector, MetadataDetectorError},
-    parameters::HostConfig,
-    profile::ProfileError,
-    ClientBuilder, Config, Meta, Parameters,
-};
+use crate::metadata_detector::{MetadataDetector, MetadataDetectorError};
+use crate::{ClientBuilder, Meta, Parameters};
 
 #[derive(Debug, Snafu)]
 pub enum ClientError {
@@ -64,12 +60,6 @@ pub enum ClientError {
 
     #[snafu(display("server returned an error: {}", message))]
     ServerReturnedError { message: String },
-
-    #[snafu(display("failed to load configuration: {}", source))]
-    ConfigLoadError { source: ProfileError },
-
-    #[snafu(display("missing profile '{}'", name))]
-    MissingProfile { name: String },
 
     #[snafu(display("did not get a redirect when expected"))]
     MissingRedirect,
@@ -128,34 +118,12 @@ impl Client {
     pub async fn new<S: Into<String>, U: Into<String>, P: Into<String>>(
         directory_host: S,
         username: U,
-        admin_password: P,
+        password: P,
     ) -> Result<Self> {
         Client::new_with_params(Parameters {
-            host_config: HostConfig::Host {
-                host: directory_host.into(),
-                username: username.into(),
-                admin_password: admin_password.into(),
-            },
-            pool_idle_timeout: Duration::from_secs(5),
-            request_timeout: Duration::from_secs(60),
-            max_retry_count: 20,
-            retry_interval: Duration::from_millis(100),
-            metadata_detection: false,
-        })
-        .await
-    }
-
-    /// Create a new client from a configured profile with default settings.
-    ///
-    /// The profiles are read from
-    /// * `$XDG_CONFIG_HOME/menmos/client.toml` on Linux
-    /// * `~/Library/Application Support/menmos/client.toml` on MacOS
-    /// * `%APPDATA%\menmos\client.toml` on Windows
-    pub async fn new_with_profile<S: Into<String>>(profile: S) -> Result<Self> {
-        Self::new_with_params(Parameters {
-            host_config: HostConfig::Profile {
-                profile: profile.into(),
-            },
+            host: directory_host.into(),
+            username: username.into(),
+            password: password.into(),
             pool_idle_timeout: Duration::from_secs(5),
             request_timeout: Duration::from_secs(60),
             max_retry_count: 20,
@@ -178,27 +146,8 @@ impl Client {
             .build()
             .context(ClientBuildSnafu)?;
 
-        let (host, username, admin_password) = match params.host_config {
-            HostConfig::Host {
-                host,
-                username,
-                admin_password,
-            } => (host, username, admin_password),
-            HostConfig::Profile { profile } => {
-                let config = Config::load().context(ConfigLoadSnafu)?;
-                let profile = config
-                    .profiles
-                    .get(&profile)
-                    .ok_or(ClientError::MissingProfile { name: profile })?;
-                (
-                    profile.host.clone(),
-                    profile.username.clone(),
-                    profile.password.clone(),
-                )
-            }
-        };
-
-        let token = Client::login(&client, &host, &username, &admin_password).await?;
+        let token =
+            Client::login(&client, &params.host, &params.username, &params.password).await?;
 
         let metadata_detector = if params.metadata_detection {
             Some(MetadataDetector::new().context(MetadataDetectorErrorInstantiationSnafu)?)
@@ -207,7 +156,7 @@ impl Client {
         };
 
         Ok(Self {
-            host,
+            host: params.host,
             client,
             max_retry_count: params.max_retry_count,
             retry_interval: params.retry_interval,

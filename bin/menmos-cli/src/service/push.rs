@@ -5,7 +5,8 @@ use std::sync::Arc;
 use anyhow::Result;
 use async_stream::try_stream;
 use futures::{Stream, StreamExt};
-use menmos_client::{Client, Meta, Type};
+use interface::{BlobMetaRequest as Meta, Type};
+use menmos::Menmos;
 use rood::cli::OutputManager;
 
 use crate::util;
@@ -14,7 +15,7 @@ use crate::util;
 async fn file<P: AsRef<Path>>(
     cli: OutputManager,
     path: P,
-    client: Arc<Client>,
+    client: Arc<Menmos>,
     tags: Vec<String>,
     meta_map: HashMap<String, String>,
     blob_type: Type,
@@ -54,7 +55,7 @@ async fn file<P: AsRef<Path>>(
         meta = meta.with_meta(k, v);
     }
 
-    let item_id = client.push(path.as_ref(), meta).await?;
+    let item_id = client.client().push(path.as_ref(), meta).await?;
     cli.success(format!("Complete {:?} => {}", path.as_ref(), &item_id));
 
     Ok(item_id)
@@ -62,7 +63,7 @@ async fn file<P: AsRef<Path>>(
 
 fn get_file_stream(
     cli: OutputManager,
-    client_arc: Arc<Client>,
+    client_arc: Arc<Menmos>,
     paths: Vec<PathBuf>,
     tags: Vec<String>,
     meta_map: HashMap<String, String>,
@@ -102,7 +103,7 @@ fn get_file_stream(
 
 pub async fn all(
     cli: OutputManager,
-    client: Client,
+    client: Menmos,
     paths: Vec<PathBuf>,
     tags: Vec<String>,
     meta: Vec<String>,

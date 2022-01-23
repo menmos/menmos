@@ -22,7 +22,7 @@ menmos_debug = []
 
 [dev-dependencies]
 amphora = {path = "../amphora"}
-menmos-client = {path = "../../crates/menmos-client"}
+menmos-client = {version = "^0.0.10"}
 menmos-testing = {path = "../../crates/menmos-testing"}
 portpicker = "0.1"
 reqwest = {version = "0.11", features = ["json", "stream"]}

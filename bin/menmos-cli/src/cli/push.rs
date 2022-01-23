@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use anyhow::Result;
 use clap::Parser;
-use menmos_client::Client;
+use menmos::Menmos;
 use rood::cli::OutputManager;
 
 #[derive(Parser)]
@@ -25,7 +25,7 @@ pub struct PushCommand {
 }
 
 impl PushCommand {
-    pub async fn run(self, cli: OutputManager, client: Client) -> Result<()> {
+    pub async fn run(self, cli: OutputManager, client: Menmos) -> Result<()> {
         cli.step("Upload started");
 
         let start = Instant::now();

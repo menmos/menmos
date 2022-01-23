@@ -1,18 +1,9 @@
 use std::time;
 
-pub enum HostConfig {
-    Host {
-        host: String,
-        username: String,
-        admin_password: String,
-    },
-    Profile {
-        profile: String,
-    },
-}
-
 pub struct Parameters {
-    pub host_config: HostConfig,
+    pub host: String,
+    pub username: String,
+    pub password: String,
 
     pub pool_idle_timeout: time::Duration,
     pub request_timeout: time::Duration,

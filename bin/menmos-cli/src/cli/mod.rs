@@ -1,6 +1,6 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
-use menmos_client::Client;
+use menmos::Menmos;
 use rood::cli::OutputManager;
 
 mod delete;
@@ -40,15 +40,13 @@ impl Root {
         let cli = OutputManager::new(self.verbose);
 
         service::config::load_or_create(cli.clone())?;
-        let mut client_builder = Client::builder().with_profile(&self.profile);
+        let mut client_builder = Menmos::builder(&self.profile);
 
         if let Some(max_retry_count) = self.max_retry_count {
             client_builder = client_builder.with_max_retry_count(max_retry_count);
         }
 
-        client_builder = client_builder.with_metadata_detection();
-
-        let client = client_builder.build().await?;
+        let client = client_builder.build().await.map_err(|e| anyhow!("{e}"))?;
 
         match self.command {
             Command::Delete(cmd) => cmd.run(cli, client).await?,

@@ -2,7 +2,7 @@ use std::time;
 
 use snafu::{ensure, ResultExt, Snafu};
 
-use crate::{client::ClientError, parameters::HostConfig};
+use crate::client::ClientError;
 use crate::{Client, Parameters};
 
 #[derive(Debug, Snafu)]
@@ -23,8 +23,7 @@ pub enum BuildError {
 pub struct ClientBuilder {
     host: Option<String>,
     username: Option<String>,
-    admin_password: Option<String>,
-    profile: Option<String>,
+    password: Option<String>,
 
     pool_idle_timeout: time::Duration,
     request_timeout: time::Duration,
@@ -47,12 +46,7 @@ impl ClientBuilder {
     }
 
     pub fn with_password<S: Into<String>>(mut self, password: S) -> Self {
-        self.admin_password = Some(password.into());
-        self
-    }
-
-    pub fn with_profile<S: Into<String>>(mut self, profile: S) -> Self {
-        self.profile = Some(profile.into());
+        self.password = Some(password.into());
         self
     }
 
@@ -82,21 +76,14 @@ impl ClientBuilder {
     }
 
     pub async fn build(self) -> Result<Client, BuildError> {
-        let host_config = if let Some(profile) = self.profile {
-            HostConfig::Profile { profile }
-        } else {
-            ensure!(self.host.is_some(), MissingHostSnafu);
-            ensure!(self.admin_password.is_some(), MissingPasswordSnafu);
-            ensure!(self.username.is_some(), MissingUsernameSnafu);
-            HostConfig::Host {
-                host: self.host.unwrap(),
-                username: self.username.unwrap(),
-                admin_password: self.admin_password.unwrap(),
-            }
-        };
+        ensure!(self.host.is_some(), MissingHostSnafu);
+        ensure!(self.password.is_some(), MissingPasswordSnafu);
+        ensure!(self.username.is_some(), MissingUsernameSnafu);
 
         let params = Parameters {
-            host_config,
+            host: self.host.unwrap(),
+            username: self.username.unwrap(),
+            password: self.password.unwrap(),
             pool_idle_timeout: self.pool_idle_timeout,
             request_timeout: self.request_timeout,
             max_retry_count: self.max_retry_count,
@@ -113,8 +100,7 @@ impl Default for ClientBuilder {
         Self {
             host: None,
             username: None,
-            admin_password: None,
-            profile: None,
+            password: None,
             pool_idle_timeout: time::Duration::from_secs(5),
             request_timeout: time::Duration::from_secs(60),
             max_retry_count: 20,

@@ -2,7 +2,7 @@ use std::io::{self, BufRead};
 
 use anyhow::Result;
 use clap::Parser;
-use menmos_client::Client;
+use menmos::Menmos;
 use rood::cli::OutputManager;
 
 #[derive(Parser)]
@@ -19,7 +19,7 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub async fn run(self, cli: OutputManager, client: Client) -> Result<()> {
+    pub async fn run(self, cli: OutputManager, client: Menmos) -> Result<()> {
         let blob_ids = if self.blob_ids.is_empty() {
             // Get from stdin
             let stdin = io::stdin();
