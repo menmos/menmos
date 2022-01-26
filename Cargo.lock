@@ -39,14 +39,14 @@ dependencies = [
  "chrono",
  "clap",
  "config",
- "dirs 4.0.0",
+ "dirs",
  "futures",
  "headers",
  "http",
  "local_ipaddress",
  "machine-uid",
  "menmos-apikit",
- "menmos-client 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "menmos-client",
  "menmos-interface",
  "menmos-protocol",
  "menmos-repository",
@@ -829,15 +829,6 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "3.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30baa043103c9d0c2a57cf537cc2f35623889dc0d405e6c3cccfadbc81c71309"
-dependencies = [
- "dirs-sys",
-]
-
-[[package]]
-name = "dirs"
 version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
@@ -1534,14 +1525,16 @@ dependencies = [
 [[package]]
 name = "menmos"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91687e7facd1b17a8b61310e76b58d660e6e5514e490bc1c0ff62c384b340df7"
 dependencies = [
  "bytes",
- "dirs 4.0.0",
+ "dirs",
  "futures",
- "menmos-client 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "menmos-client",
  "menmos-interface",
  "serde 1.0.135",
- "snafu 0.7.0",
+ "snafu",
  "toml",
 ]
 
@@ -1553,7 +1546,7 @@ dependencies = [
  "nom 7.1.0",
  "portpicker",
  "serde 1.0.135",
- "snafu 0.7.0",
+ "snafu",
  "tokio",
  "tracing",
  "trust-dns-resolver",
@@ -1591,7 +1584,7 @@ dependencies = [
  "anyhow",
  "async-stream",
  "clap",
- "dirs 4.0.0",
+ "dirs",
  "futures",
  "menmos",
  "menmos-interface",
@@ -1617,32 +1610,8 @@ dependencies = [
  "reqwest",
  "serde 1.0.135",
  "serde_json",
- "snafu 0.7.0",
+ "snafu",
  "tokio",
- "tracing",
-]
-
-[[package]]
-name = "menmos-client"
-version = "0.0.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06be4a9af501f964ddcc7cd4383af359048b3d0608f614c4ff7166b4d3e83359"
-dependencies = [
- "base64",
- "bytes",
- "dirs 3.0.2",
- "futures",
- "hyper",
- "menmos-apikit",
- "menmos-interface",
- "menmos-protocol",
- "mpart-async",
- "reqwest",
- "serde 1.0.135",
- "serde_json",
- "snafu 0.6.10",
- "tokio",
- "toml",
  "tracing",
 ]
 
@@ -1707,7 +1676,7 @@ dependencies = [
  "anyhow",
  "futures",
  "menmos-apikit",
- "menmos-client 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "menmos-client",
  "menmos-interface",
  "menmos-protocol",
  "menmos-xecute",
@@ -1752,7 +1721,7 @@ dependencies = [
  "chrono",
  "clap",
  "config",
- "dirs 4.0.0",
+ "dirs",
  "external-ip",
  "futures",
  "headers",
@@ -1760,7 +1729,7 @@ dependencies = [
  "ipnetwork",
  "menmos-antidns",
  "menmos-apikit",
- "menmos-client 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "menmos-client",
  "menmos-interface",
  "menmos-protocol",
  "menmos-std",
@@ -2346,7 +2315,7 @@ dependencies = [
  "bitvec",
  "nom 7.1.0",
  "serde 1.0.135",
- "snafu 0.7.0",
+ "snafu",
  "tracing",
 ]
 
@@ -2833,33 +2802,12 @@ checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
 
 [[package]]
 name = "snafu"
-version = "0.6.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eab12d3c261b2308b0d80c26fffb58d17eba81a4be97890101f416b478c79ca7"
-dependencies = [
- "doc-comment",
- "snafu-derive 0.6.10",
-]
-
-[[package]]
-name = "snafu"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2eba135d2c579aa65364522eb78590cdf703176ef71ad4c32b00f58f7afb2df5"
 dependencies = [
  "doc-comment",
- "snafu-derive 0.7.0",
-]
-
-[[package]]
-name = "snafu-derive"
-version = "0.6.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1508efa03c362e23817f96cde18abed596a25219a8b2c66e8db33c03543d315b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
+ "snafu-derive",
 ]
 
 [[package]]

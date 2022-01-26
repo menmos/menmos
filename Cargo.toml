@@ -22,7 +22,7 @@ lfan = { path = 'crates/lfan' }
 menmos-antidns = { path = 'crates/menmos-antidns' }
 menmos-apikit = { path = 'crates/menmos-apikit' }
 menmos-betterstreams = { path = 'crates/menmos-betterstreams' }
-#menmos-client = { path = 'crates/menmos-client' }
+menmos-client = { path = 'crates/menmos-client' }
 menmos-interface = { path = 'crates/menmos-interface' }
 menmos-protocol = { path = 'crates/menmos-protocol' }
 menmos-repository = { path = 'crates/menmos-repository' }
