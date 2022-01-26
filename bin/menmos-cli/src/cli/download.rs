@@ -6,7 +6,7 @@ use std::{
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use futures::StreamExt;
-use menmos_client::Client;
+use menmos::Menmos;
 use rood::cli::OutputManager;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
@@ -25,7 +25,7 @@ pub struct DownloadCommand {
 }
 
 impl DownloadCommand {
-    pub async fn run(self, cli: OutputManager, client: Client) -> Result<()> {
+    pub async fn run(self, cli: OutputManager, client: Menmos) -> Result<()> {
         let blob_ids = if self.blob_ids.is_empty() {
             // Get from stdin
             let stdin = io::stdin();
@@ -44,7 +44,7 @@ impl DownloadCommand {
                 let cli = cli.clone();
                 let dst_dir = self.dst_dir.clone();
                 async move {
-                    let meta = match client.get_meta(&blob_id).await? {
+                    let meta = match client.client().get_meta(&blob_id).await? {
                         Some(b) => b,
                         None => {
                             cli.error("404 - Blob not found");
@@ -52,7 +52,7 @@ impl DownloadCommand {
                         }
                     };
 
-                    let stream = client.get_file(&blob_id).await?;
+                    let stream = client.client().get_file(&blob_id).await?;
                     let mut stream_pin = Box::pin(stream);
 
                     let file_path = match &dst_dir {

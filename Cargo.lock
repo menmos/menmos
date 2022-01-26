@@ -1523,6 +1523,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "menmos"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91687e7facd1b17a8b61310e76b58d660e6e5514e490bc1c0ff62c384b340df7"
+dependencies = [
+ "bytes",
+ "dirs",
+ "futures",
+ "menmos-client",
+ "menmos-interface",
+ "serde 1.0.135",
+ "snafu",
+ "toml",
+]
+
+[[package]]
 name = "menmos-antidns"
 version = "0.0.10"
 dependencies = [
@@ -1570,7 +1586,7 @@ dependencies = [
  "clap",
  "dirs",
  "futures",
- "menmos-client",
+ "menmos",
  "menmos-interface",
  "nix",
  "rood",
@@ -1585,7 +1601,6 @@ version = "0.0.10"
 dependencies = [
  "base64",
  "bytes",
- "dirs",
  "futures",
  "hyper",
  "menmos-apikit",
@@ -1597,7 +1612,6 @@ dependencies = [
  "serde_json",
  "snafu",
  "tokio",
- "toml",
  "tracing",
 ]
 

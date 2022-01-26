@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use menmos_client::Client;
+use menmos::Menmos;
 use rood::cli::OutputManager;
 
 #[derive(Parser)]
@@ -22,7 +22,7 @@ pub struct QueryCommand {
 }
 
 impl QueryCommand {
-    pub async fn run(self, cli: OutputManager, client: Client) -> Result<()> {
+    pub async fn run(self, cli: OutputManager, client: Menmos) -> Result<()> {
         service::query::execute(cli, self.expression, self.from, self.size, self.all, client)
             .await?;
         Ok(())

@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use futures::StreamExt;
-use menmos_client::Client;
+use menmos::Menmos;
 use rood::cli::OutputManager;
 
 pub async fn delete(
     cli: OutputManager,
     blob_ids: Vec<String>,
     concurrency: usize,
-    client: Client,
+    client: Menmos,
 ) -> Result<()> {
     let client_arc = Arc::from(client);
 
@@ -17,7 +17,7 @@ pub async fn delete(
         let client_cloned = client_arc.clone();
         let cli_cloned = cli.clone();
         async move {
-            client_cloned.delete(blob_id.clone()).await?;
+            client_cloned.client().delete(blob_id.clone()).await?;
             cli_cloned.success(format!("Deleted blob {}", &blob_id));
             Ok(())
         }

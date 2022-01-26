@@ -1,16 +1,16 @@
 use anyhow::Result;
 use clap::Parser;
-use menmos_client::Client;
+use menmos::Menmos;
 use rood::cli::OutputManager;
 
 #[derive(Parser)]
 pub struct ListStorageNodesCommand {}
 
 impl ListStorageNodesCommand {
-    pub async fn run(self, cli: OutputManager, client: Client) -> Result<()> {
+    pub async fn run(self, cli: OutputManager, client: Menmos) -> Result<()> {
         cli.step("Storage Nodes");
 
-        let storage_nodes = client.list_storage_nodes().await?;
+        let storage_nodes = client.client().list_storage_nodes().await?;
 
         let pushed = cli.push();
 

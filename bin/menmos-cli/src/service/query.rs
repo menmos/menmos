@@ -1,6 +1,6 @@
 use anyhow::Result;
-use interface::QueryResponse;
-use menmos_client::{Client, Query};
+use interface::{Query, QueryResponse};
+use menmos::Menmos;
 use rood::cli::OutputManager;
 
 fn output_results(resp: QueryResponse, cli: OutputManager) {
@@ -18,14 +18,14 @@ pub async fn execute(
     mut from: usize,
     size: usize,
     all: bool,
-    client: Client,
+    client: Menmos,
 ) -> Result<()> {
     let mut q = Query::default().with_from(from).with_size(size);
     if let Some(expr) = expression {
         q = q.with_expression(expr)?;
     }
 
-    let resp = client.query(q.clone()).await?;
+    let resp = client.client().query(q.clone()).await?;
 
     let mut count = resp.count;
     let total = resp.total;
@@ -36,7 +36,7 @@ pub async fn execute(
     if all && count > total {
         loop {
             let query = q.clone().with_from(from);
-            let resp = client.query(query.clone()).await?;
+            let resp = client.client().query(query.clone()).await?;
             count += resp.count;
             from += resp.count;
 
