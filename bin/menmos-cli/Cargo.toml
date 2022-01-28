@@ -24,7 +24,7 @@ futures = "0.3"
 menmos = {version = "0.2.0"}
 menmos-interface = { version = "^0.0.10"}
 serde = {version = "1", features = ["derive"]}
-tokio = {version = "1.2", features = ["full"]}
+tokio = {version = "1.16", features = ["full"]}
 walkdir = "2.3"
 
 [target.'cfg(target_family = "unix")'.dependencies]
