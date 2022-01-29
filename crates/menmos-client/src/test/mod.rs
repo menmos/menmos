@@ -1,1 +1,0 @@
-mod metadata_detector;
