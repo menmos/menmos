@@ -1,6 +1,6 @@
 [package]
 name = "menmosd"
-version = "0.0.10"
+version = "0.1.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2021"
 publish = false
@@ -22,7 +22,7 @@ menmos_debug = []
 
 [dev-dependencies]
 amphora = {path = "../amphora"}
-menmos-client = {version = "^0.0.10"}
+menmos-client = {version = "^0.1.0"}
 menmos-testing = {path = "../../crates/menmos-testing"}
 portpicker = "0.1"
 reqwest = {version = "0.11", features = ["json", "stream"]}
@@ -48,14 +48,14 @@ external-ip = "=4.1.0"
 futures = "0.3"
 headers = "0.3"
 ipnetwork = "0.18"
-menmos-antidns = {version = "^0.0.10"}
-menmos-apikit = {version = "^0.0.10"}
-menmos-interface = {version = "^0.0.10"}
-menmos-protocol = {version = "^0.0.10"}
-menmos-std = {version = "^0.0.10"}
-menmos-xecute = {version = "^0.0.10"}
+menmos-antidns = {version = "^0.1.0"}
+menmos-apikit = {version = "^0.1.0"}
+menmos-interface = {version = "^0.1.0"}
+menmos-protocol = {version = "^0.1.0"}
+menmos-std = {version = "^0.1.0"}
+menmos-xecute = {version = "^0.1.0"}
 mime = "0.3"
-rapidquery = {version = "^0.0.10", features=["bitvec_span"]}
+rapidquery = {version = "^0.1.0", features=["bitvec_span"]}
 ring = "0.16"
 rust-argon2 = "1.0"
 serde = {version = "1", features = ["derive"]}

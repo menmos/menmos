@@ -29,7 +29,7 @@ dependencies = [
 
 [[package]]
 name = "amphora"
-version = "0.0.10"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -39,16 +39,16 @@ dependencies = [
  "chrono",
  "clap",
  "config",
- "dirs",
+ "dirs 4.0.0",
  "futures",
  "headers",
  "http",
  "local_ipaddress",
  "machine-uid",
- "menmos-apikit",
- "menmos-client",
- "menmos-interface",
- "menmos-protocol",
+ "menmos-apikit 0.1.0",
+ "menmos-client 0.0.10",
+ "menmos-interface 0.1.0",
+ "menmos-protocol 0.1.0",
  "menmos-repository",
  "menmos-std",
  "menmos-xecute",
@@ -494,15 +494,40 @@ dependencies = [
 
 [[package]]
 name = "bitvec"
+version = "0.19.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55f93d0ef3363c364d5976646a38f04cf67cfe1d4c8d160cdea02cab2c116b33"
+dependencies = [
+ "funty 1.1.0",
+ "radium 0.5.3",
+ "tap",
+ "wyz 0.2.0",
+]
+
+[[package]]
+name = "bitvec"
+version = "0.20.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7774144344a4faa177370406a7ff5f1da24303817368584c6206c8303eb07848"
+dependencies = [
+ "funty 1.1.0",
+ "radium 0.6.2",
+ "serde 1.0.136",
+ "tap",
+ "wyz 0.2.0",
+]
+
+[[package]]
+name = "bitvec"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1489fcb93a5bb47da0462ca93ad252ad6af2145cce58d10d46a83931ba9f016b"
 dependencies = [
- "funty",
- "radium",
+ "funty 2.0.0",
+ "radium 0.7.0",
  "serde 1.0.136",
  "tap",
- "wyz",
+ "wyz 0.5.0",
 ]
 
 [[package]]
@@ -518,11 +543,32 @@ dependencies = [
 
 [[package]]
 name = "block-buffer"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0940dc441f31689269e10ac70eb1002a3a1d3ad1390e030043662eb7fe4688b"
+dependencies = [
+ "block-padding",
+ "byte-tools",
+ "byteorder",
+ "generic-array 0.12.4",
+]
+
+[[package]]
+name = "block-buffer"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
+]
+
+[[package]]
+name = "block-padding"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa79dedbb091f449f1f39e53edf88d5dbe95f895dae6135a8d7b881fb5af73f5"
+dependencies = [
+ "byte-tools",
 ]
 
 [[package]]
@@ -551,6 +597,12 @@ name = "bumpalo"
 version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
+
+[[package]]
+name = "byte-tools"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
 name = "byteorder"
@@ -820,11 +872,29 @@ dependencies = [
 
 [[package]]
 name = "digest"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
+dependencies = [
+ "generic-array 0.12.4",
+]
+
+[[package]]
+name = "digest"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
+]
+
+[[package]]
+name = "dirs"
+version = "3.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30baa043103c9d0c2a57cf537cc2f35623889dc0d405e6c3cccfadbc81c71309"
+dependencies = [
+ "dirs-sys",
 ]
 
 [[package]]
@@ -909,6 +979,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fake-simd"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
+
+[[package]]
 name = "fastrand"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -957,6 +1033,12 @@ dependencies = [
  "libc",
  "winapi",
 ]
+
+[[package]]
+name = "funty"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fed34cd105917e91daa4da6b3728c47b068749d6a62c59811f06ed2ac71d9da7"
 
 [[package]]
 name = "funty"
@@ -1055,6 +1137,15 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffdf9f34f1447443d37393cc6c2b8313aebddcd96906caf34e54c68d8e57d7bd"
+dependencies = [
+ "typenum",
+]
+
+[[package]]
+name = "generic-array"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd48d33ec7f05fbfa152300fdad764757cbded343c1aa1cff2fbaf4134851803"
@@ -1112,18 +1203,18 @@ checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 
 [[package]]
 name = "headers"
-version = "0.3.5"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4c4eb0471fcb85846d8b0690695ef354f9afb11cb03cac2e1d7c9253351afb0"
+checksum = "62689dc57c7456e69712607ffcbd0aa1dfcccf9af73727e9b25bc1825375cac3"
 dependencies = [
  "base64",
  "bitflags",
  "bytes",
  "headers-core",
  "http",
- "httpdate",
  "mime",
- "sha-1",
+ "sha-1 0.8.2",
+ "time 0.1.43",
 ]
 
 [[package]]
@@ -1409,7 +1500,7 @@ dependencies = [
 
 [[package]]
 name = "lfan"
-version = "0.0.10"
+version = "0.1.0"
 dependencies = [
  "linked-hash-map 0.5.4",
  "tokio",
@@ -1530,25 +1621,25 @@ checksum = "93ad5cae9423a34f5482c498a8010a4bd8b18d3a5b32d588697ba0f579be4145"
 dependencies = [
  "async-stream",
  "bytes",
- "dirs",
+ "dirs 4.0.0",
  "futures",
- "menmos-client",
- "menmos-interface",
+ "menmos-client 0.0.10",
+ "menmos-interface 0.0.10",
  "serde 1.0.136",
  "serde_json",
- "snafu",
+ "snafu 0.7.0",
  "toml",
 ]
 
 [[package]]
 name = "menmos-antidns"
-version = "0.0.10"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "nom 7.1.0",
  "portpicker",
  "serde 1.0.136",
- "snafu",
+ "snafu 0.7.0",
  "tokio",
  "tracing",
  "trust-dns-resolver",
@@ -1557,6 +1648,21 @@ dependencies = [
 [[package]]
 name = "menmos-apikit"
 version = "0.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79ab70d69d64a2ff6343dfa35ea7381d8ca5142746974513834424d5ab8f8ae4"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "branca",
+ "chrono",
+ "serde 1.0.136",
+ "tracing",
+ "warp",
+]
+
+[[package]]
+name = "menmos-apikit"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1569,7 +1675,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-betterstreams"
-version = "0.0.10"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1581,11 +1687,11 @@ dependencies = [
 
 [[package]]
 name = "menmos-cli"
-version = "0.0.10"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "dirs",
+ "dirs 4.0.0",
  "futures",
  "menmos",
  "nix",
@@ -1598,19 +1704,43 @@ dependencies = [
 [[package]]
 name = "menmos-client"
 version = "0.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06be4a9af501f964ddcc7cd4383af359048b3d0608f614c4ff7166b4d3e83359"
+dependencies = [
+ "base64",
+ "bytes",
+ "dirs 3.0.2",
+ "futures",
+ "hyper",
+ "menmos-apikit 0.0.10",
+ "menmos-interface 0.0.10",
+ "menmos-protocol 0.0.10",
+ "mpart-async",
+ "reqwest",
+ "serde 1.0.136",
+ "serde_json",
+ "snafu 0.6.10",
+ "tokio",
+ "toml",
+ "tracing",
+]
+
+[[package]]
+name = "menmos-client"
+version = "0.1.0"
 dependencies = [
  "base64",
  "bytes",
  "futures",
  "hyper",
- "menmos-apikit",
- "menmos-interface",
- "menmos-protocol",
+ "menmos-apikit 0.1.0",
+ "menmos-interface 0.1.0",
+ "menmos-protocol 0.1.0",
  "mpart-async",
  "reqwest",
  "serde 1.0.136",
  "serde_json",
- "snafu",
+ "snafu 0.7.0",
  "tokio",
  "tracing",
 ]
@@ -1618,6 +1748,8 @@ dependencies = [
 [[package]]
 name = "menmos-interface"
 version = "0.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7982688ac2a346a543fb548c89fb52ca6b9eaa0fdabcb0061e2a8b9b96ae12c"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1626,7 +1758,24 @@ dependencies = [
  "chrono",
  "futures",
  "headers",
- "rapidquery",
+ "rapidquery 0.0.10",
+ "reqwest",
+ "serde 1.0.136",
+ "warp",
+]
+
+[[package]]
+name = "menmos-interface"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64",
+ "bytes",
+ "chrono",
+ "futures",
+ "headers",
+ "rapidquery 0.1.0",
  "reqwest",
  "serde 1.0.136",
  "warp",
@@ -1635,16 +1784,28 @@ dependencies = [
 [[package]]
 name = "menmos-protocol"
 version = "0.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35a2861e1d189cae53d7de22114af299230a575543d090a48451b1e4bace8d70"
 dependencies = [
  "anyhow",
- "menmos-interface",
- "rapidquery",
+ "menmos-interface 0.0.10",
+ "rapidquery 0.0.10",
+ "serde 1.0.136",
+]
+
+[[package]]
+name = "menmos-protocol"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "menmos-interface 0.1.0",
+ "rapidquery 0.1.0",
  "serde 1.0.136",
 ]
 
 [[package]]
 name = "menmos-repository"
-version = "0.0.10"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1655,7 +1816,7 @@ dependencies = [
  "futures",
  "lfan",
  "menmos-betterstreams",
- "menmos-interface",
+ "menmos-interface 0.1.0",
  "sysinfo",
  "tokio",
  "tracing",
@@ -1663,22 +1824,22 @@ dependencies = [
 
 [[package]]
 name = "menmos-std"
-version = "0.0.10"
+version = "0.1.0"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "menmos-testing"
-version = "0.0.10"
+version = "0.1.0"
 dependencies = [
  "amphora",
  "anyhow",
  "futures",
- "menmos-apikit",
- "menmos-client",
- "menmos-interface",
- "menmos-protocol",
+ "menmos-apikit 0.1.0",
+ "menmos-client 0.1.0",
+ "menmos-interface 0.1.0",
+ "menmos-protocol 0.1.0",
  "menmos-xecute",
  "menmosd",
  "portpicker",
@@ -1692,7 +1853,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-xecute"
-version = "0.0.10"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1707,7 +1868,7 @@ dependencies = [
 
 [[package]]
 name = "menmosd"
-version = "0.0.10"
+version = "0.1.0"
 dependencies = [
  "acme-lib",
  "amphora",
@@ -1715,29 +1876,29 @@ dependencies = [
  "async-trait",
  "base64",
  "bincode",
- "bitvec",
+ "bitvec 1.0.0",
  "byteorder",
  "bytes",
  "chrono",
  "clap",
  "config",
- "dirs",
+ "dirs 4.0.0",
  "external-ip",
  "futures",
  "headers",
  "include_dir",
  "ipnetwork",
  "menmos-antidns",
- "menmos-apikit",
- "menmos-client",
- "menmos-interface",
- "menmos-protocol",
+ "menmos-apikit 0.1.0",
+ "menmos-client 0.1.0",
+ "menmos-interface 0.1.0",
+ "menmos-protocol 0.1.0",
  "menmos-std",
  "menmos-testing",
  "menmos-xecute",
  "mime",
  "portpicker",
- "rapidquery",
+ "rapidquery 0.1.0",
  "reqwest",
  "ring",
  "rust-argon2",
@@ -1888,6 +2049,19 @@ dependencies = [
 
 [[package]]
 name = "nom"
+version = "6.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7413f999671bd4745a7b624bd370a569fb6bc574b23c83a3c5ed2e453f3d5e2"
+dependencies = [
+ "bitvec 0.19.6",
+ "funty 1.1.0",
+ "lexical-core",
+ "memchr",
+ "version_check",
+]
+
+[[package]]
+name = "nom"
 version = "7.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b1d11e1ef389c76fe5b81bcaf2ea32cf88b62bc494e19f493d0b30e7a930109"
@@ -1969,6 +2143,12 @@ name = "once_cell"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
+
+[[package]]
+name = "opaque-debug"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 
 [[package]]
 name = "opaque-debug"
@@ -2204,6 +2384,18 @@ dependencies = [
 
 [[package]]
 name = "radium"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "941ba9d78d8e2f7ce474c015eea4d9c6d25b6a3327f9832ee29a4de27f91bbb8"
+
+[[package]]
+name = "radium"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "643f8f41a8ebc4c5dc4515c82bb8abd397b527fc20fd681b7c011c2aee5d44fb"
+
+[[package]]
+name = "radium"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
@@ -2311,11 +2503,24 @@ dependencies = [
 [[package]]
 name = "rapidquery"
 version = "0.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8771f841fa78c3eea1d7b4a98720fbacaae69fd6420e06c1f5b02c3b800bebf"
 dependencies = [
- "bitvec",
+ "bitvec 0.20.4",
+ "nom 6.1.2",
+ "serde 1.0.136",
+ "snafu 0.6.10",
+ "tracing",
+]
+
+[[package]]
+name = "rapidquery"
+version = "0.1.0"
+dependencies = [
+ "bitvec 1.0.0",
  "nom 7.1.0",
  "serde 1.0.136",
- "snafu",
+ "snafu 0.7.0",
  "tracing",
 ]
 
@@ -2721,15 +2926,27 @@ dependencies = [
 
 [[package]]
 name = "sha-1"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7d94d0bede923b3cea61f3f1ff57ff8cdfd77b400fb8f9998949e0cf04163df"
+dependencies = [
+ "block-buffer 0.7.3",
+ "digest 0.8.1",
+ "fake-simd",
+ "opaque-debug 0.2.3",
+]
+
+[[package]]
+name = "sha-1"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99cd6713db3cf16b6c84e06321e049a9b9f699826e16096d23bbcc44d15d51a6"
 dependencies = [
- "block-buffer",
+ "block-buffer 0.9.0",
  "cfg-if",
  "cpufeatures",
- "digest",
- "opaque-debug",
+ "digest 0.9.0",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -2802,12 +3019,33 @@ checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
 
 [[package]]
 name = "snafu"
+version = "0.6.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eab12d3c261b2308b0d80c26fffb58d17eba81a4be97890101f416b478c79ca7"
+dependencies = [
+ "doc-comment",
+ "snafu-derive 0.6.10",
+]
+
+[[package]]
+name = "snafu"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2eba135d2c579aa65364522eb78590cdf703176ef71ad4c32b00f58f7afb2df5"
 dependencies = [
  "doc-comment",
- "snafu-derive",
+ "snafu-derive 0.7.0",
+]
+
+[[package]]
+name = "snafu-derive"
+version = "0.6.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1508efa03c362e23817f96cde18abed596a25219a8b2c66e8db33c03543d315b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -3372,7 +3610,7 @@ dependencies = [
  "httparse",
  "log",
  "rand 0.8.4",
- "sha-1",
+ "sha-1 0.9.8",
  "thiserror",
  "url",
  "utf-8",
@@ -3735,6 +3973,12 @@ checksum = "0120db82e8a1e0b9fb3345a539c478767c0048d842860994d96113d5b667bd69"
 dependencies = [
  "winapi",
 ]
+
+[[package]]
+name = "wyz"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85e60b0d1b5f99db2556934e21937020776a5d31520bf169e851ac44e6420214"
 
 [[package]]
 name = "wyz"

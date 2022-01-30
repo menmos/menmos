@@ -1,6 +1,6 @@
 [package]
 name = "menmos-repository"
-version = "0.0.10"
+version = "0.1.0"
 license = "Apache-2.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2021"
@@ -20,9 +20,9 @@ aws-sdk-s3 = "0.6.0"
 aws-smithy-http = {version = "0.36", features = ["rt-tokio"]}
 bytes = "1"
 futures = "0.3"
-lfan = {version = "^0.0.10", features = ["async"]}
-menmos-betterstreams = {version = "^0.0.10"}
-menmos-interface = {version = "^0.0.10"}
+lfan = {version = "^0.1.0", features = ["async"]}
+menmos-betterstreams = {version = "^0.1.0"}
+menmos-interface = {version = "^0.1.0"}
 sysinfo = "0.23"
 tokio = {version = "1.16", features = ["full"]}
 tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_debug"]}
