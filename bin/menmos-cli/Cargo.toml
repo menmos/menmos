@@ -20,8 +20,7 @@ anyhow = "1"
 clap = {version = "3.0.13", features=["derive"]}
 dirs = "4"
 futures = "0.3"
-menmos = {version = "0.2.1"}
-menmos-interface = { version = "^0.0.10"}
+menmos = {version = "0.2.2"}
 serde = {version = "1", features = ["derive"]}
 tokio = {version = "1.16", features = ["full"]}
 walkdir = "2.3"

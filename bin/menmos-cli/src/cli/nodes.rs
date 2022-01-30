@@ -28,7 +28,7 @@ impl ListStorageNodesCommand {
             let pushed = pushed.push();
 
             match node.redirect_info {
-                interface::RedirectInfo::Automatic {
+                menmos::interface::RedirectInfo::Automatic {
                     public_address,
                     local_address,
                     subnet_mask,
@@ -38,7 +38,7 @@ impl ListStorageNodesCommand {
                     pushed.step(format!("Subnet Mask: {}", subnet_mask));
                 }
 
-                interface::RedirectInfo::Static { static_address } => {
+                menmos::interface::RedirectInfo::Static { static_address } => {
                     pushed.step(format!("Static Address: {}", static_address));
                 }
             }
