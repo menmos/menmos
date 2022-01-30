@@ -88,7 +88,6 @@ impl ClientBuilder {
             request_timeout: self.request_timeout,
             max_retry_count: self.max_retry_count,
             retry_interval: self.retry_interval,
-            metadata_detection: self.metadata_detection,
         };
 
         Client::new_with_params(params).await.context(BuildSnafu)

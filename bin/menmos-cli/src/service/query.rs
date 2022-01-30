@@ -1,21 +1,12 @@
-use anyhow::Result;
-use interface::{Query, QueryResponse};
-use menmos::Menmos;
+use anyhow::{anyhow, Result};
+use futures::TryStreamExt;
+use menmos::{Menmos, Query};
 use rood::cli::OutputManager;
-
-fn output_results(resp: QueryResponse, cli: OutputManager) {
-    let pushed = cli.push();
-
-    for hit in resp.hits {
-        cli.step(hit.id);
-        pushed.debug(hit.url);
-    }
-}
 
 pub async fn execute(
     cli: OutputManager,
     expression: Option<String>,
-    mut from: usize,
+    from: usize,
     size: usize,
     all: bool,
     client: Menmos,
@@ -25,30 +16,20 @@ pub async fn execute(
         q = q.with_expression(expr)?;
     }
 
-    let resp = client.client().query(q.clone()).await?;
+    let mut result_stream = client.query(q);
+    let pushed = cli.push();
+    let mut result_count = 0;
 
-    let mut count = resp.count;
-    let total = resp.total;
+    while let Some(hit) = result_stream.try_next().await.map_err(|e| anyhow!("{e}"))? {
+        cli.step(hit.id);
+        pushed.debug(hit.url);
 
-    output_results(resp, cli.clone());
-    from += count;
+        result_count += 1;
 
-    if all && count > total {
-        loop {
-            let query = q.clone().with_from(from);
-            let resp = client.client().query(query.clone()).await?;
-            count += resp.count;
-            from += resp.count;
-
-            output_results(resp, cli.clone());
-
-            if count >= total {
-                break;
-            }
+        if !all && result_count >= size {
+            break;
         }
     }
-
-    cli.debug(format!("{}/{} hits", count, total));
 
     Ok(())
 }
