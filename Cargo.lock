@@ -573,9 +573,9 @@ dependencies = [
 
 [[package]]
 name = "branca"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05e85a179a6f9595d798a16a97ce64312beb20cfe30ebc40f94271a5fda89f3f"
+checksum = "04de6ca7d864c7bdf6da0d4f33c9c447794856070d89e697ce87fd43d75f5f3f"
 dependencies = [
  "base-x",
  "byteorder",
@@ -832,6 +832,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ct-codecs"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3b7eb4404b8195a9abb6356f4ac07d8ba267045c8d6d220ac4dc992e6cc75df"
+
+[[package]]
 name = "ct-logs"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -992,6 +998,12 @@ checksum = "779d043b6a0b90cc4c0ed7ee380a6504394cee7efd7db050e3774eee387324b2"
 dependencies = [
  "instant",
 ]
+
+[[package]]
+name = "fiat-crypto"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2176874104231d65f2dd4d0c2e027e78614170d356c8ccfa826aaef103c8fe89"
 
 [[package]]
 name = "fnv"
@@ -2191,11 +2203,12 @@ dependencies = [
 
 [[package]]
 name = "orion"
-version = "0.15.6"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75ee35b1dab594706a44b4e48045ebcb699f688dfb25c168fcd1642b5e2bc2be"
+checksum = "0efc4e7f3220d326a2d87d507510b20b0ecd5469f80f6e985dd6fcefa2de9af1"
 dependencies = [
- "base64",
+ "ct-codecs",
+ "fiat-crypto",
  "getrandom 0.2.4",
  "subtle",
  "zeroize",
