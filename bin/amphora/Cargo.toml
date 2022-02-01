@@ -1,6 +1,6 @@
 [package]
 name = "amphora"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2021"
 publish = false
@@ -16,7 +16,7 @@ name = "amphora"
 path = "src/amphora/lib.rs"
 
 [dev-dependencies]
-menmos-client = {version = "^0.0.10"}
+menmos-client = {version = "^0.1.1"}
 portpicker = "0.1"
 tempfile = "3.3"
 

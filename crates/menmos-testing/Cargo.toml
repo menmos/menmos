@@ -1,6 +1,6 @@
 [package]
 name = "menmos-testing"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2021"
 publish = false # Can't publish because indexer has an unpublished dependency.
