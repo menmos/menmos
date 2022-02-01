@@ -1615,9 +1615,9 @@ dependencies = [
 
 [[package]]
 name = "menmos"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93ad5cae9423a34f5482c498a8010a4bd8b18d3a5b32d588697ba0f579be4145"
+checksum = "9993f32396d7aac150e66c088a24ac078bc18967dd8285933ef4d6137b0f068c"
 dependencies = [
  "async-stream",
  "bytes",
