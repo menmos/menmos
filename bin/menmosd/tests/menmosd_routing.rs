@@ -50,10 +50,7 @@ async fn move_request_full_loop() -> Result<()> {
 
     // We add a blob on amphora alpha.
     let blob_id = cluster
-        .push_document(
-            "yeet yeet",
-            Meta::file("file1.txt").with_meta("some_file", "bing"),
-        )
+        .push_document("yeet yeet", Meta::file().with_meta("some_file", "bing"))
         .await?;
 
     cluster.flush().await?;

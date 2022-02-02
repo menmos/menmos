@@ -8,9 +8,7 @@ async fn delete_blob() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster
-        .push_document("Hello world!", Meta::file("test_blob"))
-        .await?;
+    let blob_id = cluster.push_document("Hello world!", Meta::file()).await?;
 
     cluster.client.delete(blob_id.clone()).await?;
     cluster.flush().await?;
