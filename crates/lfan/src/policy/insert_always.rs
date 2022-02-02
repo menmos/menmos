@@ -37,3 +37,17 @@ impl<K> InsertionPolicy<K> for AlwaysInsertPolicy {
     {
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn always_returns_true() {
+        let mut policy = AlwaysInsertPolicy::default();
+
+        for i in 0..10 {
+            assert!(policy.should_add(&i))
+        }
+    }
+}
