@@ -91,7 +91,7 @@ mod tests {
         let idx = Index::new(dir.path())?;
 
         let info = BlobInfo {
-            meta: BlobMeta::file(),
+            meta: BlobMeta::new(),
             owner: String::from("hello"),
         };
 
@@ -114,14 +114,14 @@ mod tests {
         idx.insert(
             "a",
             &BlobInfo {
-                meta: BlobMeta::file(),
+                meta: BlobMeta::new(),
                 owner: String::from("hello"),
             },
         )?;
         idx.insert(
             "b",
             &BlobInfo {
-                meta: BlobMeta::file(),
+                meta: BlobMeta::new(),
                 owner: String::from("hello"),
             },
         )?;

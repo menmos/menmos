@@ -15,7 +15,7 @@ async fn permissions_query() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    cluster.push_document("bing bong", Meta::file()).await?;
+    cluster.push_document("bing bong", Meta::new()).await?;
 
     // Make sure our document is visible to our user.
     let results = cluster.client.query(Query::default()).await?;
@@ -41,10 +41,7 @@ async fn list_metadata_permissions() -> Result<()> {
 
     // Document for the default user.
     cluster
-        .push_document(
-            "bing bong",
-            Meta::file().with_tag("hello").with_tag("world"),
-        )
+        .push_document("bing bong", Meta::new().with_tag("hello").with_tag("world"))
         .await?;
 
     // Document for our other user.
@@ -53,7 +50,7 @@ async fn list_metadata_permissions() -> Result<()> {
     cluster
         .push_document_client(
             "other bing",
-            Meta::file().with_tag("hello").with_tag("there"),
+            Meta::new().with_tag("hello").with_tag("there"),
             &john_client,
         )
         .await?;
@@ -71,7 +68,7 @@ async fn direct_get_permissions() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster.push_document("bing bong", Meta::file()).await?;
+    let blob_id = cluster.push_document("bing bong", Meta::new()).await?;
 
     // Assert base get works.
     let file_contents = cluster.client.get_file(&blob_id).await?;
@@ -97,7 +94,7 @@ async fn get_after_delete_permissions() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster.push_document("bing bong", Meta::file()).await?;
+    let blob_id = cluster.push_document("bing bong", Meta::new()).await?;
 
     // Delete the blob to put the ID back in the pool.
     cluster.client.delete(blob_id).await?;
@@ -107,7 +104,7 @@ async fn get_after_delete_permissions() -> Result<()> {
     let john_client = Client::new(&cluster.directory_url, "john", "bingbong").await?;
 
     let blob_id = cluster
-        .push_document_client("yayeet", Meta::file(), &john_client)
+        .push_document_client("yayeet", Meta::new(), &john_client)
         .await?;
 
     // Assert base get works.
@@ -133,7 +130,7 @@ async fn direct_get_meta() -> Result<()> {
     cluster.add_amphora("alpha").await?;
 
     let blob_id = cluster
-        .push_document("bing bong", Meta::file().with_meta("name", "test.txt"))
+        .push_document("bing bong", Meta::new().with_meta("name", "test.txt"))
         .await?;
 
     // Make sure the owner can get the metadata.
@@ -156,7 +153,7 @@ async fn permissions_write() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster.push_document("bing bong", Meta::file()).await?;
+    let blob_id = cluster.push_document("bing bong", Meta::new()).await?;
 
     // Write as owner.
     cluster
@@ -189,7 +186,7 @@ async fn permissions_update_meta() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let meta = Meta::file().with_tag("hello");
+    let meta = Meta::new().with_tag("hello");
 
     let blob_id = cluster.push_document("bing bong", meta.clone()).await?;
 
@@ -225,7 +222,7 @@ async fn permissions_delete() -> Result<()> {
     cluster.add_amphora("alpha").await?;
 
     let blob_id = cluster
-        .push_document("bing bong", Meta::file().with_meta("name", "test.txt"))
+        .push_document("bing bong", Meta::new().with_meta("name", "test.txt"))
         .await?;
 
     // Try deleting from non-owner.
@@ -253,7 +250,7 @@ async fn permissions_fsync() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster.push_document("bing bong", Meta::file()).await?;
+    let blob_id = cluster.push_document("bing bong", Meta::new()).await?;
 
     // Try fsync from a non-owner.
     cluster.add_user("john", "bingbong").await?;
@@ -273,13 +270,13 @@ async fn permissions_update_blob() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster.push_document("bing bong", Meta::file()).await?;
+    let blob_id = cluster.push_document("bing bong", Meta::new()).await?;
 
     // Try update from non-owner.
     cluster.add_user("john", "bingbong").await?;
     let john_client = Client::new(&cluster.directory_url, "john", "bingbong").await?;
     assert!(cluster
-        .update_document_client(&blob_id, "ya yeet", Meta::file(), &john_client)
+        .update_document_client(&blob_id, "ya yeet", Meta::new(), &john_client)
         .await
         .is_err());
 

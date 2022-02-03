@@ -91,17 +91,19 @@ impl S3Repository {
         mut stream: Box<
             dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static,
         >,
-    ) -> Result<CompletedMultipartUpload> {
+    ) -> Result<(CompletedMultipartUpload, u64)> {
         let mut part_id = 1;
 
         let mut parts_builder = CompletedMultipartUpload::builder();
 
         let mut buf_writer = BytesMut::new().writer();
         let mut running_size = 0;
+        let mut total_size = 0_u64;
 
         while let Some(part) = stream.try_next().await? {
             buf_writer.write_all(&part)?;
             running_size += part.len();
+            total_size += part.len() as u64;
 
             if running_size <= 5 * 1024 * 1024 {
                 continue;
@@ -127,7 +129,7 @@ impl S3Repository {
             parts_builder = parts_builder.parts(completed_part);
         }
 
-        Ok(parts_builder.build())
+        Ok((parts_builder.build(), total_size))
     }
 }
 
@@ -136,9 +138,9 @@ impl Repository for S3Repository {
     async fn save(
         &self,
         id: String,
-        _size: u64, // TODO: Remove? or use to validate that the multipart upload worked?
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
+        // TODO: Validate that we wrote the correct number of bytes from the stream.
         self.file_cache.invalidate(&id).await?;
 
         let mp_upload = self
@@ -157,8 +159,8 @@ impl Repository for S3Repository {
             .do_multipart(id.clone(), upload_id.clone(), stream)
             .await
         {
-            Ok(completed_parts) => {
-                let _result = self
+            Ok((completed_parts, total_length)) => {
+                let _ = self
                     .client
                     .complete_multipart_upload()
                     .bucket(self.bucket.clone())
@@ -167,6 +169,7 @@ impl Repository for S3Repository {
                     .multipart_upload(completed_parts)
                     .send()
                     .await?;
+                Ok(total_length)
             }
             Err(e) => {
                 self.client
@@ -180,8 +183,6 @@ impl Repository for S3Repository {
                 bail!("failed upload: {}", e.to_string());
             }
         }
-
-        Ok(())
     }
 
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {

@@ -10,7 +10,7 @@ pub use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{BlobInfo, BlobMeta, BlobMetaRequest};
+use crate::{BlobInfo, BlobInfoRequest, BlobMeta};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -105,7 +105,8 @@ pub struct Query {
     pub from: usize,
     pub size: usize,
     pub sign_urls: bool,
-    pub facets: bool, // TODO: Permit requesting facets for specific tags instead of doing it for all.
+    pub facets: bool,
+    // TODO: Permit requesting facets for specific tags instead of doing it for all.
     pub sort_order: SortOrder,
 }
 
@@ -217,6 +218,7 @@ pub enum DirtyState {
     Dirty,
     Clean,
 }
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct RoutingConfigState {
@@ -244,8 +246,7 @@ pub trait BlobIndexer {
     async fn pick_node_for_blob(
         &self,
         blob_id: &str,
-        meta: BlobMetaRequest,
-        username: &str,
+        info_request: BlobInfoRequest,
     ) -> Result<StorageNodeInfo>;
     async fn get_blob_meta(&self, blob_id: &str, user: &str) -> Result<Option<BlobInfo>>;
     async fn index_blob(&self, blob_id: &str, meta: BlobInfo, storage_node_id: &str) -> Result<()>;

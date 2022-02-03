@@ -15,6 +15,7 @@ pub async fn update_meta<N: StorageNode>(
         blob_id,
         BlobInfoRequest {
             meta_request,
+            size: 0,
             owner: user.username,
         },
     )

@@ -32,6 +32,10 @@ fn put(
         .and(warp::path::end())
         .and(with_context(context))
         .and(warp::header::<String>("x-blob-meta"))
+        // We use X-Blob-Size because Content-Length is a liar sometimes.
+        // The content length includes the size of the multipart boundary times the number of parts,
+        // so it'll be higher than the real blob size.
+        .and(warp::header::optional::<u64>("x-blob-size"))
         .and(warp::filters::addr::remote())
         .and_then(handlers::blob::put)
 }

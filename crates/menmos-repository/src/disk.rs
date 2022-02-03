@@ -61,18 +61,18 @@ impl Repository for DiskRepository {
     async fn save(
         &self,
         id: String,
-        _size: u64,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         let file_path = self.get_path_for_blob(&id);
         tracing::trace!(path = ?file_path, "begin writing to file");
 
-        if let Err(e) = betterstreams::fs::write_all(&file_path, stream).await {
-            fs::remove_file(&file_path).await?;
-            return Err(e);
+        match betterstreams::fs::write_all(&file_path, stream).await {
+            Ok(size) => Ok(size),
+            Err(e) => {
+                fs::remove_file(&file_path).await?;
+                Err(e)
+            }
         }
-
-        Ok(())
     }
 
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {

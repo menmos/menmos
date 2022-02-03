@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use fixtures::Menmos;
-use interface::{QueryResponse, Type};
+use interface::QueryResponse;
 use menmos_client::{Meta, Query};
 use testing::fixtures;
 
@@ -72,9 +72,7 @@ async fn simple_put_query_loop() -> Result<()> {
     let mut fixture = fixtures::Menmos::new().await?;
     fixture.add_amphora("alpha").await?;
 
-    let blob_id = fixture
-        .push_document("hello world", Meta::new(Type::File))
-        .await?;
+    let blob_id = fixture.push_document("hello world", Meta::new()).await?;
 
     let results = fixture.client.query(Query::default()).await?;
 
