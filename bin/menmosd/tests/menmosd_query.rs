@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use interface::SortOrder;
-use menmos_client::{Meta, Query, Type};
+use menmos_client::{Meta, Query};
 use protocol::directory::auth::{LoginRequest, LoginResponse};
 use reqwest::StatusCode;
 use serde::Serialize;
@@ -17,7 +17,7 @@ async fn query_pagination() -> Result<()> {
         cluster
             .push_document(
                 "some text",
-                Meta::new(Type::File).with_meta("name", format!("doc_{}", i)),
+                Meta::new().with_meta("name", format!("doc_{}", i)),
             )
             .await?;
     }
@@ -90,7 +90,7 @@ async fn query_has_up_to_date_datetime() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster.push_document("Hello world", Meta::file()).await?;
+    let blob_id = cluster.push_document("Hello world", Meta::new()).await?;
 
     // Make sure datetimes make sense.
     let meta = cluster.client.get_meta(&blob_id).await?.unwrap();
@@ -101,7 +101,7 @@ async fn query_has_up_to_date_datetime() -> Result<()> {
     assert_eq!(created_at, modified_at);
 
     // Update the file and make sure the meta was updated.
-    cluster.client.update_meta(&blob_id, Meta::file()).await?;
+    cluster.client.update_meta(&blob_id, Meta::new()).await?;
 
     cluster.flush().await?;
 
@@ -119,15 +119,15 @@ async fn query_sorting_order() -> Result<()> {
     cluster.add_amphora("alpha").await?;
 
     cluster
-        .push_document("Document 1", Meta::file().with_meta("name", "blob_1"))
+        .push_document("Document 1", Meta::new().with_meta("name", "blob_1"))
         .await?;
 
     cluster
-        .push_document("Document 2", Meta::file().with_meta("name", "blob_2"))
+        .push_document("Document 2", Meta::new().with_meta("name", "blob_2"))
         .await?;
 
     cluster
-        .push_document("Document 3", Meta::file().with_meta("name", "blob_3"))
+        .push_document("Document 3", Meta::new().with_meta("name", "blob_3"))
         .await?;
 
     let results = cluster.client.query(Query::default()).await?;

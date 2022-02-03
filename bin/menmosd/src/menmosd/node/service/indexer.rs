@@ -4,7 +4,7 @@ use anyhow::{ensure, Result};
 
 use async_trait::async_trait;
 
-use interface::{BlobInfo, BlobMetaRequest, StorageNodeInfo};
+use interface::{BlobInfo, BlobInfoRequest, StorageNodeInfo};
 
 use crate::node::{
     routing::NodeRouter,
@@ -43,12 +43,19 @@ impl interface::BlobIndexer for IndexerService {
     async fn pick_node_for_blob(
         &self,
         blob_id: &str,
-        meta: BlobMetaRequest,
-        username: &str,
+        info_request: BlobInfoRequest,
     ) -> Result<StorageNodeInfo> {
-        let routing_config = self.routing_service.get_routing_config(username).await?;
+        let routing_config = self
+            .routing_service
+            .get_routing_config(&info_request.owner)
+            .await?;
         self.router
-            .route_blob(blob_id, &meta, &routing_config)
+            .route_blob(
+                blob_id,
+                &info_request.meta_request,
+                info_request.size,
+                &routing_config,
+            )
             .await
     }
 

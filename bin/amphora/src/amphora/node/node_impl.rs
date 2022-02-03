@@ -3,14 +3,12 @@ use std::ops::Bound;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 use chrono::Utc;
 use futures::{stream::empty, Stream};
-use interface::{
-    Blob, BlobInfo, BlobInfoRequest, CertificateInfo, StorageNode, StorageNodeInfo, Type,
-};
+use interface::{Blob, BlobInfo, BlobInfoRequest, CertificateInfo, StorageNode, StorageNodeInfo};
 use repository::{Repository, StreamInfo};
 use tokio::sync::Mutex;
 
@@ -176,10 +174,21 @@ impl StorageNode for Storage {
         info_request: BlobInfoRequest,
         stream: Option<Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin>>,
     ) -> Result<()> {
-        if let Some(s) = stream {
-            self.repo
-                .save(id.clone(), info_request.meta_request.size, s)
-                .await?;
+        let actual_blob_size = if let Some(s) = stream {
+            self.repo.save(id.clone(), s).await?
+        } else {
+            0
+        };
+
+        // We have a mismatch between the actual size of the stream and the size declared by the user.
+        // Clean up & stop everything.
+        if actual_blob_size != info_request.size {
+            self.repo.delete(&id).await?;
+            bail!(
+                "size mismatch: broadcasted={} actual={}",
+                info_request.size,
+                actual_blob_size
+            );
         }
 
         let (created_at, modified_at) = if let Some(old_info) = self.index.get(&id)? {
@@ -229,18 +238,20 @@ impl StorageNode for Storage {
     }
 
     async fn get(&self, blob_id: String, range: Option<(Bound<u64>, Bound<u64>)>) -> Result<Blob> {
+        // TODO: Clip the bounds to the real blob?
         let info: BlobInfo = self
             .index
             .get(&blob_id)?
             .ok_or_else(|| anyhow!("missing meta"))?;
 
-        let stream_info = match info.meta.blob_type {
-            Type::Directory => StreamInfo {
-                stream: Box::from(empty()),
+        let stream_info = if info.meta.size == 0 {
+            StreamInfo {
+                stream: Box::new(empty()),
                 chunk_size: 0,
                 total_size: 0,
-            },
-            Type::File => self.repo.get(&blob_id, range).await?,
+            }
+        } else {
+            self.repo.get(&blob_id, range).await?
         };
 
         Ok(Blob {
@@ -259,7 +270,8 @@ impl StorageNode for Storage {
         );
 
         if let Some(old_info) = self.index.get(&blob_id)? {
-            let info = info_request.into_blob_info(old_info.meta.created_at, Utc::now());
+            let mut info = info_request.into_blob_info(old_info.meta.created_at, Utc::now());
+            info.meta.size = old_info.meta.size; // carry-over the old size because changing the metadata doesn't change the size
             self.index.insert(&blob_id, &info)?;
 
             self.directory

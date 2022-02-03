@@ -7,5 +7,4 @@ use parameters::Parameters;
 
 pub use client::{Client, ClientError};
 pub use interface::BlobMetaRequest as Meta;
-pub use interface::Type;
 pub use interface::{Expression, Query, QueryResponse};

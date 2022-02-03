@@ -14,7 +14,7 @@ async fn get_blob_basic() -> Result<()> {
 
     const DOCUMENT_BODY: &str = "Hello world!";
 
-    let blob_id = cluster.push_document(DOCUMENT_BODY, Meta::file()).await?;
+    let blob_id = cluster.push_document(DOCUMENT_BODY, Meta::new()).await?;
 
     cluster.flush().await?;
 
@@ -34,7 +34,7 @@ async fn get_blob_range() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster.push_document("Hello world", Meta::file()).await?;
+    let blob_id = cluster.push_document("Hello world", Meta::new()).await?;
 
     cluster.flush().await?;
 
@@ -51,7 +51,7 @@ async fn get_blob_range_overflow() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster.push_document("Hello world", Meta::file()).await?;
+    let blob_id = cluster.push_document("Hello world", Meta::new()).await?;
 
     cluster.flush().await?;
 
@@ -68,7 +68,7 @@ async fn get_blob_range_invalid() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster.push_document("Hello world", Meta::file()).await?;
+    let blob_id = cluster.push_document("Hello world", Meta::new()).await?;
 
     cluster.flush().await?;
 
@@ -82,7 +82,7 @@ async fn get_empty_blob_range() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster.push_document("Hello world", Meta::file()).await?;
+    let blob_id = cluster.push_document("Hello world", Meta::new()).await?;
 
     cluster.flush().await?;
 

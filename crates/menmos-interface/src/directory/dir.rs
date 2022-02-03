@@ -10,7 +10,7 @@ pub use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{BlobInfo, BlobMeta, BlobMetaRequest, ExpressionField};
+use crate::{BlobInfo, BlobInfoRequest, BlobMeta, BlobMetaRequest, ExpressionField};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -246,8 +246,7 @@ pub trait BlobIndexer {
     async fn pick_node_for_blob(
         &self,
         blob_id: &str,
-        meta: BlobMetaRequest,
-        username: &str,
+        info_request: BlobInfoRequest,
     ) -> Result<StorageNodeInfo>;
     async fn get_blob_meta(&self, blob_id: &str, user: &str) -> Result<Option<BlobInfo>>;
     async fn index_blob(&self, blob_id: &str, meta: BlobInfo, storage_node_id: &str) -> Result<()>;

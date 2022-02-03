@@ -50,7 +50,7 @@ fn prepare_stream(
     let io_stream =
         stream.map(|r| r.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string())));
 
-    Ok(Box::from(io_stream))
+    Ok(Box::new(io_stream))
 }
 
 #[tracing::instrument(skip(node, mime, meta, body))]
@@ -60,6 +60,7 @@ pub async fn put<N: StorageNode>(
     blob_id: String,
     mime: Option<Mime>,
     meta: HeaderValue,
+    blob_size: Option<u64>,
     body: impl Stream<Item = Result<impl Buf, warp::Error>> + Send + Sync + Unpin + 'static,
 ) -> Result<Response, warp::Rejection> {
     // Extract the metadata from the blob.
@@ -68,14 +69,12 @@ pub async fn put<N: StorageNode>(
     // Build our generic stream.
     let mut stream = mime.map(|mime| prepare_stream(mime, body)).transpose()?;
 
-    // Directories cannot have streams.
-    if meta_request.blob_type == interface::Type::Directory && stream.is_some() {
-        return Err(warp::reject::custom(BadRequest::from(
-            "directories cannot have streams",
-        )));
-    } else if meta_request.blob_type == interface::Type::File && stream.is_none() {
-        tracing::debug!("setting default empty stream");
-        stream = Some(Box::from(futures::stream::empty()))
+    let blob_size = blob_size.unwrap_or_default();
+
+    if blob_size == 0 {
+        // TODO: Either change to None when doing MEN-94 or return an error if a stream is present.
+        tracing::debug!("discarding a stream since we received a blob with a size of 0");
+        stream = Some(Box::new(futures::stream::empty()));
     }
 
     match node
@@ -83,6 +82,7 @@ pub async fn put<N: StorageNode>(
             blob_id.clone(),
             BlobInfoRequest {
                 meta_request,
+                size: blob_size,
                 owner: user.username,
             },
             stream,

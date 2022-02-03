@@ -50,12 +50,11 @@ impl Repository for ConcurrentRepository {
     async fn save(
         &self,
         id: String,
-        size: u64,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         let mtx = self.key_locks.get_lock(&id).await;
         let _w_guard = mtx.write().await;
-        self.repo.save(id, size, stream).await
+        self.repo.save(id, stream).await
     }
 
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
