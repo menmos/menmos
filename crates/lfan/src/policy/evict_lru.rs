@@ -7,6 +7,9 @@ use crate::cache::EvictionPolicy;
 
 struct Nothing;
 
+// TODO: This LRU implementation isn't great.
+// Since caches aren't super used in menmos right now this is acceptable,
+// but we might need to improve this in the future.
 pub struct LruEvictionPolicy<K>
 where
     K: Eq + Hash + Clone,
@@ -61,5 +64,60 @@ where
         Q: Hash + Eq,
     {
         self.data.remove(key);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn expect_victims<T: Copy + std::fmt::Debug + Eq + Hash>(
+        policy: &mut LruEvictionPolicy<T>,
+        expected_victims: Vec<T>,
+    ) {
+        let mut victims = Vec::with_capacity(expected_victims.len());
+        while let Some(candidate) = policy.get_victim() {
+            victims.push(candidate);
+            policy.on_eviction(&candidate);
+        }
+
+        assert_eq!(victims, expected_victims);
+    }
+
+    #[test]
+    fn insert_evict_doesnt_reorder_items() {
+        let mut policy = LruEvictionPolicy::default();
+
+        policy.on_insert(&"a");
+        policy.on_insert(&"b");
+        policy.on_insert(&"c");
+
+        expect_victims(&mut policy, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn no_op_reordering() {
+        let mut policy = LruEvictionPolicy::default();
+
+        policy.on_insert(&"a");
+        policy.on_insert(&"b");
+        policy.on_insert(&"c");
+
+        policy.on_cache_hit(&"c");
+
+        expect_victims(&mut policy, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn eviction_reordering() {
+        let mut policy = LruEvictionPolicy::default();
+
+        policy.on_insert(&"a");
+        policy.on_insert(&"b");
+        policy.on_insert(&"c");
+
+        policy.on_cache_hit(&"b");
+
+        expect_victims(&mut policy, vec!["a", "c", "b"]);
     }
 }
