@@ -127,7 +127,7 @@ impl interface::BlobIndexer for IndexerService {
         //  - Add the BlobIDX to a list of "free" indices (up for recycling) kept in the document index.
         if let Some(blob_idx) = self.documents.delete(blob_id)? {
             //  - If the blob exists in the index we need to "purge" the BlobIDX:
-            //  - For all tag, k/v and parent values in the metadata index, set to `0` the bit corresponding to the deleted BlobIDX.
+            //  - For all tag and k/v values in the metadata index, set to `0` the bit corresponding to the deleted BlobIDX.
             //  - Once a new insert comes, prioritize using a recycled BlobIDX over allocating a new one.
             self.metadata.purge(blob_idx)?;
         }

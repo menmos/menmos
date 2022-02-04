@@ -202,10 +202,6 @@ impl rapidquery::Resolver<BitVec> for QueryService {
         self.metadata.load_key(key)
     }
 
-    fn resolve_children(&self, parent_id: &str) -> Result<BitVec, Self::Error> {
-        self.metadata.load_children(parent_id)
-    }
-
     fn resolve_empty(&self) -> Result<BitVec, Self::Error> {
         self.documents.get_all_documents_mask()
     }

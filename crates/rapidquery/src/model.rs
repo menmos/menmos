@@ -31,10 +31,6 @@ pub enum Expression {
     ///
     /// Evaluates to resolver items where the given key is present (in any key/value pair).
     HasKey { key: String },
-    /// Parent expression.
-    ///
-    /// Evaluates to resolver items having the provided value as a parent.
-    Parent { parent: String },
     /// And expression.
     ///
     /// Evaluates to the intersection of its two sub-expressions.
@@ -127,10 +123,6 @@ impl Expression {
                 tracing::trace!(key=?key, "resolve has-key");
                 resolver.resolve_key(key)
             }
-            Expression::Parent { parent } => {
-                tracing::trace!(parent=?parent, "resolve parent");
-                resolver.resolve_children(parent)
-            }
             Expression::Not { not } => {
                 tracing::trace!("resolve NOT");
                 let mut all_bv = resolver.resolve_empty()?;
@@ -187,7 +179,6 @@ mod tests {
         tags: Vec<String>,
         kv: HashMap<String, String>,
         keys: Vec<String>,
-        parents: Vec<String>,
     }
 
     impl MockResolver {
@@ -202,19 +193,10 @@ mod tests {
             self.kv.insert(key, v.into());
             self
         }
-
-        pub fn with_parent<S: Into<String>>(mut self, parent: S) -> Self {
-            self.parents.push(parent.into());
-            self
-        }
     }
 
     impl Resolver<bool> for MockResolver {
         type Error = Infallible;
-
-        fn resolve_children(&self, parent_id: &str) -> Result<bool, Self::Error> {
-            Ok(self.parents.contains(&String::from(parent_id)))
-        }
 
         fn resolve_empty(&self) -> Result<bool, Self::Error> {
             Ok(true)
@@ -323,22 +305,6 @@ mod tests {
         assert!(!Expression::parse("!a")
             .unwrap()
             .evaluate(&MockResolver::default().with_tag("a"))
-            .unwrap())
-    }
-
-    #[test]
-    fn eval_parent() {
-        assert!(
-            Expression::Parent { parent: "p".into() } // There's no query syntax for parent queries _yet_.
-                .evaluate(&MockResolver::default().with_parent("p"))
-                .unwrap()
-        )
-    }
-
-    #[test]
-    fn eval_parent_nomatch() {
-        assert!(!Expression::Parent { parent: "p".into() }
-            .evaluate(&MockResolver::default().with_parent("3"))
             .unwrap())
     }
 

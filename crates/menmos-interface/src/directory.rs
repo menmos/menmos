@@ -138,15 +138,6 @@ impl Query {
     }
 
     #[must_use]
-    pub fn and_parent<P: Into<String>>(mut self, p: P) -> Self {
-        let new_expr = Expression::Parent { parent: p.into() };
-        self.expression = Expression::And {
-            and: (Box::from(self.expression), Box::from(new_expr)),
-        };
-        self
-    }
-
-    #[must_use]
     pub fn with_from(mut self, f: usize) -> Self {
         self.from = f;
         self

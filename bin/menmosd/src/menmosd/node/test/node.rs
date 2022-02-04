@@ -295,49 +295,6 @@ async fn query_single_tag_no_match() {
 }
 
 #[tokio::test]
-async fn query_children() -> Result<()> {
-    let node = mock::node();
-    node.admin()
-        .register_storage_node(get_storage_node_info("alpha"))
-        .await?;
-
-    index("mydirectory", BlobMetaRequest::new(), &node).await;
-    index(
-        "beta",
-        BlobMetaRequest::new().with_parent("mydirectory"),
-        &node,
-    )
-    .await;
-    index(
-        "gamma",
-        BlobMetaRequest::new().with_parent("mydirectory"),
-        &node,
-    )
-    .await;
-    index(
-        "omega",
-        BlobMetaRequest::new().with_parent("otherdirectory"),
-        &node,
-    )
-    .await;
-
-    let r = node
-        .query()
-        .query(&Query::default().and_parent("mydirectory"), "admin")
-        .await
-        .unwrap();
-
-    assert_eq!(r.total, 2);
-    assert_eq!(r.count, 2);
-    assert_eq!(
-        r.hits.iter().map(|h| h.id.clone()).collect::<Vec<_>>(),
-        vec!["beta".to_string(), "gamma".to_string()]
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
 async fn list_metadata_tags() -> Result<()> {
     let node = mock::node();
     node.admin()

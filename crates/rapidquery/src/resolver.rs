@@ -22,9 +22,6 @@ where
     /// Resolves the set matching any key/value pairs with the given key.
     fn resolve_key(&self, key: &str) -> Result<V, Self::Error>;
 
-    /// Resolves the set matching a given parent ID.
-    fn resolve_children(&self, parent_id: &str) -> Result<V, Self::Error>;
-
     /// Resolves the set of all possible items that could match a query.
     fn resolve_empty(&self) -> Result<V, Self::Error>;
 }
@@ -43,9 +40,6 @@ where
     }
     fn resolve_key(&self, key: &str) -> Result<V, Self::Error> {
         (**self).resolve_key(key)
-    }
-    fn resolve_children(&self, parent_id: &str) -> Result<V, Self::Error> {
-        (**self).resolve_children(parent_id)
     }
     fn resolve_empty(&self) -> Result<V, Self::Error> {
         (**self).resolve_empty()
