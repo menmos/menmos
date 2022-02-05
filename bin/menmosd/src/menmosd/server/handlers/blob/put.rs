@@ -2,12 +2,11 @@ use std::net::SocketAddr;
 
 use anyhow::Result;
 
-use apikit::{
-    auth::UserIdentity,
-    reject::{BadRequest, InternalServerError},
-};
+use apikit::reject::{BadRequest, InternalServerError};
 
 use interface::BlobMetaRequest;
+
+use menmos_auth::UserIdentity;
 
 use warp::Reply;
 

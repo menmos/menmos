@@ -1,4 +1,6 @@
-use apikit::{auth::UserIdentity, reject::InternalServerError};
+use apikit::reject::InternalServerError;
+
+use menmos_auth::UserIdentity;
 
 use protocol::directory::blobmeta::GetMetaResponse;
 

@@ -36,7 +36,7 @@ fn get_request_from_move_info(
 
 #[tracing::instrument(skip(context, addr, info))]
 pub async fn put(
-    identity: apikit::auth::StorageNodeIdentity,
+    identity: menmos_auth::StorageNodeIdentity,
     context: Context,
     info: StorageNodeInfo,
     addr: Option<SocketAddr>,

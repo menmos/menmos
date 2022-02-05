@@ -1,4 +1,5 @@
 consolidate-commits = true
-disable-tag = true
-no-dev-version = true
+consolidate-pushes = true
+tag = false
 tag-prefix = ""
+dependent-version = "upgrade"

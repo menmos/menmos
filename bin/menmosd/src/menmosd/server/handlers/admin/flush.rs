@@ -1,7 +1,6 @@
-use apikit::{
-    auth::UserIdentity,
-    reject::{Forbidden, InternalServerError},
-};
+use apikit::reject::{Forbidden, InternalServerError};
+
+use menmos_auth::UserIdentity;
 
 use warp::reply;
 

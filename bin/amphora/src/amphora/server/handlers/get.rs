@@ -3,16 +3,15 @@ use std::{ops::Range, pin::Pin};
 
 use anyhow::{ensure, Result};
 
-use apikit::{
-    auth::UserIdentity,
-    reject::{Forbidden, InternalServerError},
-};
+use apikit::reject::{Forbidden, InternalServerError};
 
 use headers::{ContentLength, ContentRange, Header, HeaderMapExt, HeaderValue};
 
 use http::StatusCode;
 
 use interface::StorageNode;
+
+use menmos_auth::UserIdentity;
 
 use serde::{Deserialize, Serialize};
 

@@ -1,4 +1,4 @@
-use apikit::auth::user;
+use menmos_auth::user;
 
 use warp::Filter;
 

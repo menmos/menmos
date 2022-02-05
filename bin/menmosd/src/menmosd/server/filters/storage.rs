@@ -1,6 +1,6 @@
 //! Storage node routes.
 //! /node/storage/*
-use apikit::auth::user;
+use menmos_auth::user;
 
 use warp::Filter;
 
@@ -23,7 +23,7 @@ fn put(
     warp::put()
         .and(warp::path(NODES_PATH))
         .and(warp::path(STORAGE_PATH))
-        .and(apikit::auth::storage_node(
+        .and(menmos_auth::storage_node(
             context.config.node.encryption_key.clone(),
         ))
         .and(util::with_context(context))

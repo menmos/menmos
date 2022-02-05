@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
-use apikit::{auth::UserIdentity, reject::InternalServerError};
+use apikit::reject::InternalServerError;
 
 use interface::{BlobInfoRequest, BlobMetaRequest, StorageNode};
+
+use menmos_auth::UserIdentity;
 
 #[tracing::instrument(skip(node, meta_request))]
 pub async fn update_meta<N: StorageNode>(

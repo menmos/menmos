@@ -6,6 +6,7 @@ members = [
     "crates/lfan",
     "crates/menmos-antidns",
     "crates/menmos-apikit",
+    "crates/menmos-auth",
     "crates/menmos-betterstreams",
     "crates/menmos-client",
     "crates/menmos-interface",
@@ -21,6 +22,7 @@ members = [
 lfan = { path = 'crates/lfan' }
 menmos-antidns = { path = 'crates/menmos-antidns' }
 menmos-apikit = { path = 'crates/menmos-apikit' }
+menmos-auth = { path = 'crates/menmos-auth' }
 menmos-betterstreams = { path = 'crates/menmos-betterstreams' }
 menmos-client = { path = 'crates/menmos-client' }
 menmos-interface = { path = 'crates/menmos-interface' }

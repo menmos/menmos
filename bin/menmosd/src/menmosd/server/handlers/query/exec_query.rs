@@ -3,12 +3,11 @@ use std::net::{IpAddr, SocketAddr};
 
 use anyhow::{anyhow, Result};
 
-use apikit::{
-    auth::UserIdentity,
-    reject::{BadRequest, InternalServerError},
-};
+use apikit::reject::{BadRequest, InternalServerError};
 
 use interface::{Query, QueryResponse};
+
+use menmos_auth::UserIdentity;
 
 use protocol::directory::query::QueryRequest;
 
@@ -57,7 +56,7 @@ async fn fetch_urls(
                     let mut identity = identity.clone();
                     identity.blobs_whitelist = Some(vec![hit.id.clone()]);
                     let tok =
-                        apikit::auth::make_token(&context.config.node.encryption_key, &identity)?;
+                        menmos_auth::make_token(&context.config.node.encryption_key, &identity)?;
                     blob_uri += &format!("?signature={}", tok);
                 }
 
