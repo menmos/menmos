@@ -10,29 +10,28 @@ use nom::{
     IResult,
 };
 
-use snafu::Snafu;
+use snafu::{ensure, Snafu};
+use tracing::error;
 
-use crate::Expression;
+use crate::expression::Expression;
+use crate::Parse;
 
 #[derive(Debug, Snafu)]
-enum ParserErr {
+pub enum ParserErr {
     InvalidOperator,
+    ParseError { message: String },
 }
 
-enum Term {
-    Tag(String),
-    KeyValue((String, String)),
-    HasKey(String),
-    Not(Expression),
-    SubExpr(Expression),
+enum Term<Field: Parse> {
+    Field(Field),
+    Not(Expression<Field>),
+    SubExpr(Expression<Field>),
 }
 
-impl From<Term> for Expression {
-    fn from(t: Term) -> Expression {
+impl<Field: Parse> From<Term<Field>> for Expression<Field> {
+    fn from(t: Term<Field>) -> Expression<Field> {
         match t {
-            Term::Tag(tag) => Expression::Tag { tag },
-            Term::KeyValue((key, value)) => Expression::KeyValue { key, value },
-            Term::HasKey(key) => Expression::HasKey { key },
+            Term::Field(f) => Expression::Field { f },
             Term::Not(e) => Expression::Not { not: Box::from(e) },
             Term::SubExpr(e) => e,
         }
@@ -56,13 +55,13 @@ impl TryFrom<String> for TermOperator {
     }
 }
 
-struct ParsedExpr {
-    root: Term,
-    trail: Vec<(TermOperator, Term)>,
+struct ParsedExpr<Field: Parse> {
+    root: Term<Field>,
+    trail: Vec<(TermOperator, Term<Field>)>,
 }
 
-impl From<ParsedExpr> for Expression {
-    fn from(parsed: ParsedExpr) -> Expression {
+impl<Field: Parse> From<ParsedExpr<Field>> for Expression<Field> {
+    fn from(parsed: ParsedExpr<Field>) -> Expression<Field> {
         let mut root_expr = Expression::from(parsed.root);
         for (op, term) in parsed.trail {
             match op {
@@ -113,39 +112,14 @@ pub fn string(i: &str) -> IResult<&str, String> {
     )(i)
 }
 
-fn tag_node(i: &str) -> IResult<&str, Term> {
-    map(alt((identifier, string)), Term::Tag)(i)
-}
-
-fn key_value_node(i: &str) -> IResult<&str, Term> {
-    map(
-        separated_pair(identifier, tag("="), alt((identifier, string))),
-        |(key, value)| Term::KeyValue((key, value)),
-    )(i)
-}
-
-fn haskey_node(i: &str) -> IResult<&str, Term> {
-    map(preceded(char('@'), identifier), Term::HasKey)(i)
-}
-
-fn not_node(i: &str) -> IResult<&str, Term> {
-    map(preceded(char('!'), term), |expr| Term::Not(expr.into()))(i)
-}
-
-fn subexpr_node(i: &str) -> IResult<&str, Term> {
+fn subexpr_node<Field: Parse>(i: &str) -> IResult<&str, Term<Field>> {
     map(delimited(char('('), expression, char(')')), |e| {
         Term::SubExpr(e)
     })(i)
 }
 
-fn term(i: &str) -> IResult<&str, Term> {
-    alt((
-        subexpr_node,
-        not_node,
-        haskey_node,
-        key_value_node,
-        tag_node,
-    ))(i)
+fn field<Field: Parse>(i: &str) -> IResult<&str, Term<Field>> {
+    alt((map(Field::parse, |f| Term::Field(f)), subexpr_node))(i)
 }
 
 fn operator(i: &str) -> IResult<&str, TermOperator> {
@@ -155,18 +129,18 @@ fn operator(i: &str) -> IResult<&str, TermOperator> {
     )(i)
 }
 
-fn parsed_expr(i: &str) -> IResult<&str, ParsedExpr> {
+fn parsed_expr<Field: Parse>(i: &str) -> IResult<&str, ParsedExpr<Field>> {
     map(
         delimited(
             whitespace,
-            tuple((term, many0(tuple((operator, term))))),
+            tuple((field, many0(tuple((operator, field))))),
             whitespace,
         ),
         |(root, trail)| ParsedExpr { root, trail },
     )(i)
 }
 
-pub fn expression(i: &str) -> IResult<&str, Expression> {
+fn expression<Field: Parse>(i: &str) -> IResult<&str, Expression<Field>> {
     if i.is_empty() {
         Ok(("", Expression::default()))
     } else {
@@ -175,9 +149,22 @@ pub fn expression(i: &str) -> IResult<&str, Expression> {
     }
 }
 
+pub fn parse_expression<Field: Parse>(i: &str) -> Result<Expression<Field>, ParserErr> {
+    let (r, expr) = expression(i).map_err(|e| ParserErr::ParseError {
+        message: format!("{}", e.to_string()),
+    })?;
+    ensure!(
+        !r.is_empty(),
+        ParseSnafu {
+            message: String::from("incomplete parse")
+        }
+    );
+
+    Ok(expr)
+}
+
 #[cfg(test)]
 mod test {
-
     use super::*;
 
     #[test]
@@ -226,7 +213,7 @@ mod test {
             e,
             Expression::KeyValue {
                 key: "bing".into(),
-                value: "bong".into()
+                value: "bong".into(),
             }
         );
     }
@@ -239,7 +226,7 @@ mod test {
             e,
             Expression::KeyValue {
                 key: "bing".into(),
-                value: "bada boom".into()
+                value: "bada boom".into(),
             }
         );
     }
@@ -255,7 +242,7 @@ mod test {
                     Box::from(Expression::Tag { tag: "bing".into() }),
                     Box::from(Expression::KeyValue {
                         key: "type".into(),
-                        value: "image".into()
+                        value: "image".into(),
                     })
                 )
             }
@@ -297,7 +284,7 @@ mod test {
                 or: (
                     Box::from(Expression::KeyValue {
                         key: "type".into(),
-                        value: "image".into()
+                        value: "image".into(),
                     }),
                     Box::from(Expression::Tag { tag: "bing".into() })
                 )
@@ -332,7 +319,7 @@ mod test {
             Expression::Not {
                 not: Box::from(Expression::KeyValue {
                     key: "type".into(),
-                    value: "image".into()
+                    value: "image".into(),
                 })
             }
         );
