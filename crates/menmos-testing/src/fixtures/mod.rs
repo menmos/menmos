@@ -126,9 +126,9 @@ impl Menmos {
         storage_node_id: S,
     ) -> Result<Vec<MoveRequest>> {
         let reqwest_client = reqwest::Client::new();
-        let auth_token = apikit::auth::make_token(
+        let auth_token = menmos_auth::make_token(
             &self.config.node.encryption_key,
-            apikit::auth::StorageNodeIdentity { id: "alpha".into() },
+            menmos_auth::StorageNodeIdentity { id: "alpha".into() },
         )?;
 
         let url = self.directory_url.clone() + "/node/storage";
@@ -224,9 +224,9 @@ impl Menmos {
     }
 
     pub async fn flush(&self) -> Result<()> {
-        let auth_token = apikit::auth::make_token(
+        let auth_token = menmos_auth::make_token(
             &self.config.node.encryption_key,
-            apikit::auth::UserIdentity {
+            menmos_auth::UserIdentity {
                 username: String::from("admin"),
                 admin: true,
                 blobs_whitelist: None,

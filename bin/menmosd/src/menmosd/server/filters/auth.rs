@@ -31,7 +31,7 @@ fn register(
     warp::post()
         .and(warp::path(AUTH_PATH))
         .and(warp::path(REGISTER_PATH))
-        .and(apikit::auth::user(
+        .and(menmos_auth::user(
             context.config.node.encryption_key.clone(),
         ))
         .and(with_context(context))

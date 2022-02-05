@@ -1,13 +1,12 @@
 use std::net::SocketAddr;
 
-use apikit::{
-    auth::UserIdentity,
-    reject::{InternalServerError, NotFound},
-};
+use apikit::reject::{InternalServerError, NotFound};
 
 use bytes::Buf;
 
 use futures::Stream;
+
+use menmos_auth::UserIdentity;
 
 use warp::{reply, Reply};
 

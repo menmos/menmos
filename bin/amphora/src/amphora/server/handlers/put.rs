@@ -3,10 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use apikit::{
-    auth::UserIdentity,
-    reject::{BadRequest, InternalServerError},
-};
+use apikit::reject::{BadRequest, InternalServerError};
 
 use bytes::{Buf, Bytes};
 
@@ -17,6 +14,8 @@ use headers::HeaderValue;
 use interface::{BlobInfoRequest, BlobMetaRequest, StorageNode};
 
 use mime::Mime;
+
+use menmos_auth::UserIdentity;
 
 use mpart_async::server::MultipartStream;
 

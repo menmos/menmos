@@ -1,5 +1,5 @@
-use apikit::auth::UserIdentity;
 use apikit::reject::InternalServerError;
+use menmos_auth::UserIdentity;
 
 use warp::reply;
 

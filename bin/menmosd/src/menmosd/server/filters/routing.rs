@@ -18,7 +18,7 @@ fn get(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
-        .and(apikit::auth::user(
+        .and(menmos_auth::user(
             context.config.node.encryption_key.clone(),
         ))
         .and(with_context(context))
@@ -31,7 +31,7 @@ fn set(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::put()
-        .and(apikit::auth::user(
+        .and(menmos_auth::user(
             context.config.node.encryption_key.clone(),
         ))
         .and(with_context(context))
@@ -45,7 +45,7 @@ fn delete(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::delete()
-        .and(apikit::auth::user(
+        .and(menmos_auth::user(
             context.config.node.encryption_key.clone(),
         ))
         .and(with_context(context))

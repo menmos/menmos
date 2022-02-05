@@ -1,4 +1,4 @@
-use apikit::auth::user;
+use menmos_auth::user;
 
 use warp::Filter;
 
@@ -23,7 +23,7 @@ fn create(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
-        .and(apikit::auth::storage_node(
+        .and(menmos_auth::storage_node(
             context.config.node.encryption_key.clone(),
         ))
         .and(with_context(context))
@@ -75,7 +75,7 @@ fn delete(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::delete()
-        .and(apikit::auth::storage_node(
+        .and(menmos_auth::storage_node(
             context.config.node.encryption_key.clone(),
         ))
         .and(with_context(context))
