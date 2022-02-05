@@ -9,6 +9,8 @@
 mod expression;
 mod parser;
 
+pub use expression::Expression;
+
 use std::ops::{BitAndAssign, BitOrAssign, Not};
 
 pub trait FieldResolver<V>

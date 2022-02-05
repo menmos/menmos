@@ -6,11 +6,73 @@ use anyhow::Result;
 
 use async_trait::async_trait;
 
+use nom::branch::alt;
+use nom::bytes::complete::{tag, take_while, take_while1};
+use nom::character::complete::char;
+use nom::combinator::map;
+use nom::sequence::{delimited, preceded, separated_pair, tuple};
+use nom::IResult;
+
 pub use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
 
 use crate::{BlobInfo, BlobMeta, BlobMetaRequest};
+
+pub enum ExpressionField {
+    Tag { tag: String },
+    KeyValue { key: String, value: String },
+    Parent { parent: String },
+    HasKey { key: String },
+}
+
+impl ExpressionField {
+    // TODO: Add public apikit::parser::util module for these util functions.
+    // They help for writing parsers a lot.
+    fn string(i: &str) -> IResult<&str, String> {
+        map(
+            delimited(
+                whitespace,
+                delimited(char('"'), take_till(|c| c == '"'), char('"')),
+                whitespace,
+            ),
+            String::from,
+        )(i)
+    }
+    fn identifier(i: &str) -> IResult<&str, String> {
+        map(
+            delimited(
+                whitespace,
+                tuple((
+                    take_while1(move |c: char| c == '_' || c == '-' || c.is_alphabetic()),
+                    take_while(move |c: char| c == '_' || c == '.' || c.is_alphanumeric()),
+                )),
+                whitespace,
+            ),
+            |(a, b)| String::from(a) + b,
+        )(i)
+    }
+    fn tag_node(i: &str) -> IResult<&str, Self> {
+        map(alt((identifier, string)), Term::Tag)(i)
+    }
+
+    fn key_value_node(i: &str) -> IResult<&str, Self> {
+        map(
+            separated_pair(identifier, tag("="), alt((Self::identifier, string))),
+            |(key, value)| Term::KeyValue((key, value)),
+        )(i)
+    }
+
+    fn haskey_node(i: &str) -> IResult<&str, Self> {
+        map(preceded(char('@'), identifier), Term::HasKey)(i)
+    }
+}
+
+impl rapidquery::Parse for ExpressionField {
+    fn parse(i: &str) -> IResult<&str, Self> {
+        alt((Self::tag_node, Self::key_value_node, Self::haskey_node))(i)
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -105,7 +167,8 @@ pub struct Query {
     pub from: usize,
     pub size: usize,
     pub sign_urls: bool,
-    pub facets: bool, // TODO: Permit requesting facets for specific tags instead of doing it for all.
+    pub facets: bool,
+    // TODO: Permit requesting facets for specific tags instead of doing it for all.
     pub sort_order: SortOrder,
 }
 
@@ -217,6 +280,7 @@ pub enum DirtyState {
     Dirty,
     Clean,
 }
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct RoutingConfigState {
