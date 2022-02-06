@@ -129,7 +129,7 @@ fn expression<Field: Parse>(i: &str) -> IResult<&str, Expression<Field>> {
 
 pub fn parse_expression<Field: Parse>(i: &str) -> Result<Expression<Field>, ParserErr> {
     let (r, expr) = expression(i).map_err(|e| ParserErr::ParseError {
-        message: format!("{}", e.to_string()),
+        message: e.to_string(),
     })?;
     ensure!(
         r.is_empty(),
