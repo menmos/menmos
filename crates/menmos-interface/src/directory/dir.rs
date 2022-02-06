@@ -118,7 +118,7 @@ impl Query {
 
     #[must_use]
     pub fn and_tag<S: Into<String>>(mut self, tag: S) -> Self {
-        let new_expr = Expression::Field(ExpressionField::Tag(tag.into()));
+        let new_expr = Expression::Field(ExpressionField::Tag { tag: tag.into() });
         self.expression = Expression::And {
             and: (Box::from(self.expression), Box::from(new_expr)),
         };
@@ -127,7 +127,10 @@ impl Query {
 
     #[must_use]
     pub fn and_meta<K: Into<String>, V: Into<String>>(mut self, k: K, v: V) -> Self {
-        let new_expr = Expression::Field(ExpressionField::KeyValue((k.into(), v.into())));
+        let new_expr = Expression::Field(ExpressionField::KeyValue {
+            key: k.into(),
+            value: v.into(),
+        });
         self.expression = Expression::And {
             and: (Box::from(self.expression), Box::from(new_expr)),
         };
@@ -136,7 +139,7 @@ impl Query {
 
     #[must_use]
     pub fn and_parent<P: Into<String>>(mut self, p: P) -> Self {
-        let new_expr = Expression::Field(ExpressionField::Parent(p.into()));
+        let new_expr = Expression::Field(ExpressionField::Parent { parent: p.into() });
         self.expression = Expression::And {
             and: (Box::from(self.expression), Box::from(new_expr)),
         };

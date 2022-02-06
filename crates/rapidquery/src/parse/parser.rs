@@ -132,9 +132,9 @@ pub fn parse_expression<Field: Parse>(i: &str) -> Result<Expression<Field>, Pars
         message: format!("{}", e.to_string()),
     })?;
     ensure!(
-        !r.is_empty(),
+        r.is_empty(),
         ParseSnafu {
-            message: String::from("incomplete parse")
+            message: format!("incomplete parse: [{}]", r)
         }
     );
 

@@ -193,10 +193,10 @@ impl rapidquery::FieldResolver<BitVec> for QueryService {
 
     fn resolve(&self, field: &Self::FieldType) -> std::result::Result<BitVec, Self::Error> {
         match field {
-            Self::FieldType::Tag(tag) => self.metadata.load_tag(tag),
-            Self::FieldType::KeyValue((key, value)) => self.metadata.load_key_value(key, value),
-            Self::FieldType::HasKey(key) => self.metadata.load_key(key),
-            Self::FieldType::Parent(parent_id) => self.metadata.load_children(parent_id),
+            Self::FieldType::Tag { tag } => self.metadata.load_tag(tag),
+            Self::FieldType::KeyValue { key, value } => self.metadata.load_key_value(key, value),
+            Self::FieldType::HasKey { key } => self.metadata.load_key(key),
+            Self::FieldType::Parent { parent } => self.metadata.load_children(parent),
         }
     }
 

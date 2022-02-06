@@ -10,27 +10,32 @@ use nom::IResult;
 use rapidquery::parse::util::{identifier, string};
 
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
+#[serde(untagged)]
 pub enum ExpressionField {
-    Tag(String),
-    KeyValue((String, String)),
-    Parent(String),
-    HasKey(String),
+    Tag { tag: String },
+    KeyValue { key: String, value: String },
+    Parent { parent: String },
+    HasKey { key: String },
 }
 
 impl ExpressionField {
     fn tag_node(i: &str) -> IResult<&str, Self> {
-        map(alt((identifier, string)), ExpressionField::Tag)(i)
+        map(alt((identifier, string)), |tag| ExpressionField::Tag {
+            tag,
+        })(i)
     }
 
     fn key_value_node(i: &str) -> IResult<&str, Self> {
         map(
             separated_pair(identifier, tag("="), alt((identifier, string))),
-            |(key, value)| ExpressionField::KeyValue((key, value)),
+            |(key, value)| ExpressionField::KeyValue { key, value },
         )(i)
     }
 
     fn haskey_node(i: &str) -> IResult<&str, Self> {
-        map(preceded(char('@'), identifier), ExpressionField::HasKey)(i)
+        map(preceded(char('@'), identifier), |key| {
+            ExpressionField::HasKey { key }
+        })(i)
     }
 }
 
@@ -49,13 +54,19 @@ mod test {
     #[test]
     fn parse_basic_tag() {
         let e = Expression::parse(" bing  ").unwrap();
-        assert_eq!(e, Expression::Field(ExpressionField::Tag("bing".into())));
+        assert_eq!(
+            e,
+            Expression::Field(ExpressionField::Tag { tag: "bing".into() })
+        );
     }
 
     #[test]
     fn parse_basic_haskey() {
         let e = Expression::parse(" @type").unwrap();
-        assert_eq!(e, Expression::Field(ExpressionField::HasKey("type".into())))
+        assert_eq!(
+            e,
+            Expression::Field(ExpressionField::HasKey { key: "type".into() })
+        )
     }
 
     #[test]
@@ -63,7 +74,9 @@ mod test {
         let e = Expression::parse(" bing_bong ").unwrap();
         assert_eq!(
             e,
-            Expression::Field(ExpressionField::Tag("bing_bong".into()))
+            Expression::Field(ExpressionField::Tag {
+                tag: "bing_bong".into()
+            })
         );
     }
 
@@ -72,7 +85,9 @@ mod test {
         let e = Expression::parse(" \"hello world\"   ").unwrap();
         assert_eq!(
             e,
-            Expression::Field(ExpressionField::Tag("hello world".into()))
+            Expression::Field(ExpressionField::Tag {
+                tag: "hello world".into()
+            })
         );
     }
 
@@ -81,7 +96,10 @@ mod test {
         let e = Expression::parse("bing=bong").unwrap();
         assert_eq!(
             e,
-            Expression::Field(ExpressionField::KeyValue(("bing".into(), "bong".into())))
+            Expression::Field(ExpressionField::KeyValue {
+                key: "bing".into(),
+                value: "bong".into(),
+            })
         );
     }
 
@@ -90,10 +108,10 @@ mod test {
         let e = Expression::parse("bing = \"bada boom\"").unwrap();
         assert_eq!(
             e,
-            Expression::Field(ExpressionField::KeyValue((
-                "bing".into(),
-                "bada boom".into()
-            )))
+            Expression::Field(ExpressionField::KeyValue {
+                key: "bing".into(),
+                value: "bada boom".into(),
+            })
         );
     }
 
@@ -104,37 +122,37 @@ mod test {
             e,
             Expression::And {
                 and: (
-                    Box::new(Expression::Field(ExpressionField::Tag("bing".into()))),
-                    Box::new(Expression::Field(ExpressionField::KeyValue((
-                        "type".into(),
-                        "image".into()
-                    ))))
+                    Box::new(Expression::Field(ExpressionField::Tag {
+                        tag: "bing".into()
+                    })),
+                    Box::new(Expression::Field(ExpressionField::KeyValue {
+                        key: "type".into(),
+                        value: "image".into(),
+                    }))
                 )
             }
         );
     }
 
-    /*
     #[test]
     fn chained_and() {
         let e = Expression::parse("hello && there && world").unwrap();
-        assert_eq!(rest, "");
 
         let expected_expr = Expression::And {
             and: (
                 Box::from(Expression::And {
                     and: (
-                        Box::from(Expression::Tag {
+                        Box::from(Expression::Field(ExpressionField::Tag {
                             tag: "hello".into(),
-                        }),
-                        Box::from(Expression::Tag {
+                        })),
+                        Box::from(Expression::Field(ExpressionField::Tag {
                             tag: "there".into(),
-                        }),
+                        })),
                     ),
                 }),
-                Box::from(Expression::Tag {
+                Box::from(Expression::Field(ExpressionField::Tag {
                     tag: "world".into(),
-                }),
+                })),
             ),
         };
         assert_eq!(e, expected_expr);
@@ -143,16 +161,17 @@ mod test {
     #[test]
     fn parse_basic_or() {
         let e = Expression::parse("type=image || bing").unwrap();
-        assert!(rest.is_empty());
         assert_eq!(
             e,
             Expression::Or {
                 or: (
-                    Box::from(Expression::KeyValue {
+                    Box::from(Expression::Field(ExpressionField::KeyValue {
                         key: "type".into(),
                         value: "image".into(),
-                    }),
-                    Box::from(Expression::Tag { tag: "bing".into() })
+                    })),
+                    Box::from(Expression::Field(ExpressionField::Tag {
+                        tag: "bing".into()
+                    }))
                 )
             }
         )
@@ -161,14 +180,17 @@ mod test {
     #[test]
     fn parse_not_after_or() {
         let e = Expression::parse("to_b || !to_b").unwrap();
-        assert_eq!(rest, "");
         assert_eq!(
             e,
             Expression::Or {
                 or: (
-                    Box::from(Expression::Tag { tag: "to_b".into() }),
+                    Box::from(Expression::Field(ExpressionField::Tag {
+                        tag: "to_b".into()
+                    })),
                     Box::from(Expression::Not {
-                        not: Box::from(Expression::Tag { tag: "to_b".into() })
+                        not: Box::from(Expression::Field(ExpressionField::Tag {
+                            tag: "to_b".into()
+                        }))
                     })
                 )
             }
@@ -178,15 +200,13 @@ mod test {
     #[test]
     fn parse_basic_not() {
         let e = Expression::parse("!type=image").unwrap();
-        assert!(rest.is_empty());
-
         assert_eq!(
             e,
             Expression::Not {
-                not: Box::from(Expression::KeyValue {
+                not: Box::from(Expression::Field(ExpressionField::KeyValue {
                     key: "type".into(),
                     value: "image".into(),
-                })
+                }))
             }
         );
     }
@@ -194,15 +214,13 @@ mod test {
     #[test]
     fn parse_basic_subexpr() {
         let e = Expression::parse("a && (b || c)").unwrap();
-        assert_eq!(rest, "");
-
         let expected_expression = Expression::And {
             and: (
-                Box::from(Expression::Tag { tag: "a".into() }),
+                Box::from(Expression::Field(ExpressionField::Tag { tag: "a".into() })),
                 Box::from(Expression::Or {
                     or: (
-                        Box::from(Expression::Tag { tag: "b".into() }),
-                        Box::from(Expression::Tag { tag: "c".into() }),
+                        Box::from(Expression::Field(ExpressionField::Tag { tag: "b".into() })),
+                        Box::from(Expression::Field(ExpressionField::Tag { tag: "c".into() })),
                     ),
                 }),
             ),
@@ -210,5 +228,4 @@ mod test {
 
         assert_eq!(e, expected_expression);
     }
-     */
 }

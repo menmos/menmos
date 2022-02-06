@@ -168,12 +168,12 @@ pub mod query {
                         Box::new(Expression::try_from(*b)?),
                     ),
                 },
-                RawExpression::Parent { parent } => Self::Field(ExpressionField::Parent(parent)),
-                RawExpression::HasKey { key } => Self::Field(ExpressionField::HasKey(key)),
+                RawExpression::Parent { parent } => Self::Field(ExpressionField::Parent { parent }),
+                RawExpression::HasKey { key } => Self::Field(ExpressionField::HasKey { key }),
                 RawExpression::KeyValue { key, value } => {
-                    Self::Field(ExpressionField::KeyValue((key, value)))
+                    Self::Field(ExpressionField::KeyValue { key, value })
                 }
-                RawExpression::Tag { tag } => Self::Field(ExpressionField::Tag(tag)),
+                RawExpression::Tag { tag } => Self::Field(ExpressionField::Tag { tag }),
             };
 
             Ok(expr)
@@ -267,11 +267,11 @@ mod tests {
     fn mixed_expression_parsing() {
         let manual_expr = Expression::And {
             and: (
-                Box::new(Expression::Field(ExpressionField::Tag("a".into()))),
+                Box::new(Expression::Field(ExpressionField::Tag { tag: "a".into() })),
                 Box::new(Expression::And {
                     and: (
-                        Box::new(Expression::Field(ExpressionField::Tag("b".into()))),
-                        Box::new(Expression::Field(ExpressionField::Tag("c".into()))),
+                        Box::new(Expression::Field(ExpressionField::Tag { tag: "b".into() })),
+                        Box::new(Expression::Field(ExpressionField::Tag { tag: "c".into() })),
                     ),
                 }),
             ),

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{FieldResolver, Sizeable};
 
 #[derive(Debug, Clone, Deserialize, Hash, Serialize, PartialEq, Eq)]
+#[serde(untagged)]
 pub enum Expression<Field> {
     Field(Field),
     And { and: (Box<Self>, Box<Self>) },
