@@ -48,9 +48,6 @@ pub struct BlobMetaRequest {
 
     /// The tags for this blob.
     pub tags: Vec<String>,
-
-    /// This blob's parent IDs.
-    pub parents: Vec<String>,
 }
 
 impl BlobMetaRequest {
@@ -70,12 +67,6 @@ impl BlobMetaRequest {
         self
     }
 
-    #[must_use]
-    pub fn with_parent<S: Into<String>>(mut self, s: S) -> Self {
-        self.parents.push(s.into());
-        self
-    }
-
     pub fn into_meta(
         self,
         created_at: DateTime<Utc>,
@@ -85,7 +76,6 @@ impl BlobMetaRequest {
         BlobMeta {
             metadata: self.metadata,
             tags: self.tags,
-            parents: self.parents,
             size,
             created_at,
             modified_at,
@@ -103,9 +93,6 @@ pub struct BlobMeta {
     /// The tags for this blob.
     pub tags: Vec<String>,
 
-    /// This blob's parent IDs.
-    pub parents: Vec<String>,
-
     /// This blob's size, in bytes.
     pub size: u64,
 
@@ -121,7 +108,6 @@ impl From<BlobMeta> for BlobMetaRequest {
         Self {
             metadata: m.metadata,
             tags: m.tags,
-            parents: m.parents,
         }
     }
 }
@@ -131,7 +117,6 @@ impl Default for BlobMeta {
         Self {
             metadata: Default::default(),
             tags: Default::default(),
-            parents: Default::default(),
             size: 0,
             created_at: Utc::now(),
             modified_at: Utc::now(),
@@ -153,12 +138,6 @@ impl BlobMeta {
     #[must_use]
     pub fn with_tag<S: Into<String>>(mut self, s: S) -> Self {
         self.tags.push(s.into());
-        self
-    }
-
-    #[must_use]
-    pub fn with_parent<S: Into<String>>(mut self, s: S) -> Self {
-        self.parents.push(s.into());
         self
     }
 

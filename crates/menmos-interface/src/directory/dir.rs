@@ -10,7 +10,7 @@ pub use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{BlobInfo, BlobInfoRequest, BlobMeta, BlobMetaRequest, ExpressionField};
+use crate::{BlobInfo, BlobInfoRequest, BlobMeta, ExpressionField};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -131,15 +131,6 @@ impl Query {
             key: k.into(),
             value: v.into(),
         });
-        self.expression = Expression::And {
-            and: (Box::from(self.expression), Box::from(new_expr)),
-        };
-        self
-    }
-
-    #[must_use]
-    pub fn and_parent<P: Into<String>>(mut self, p: P) -> Self {
-        let new_expr = Expression::Field(ExpressionField::Parent { parent: p.into() });
         self.expression = Expression::And {
             and: (Box::from(self.expression), Box::from(new_expr)),
         };

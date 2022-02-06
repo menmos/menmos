@@ -227,9 +227,6 @@ impl MetadataStore for MockMetadataStore {
         for (k, v) in info.meta.metadata.iter() {
             taglist.push(format!("{}${}", k, v));
         }
-        for p in info.meta.parents.iter() {
-            taglist.push(format!("__parent!{}", p));
-        }
 
         for tag in taglist.into_iter() {
             if let Some(bv) = tag_map.get_mut(&tag) {
@@ -283,10 +280,6 @@ impl MetadataStore for MockMetadataStore {
         }
 
         Ok(bv)
-    }
-
-    fn load_children(&self, parent_id: &str) -> Result<BitVec> {
-        self.load_tag(&format!("__parent!{}", parent_id))
     }
 
     fn list_all_tags(&self, user_bv: Option<&BitVec>) -> Result<HashMap<String, usize>> {
