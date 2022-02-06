@@ -187,23 +187,17 @@ impl interface::QueryExecutor for QueryService {
     }
 }
 
-impl rapidquery::Resolver<BitVec> for QueryService {
+impl rapidquery::FieldResolver<BitVec> for QueryService {
+    type FieldType = interface::ExpressionField;
     type Error = anyhow::Error;
 
-    fn resolve_tag(&self, tag: &str) -> Result<BitVec, Self::Error> {
-        self.metadata.load_tag(tag)
-    }
-
-    fn resolve_key_value(&self, key: &str, value: &str) -> Result<BitVec, Self::Error> {
-        self.metadata.load_key_value(key, value)
-    }
-
-    fn resolve_key(&self, key: &str) -> Result<BitVec, Self::Error> {
-        self.metadata.load_key(key)
-    }
-
-    fn resolve_children(&self, parent_id: &str) -> Result<BitVec, Self::Error> {
-        self.metadata.load_children(parent_id)
+    fn resolve(&self, field: &Self::FieldType) -> std::result::Result<BitVec, Self::Error> {
+        match field {
+            Self::FieldType::Tag(tag) => self.metadata.load_tag(tag),
+            Self::FieldType::KeyValue((key, value)) => self.metadata.load_key_value(key, value),
+            Self::FieldType::HasKey(key) => self.metadata.load_key(key),
+            Self::FieldType::Parent(parent_id) => self.metadata.load_children(parent_id),
+        }
     }
 
     fn resolve_empty(&self) -> Result<BitVec, Self::Error> {

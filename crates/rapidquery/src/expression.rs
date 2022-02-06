@@ -1,9 +1,12 @@
 use std::ops::{BitAndAssign, BitOrAssign, Not};
 
-use crate::{parser, FieldResolver, Parse, Sizeable};
+use serde::{Deserialize, Serialize};
 
+use crate::{FieldResolver, Sizeable};
+
+#[derive(Debug, Clone, Deserialize, Hash, Serialize, PartialEq, Eq)]
 pub enum Expression<Field> {
-    Field { f: Field },
+    Field(Field),
     And { and: (Box<Self>, Box<Self>) },
     Or { or: (Box<Self>, Box<Self>) },
     Not { not: Box<Self> },
@@ -16,12 +19,6 @@ impl<Field> Default for Expression<Field> {
     }
 }
 
-impl<Field: Parse> Expression<Field> {
-    pub fn parse<S: AsRef<str>>(input: S) -> Result<Self, parser::ParserErr> {
-        parser::parse_expression(input.as_ref())
-    }
-}
-
 impl<Field> Expression<Field> {
     pub fn evaluate<R, V, E>(&self, resolver: &R) -> Result<V, E>
     where
@@ -30,7 +27,7 @@ impl<Field> Expression<Field> {
     {
         match self {
             Expression::Empty => resolver.resolve_empty(),
-            Expression::Field { f } => resolver.resolve(f),
+            Expression::Field(f) => resolver.resolve(f),
             Expression::Not { not } => {
                 let mut all_bv = resolver.resolve_empty()?;
                 all_bv &= not.evaluate(resolver)?;

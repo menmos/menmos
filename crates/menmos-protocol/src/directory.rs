@@ -98,8 +98,7 @@ pub mod storage {
 }
 
 pub mod query {
-
-    use interface::SortOrder;
+    use interface::{ExpressionField, SortOrder};
 
     use super::*;
 
@@ -145,7 +144,7 @@ pub mod query {
         Empty,
     }
 
-    impl TryFrom<RawExpression> for Expression {
+    impl TryFrom<RawExpression> for Expression<ExpressionField> {
         type Error = anyhow::Error;
 
         fn try_from(value: RawExpression) -> Result<Self, Self::Error> {
@@ -169,10 +168,12 @@ pub mod query {
                         Box::new(Expression::try_from(*b)?),
                     ),
                 },
-                RawExpression::Parent { parent } => Self::Parent { parent },
-                RawExpression::HasKey { key } => Self::HasKey { key },
-                RawExpression::KeyValue { key, value } => Self::KeyValue { key, value },
-                RawExpression::Tag { tag } => Self::Tag { tag },
+                RawExpression::Parent { parent } => Self::Field(ExpressionField::Parent(parent)),
+                RawExpression::HasKey { key } => Self::Field(ExpressionField::HasKey(key)),
+                RawExpression::KeyValue { key, value } => {
+                    Self::Field(ExpressionField::KeyValue((key, value)))
+                }
+                RawExpression::Tag { tag } => Self::Field(ExpressionField::Tag(tag)),
             };
 
             Ok(expr)

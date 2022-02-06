@@ -9,11 +9,12 @@ license = "Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-bitvec_span = ["bitvec"]
+bitvec_size = ["bitvec"]
+parse = ["nom"]
 
 [dependencies]
-bitvec = {version = "1.0", features = ["serde"], optional = true}
-nom = {version = "7.1"}
-serde = {version = "1", features = ["derive"]}
+bitvec = { version = "1.0", features = ["serde"], optional = true }
+nom = { version = "7.1", optional = true }
+serde = { version = "1", features = ["derive"] }
 snafu = "0.7"
-tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_debug"]}
+tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_debug"] }

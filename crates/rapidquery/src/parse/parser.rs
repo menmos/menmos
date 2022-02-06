@@ -2,19 +2,20 @@ use std::convert::TryFrom;
 
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_till, take_while, take_while1},
+    bytes::complete::tag,
     character::complete::char,
     combinator::{map, map_res},
     multi::many0,
-    sequence::{delimited, preceded, separated_pair, tuple},
+    sequence::{delimited, preceded, tuple},
     IResult,
 };
 
 use snafu::{ensure, Snafu};
-use tracing::error;
 
-use crate::expression::Expression;
-use crate::Parse;
+use crate::Expression;
+
+use super::util::whitespace;
+use super::Parse;
 
 #[derive(Debug, Snafu)]
 pub enum ParserErr {
@@ -31,7 +32,7 @@ enum Term<Field: Parse> {
 impl<Field: Parse> From<Term<Field>> for Expression<Field> {
     fn from(t: Term<Field>) -> Expression<Field> {
         match t {
-            Term::Field(f) => Expression::Field { f },
+            Term::Field(f) => Expression::Field(f),
             Term::Not(e) => Expression::Not { not: Box::from(e) },
             Term::SubExpr(e) => e,
         }
@@ -81,45 +82,22 @@ impl<Field: Parse> From<ParsedExpr<Field>> for Expression<Field> {
     }
 }
 
-/// Eats {0-n} whitespace characters.
-fn whitespace(i: &str) -> IResult<&str, &str> {
-    let chars = " \t\r\n";
-    take_while(move |c| chars.contains(c))(i)
-}
-
-fn identifier(i: &str) -> IResult<&str, String> {
-    map(
-        delimited(
-            whitespace,
-            tuple((
-                take_while1(move |c: char| c == '_' || c == '-' || c.is_alphabetic()),
-                take_while(move |c: char| c == '_' || c == '.' || c.is_alphanumeric()),
-            )),
-            whitespace,
-        ),
-        |(a, b)| String::from(a) + b,
-    )(i)
-}
-
-pub fn string(i: &str) -> IResult<&str, String> {
-    map(
-        delimited(
-            whitespace,
-            delimited(char('"'), take_till(|c| c == '"'), char('"')),
-            whitespace,
-        ),
-        String::from,
-    )(i)
-}
-
 fn subexpr_node<Field: Parse>(i: &str) -> IResult<&str, Term<Field>> {
     map(delimited(char('('), expression, char(')')), |e| {
         Term::SubExpr(e)
     })(i)
 }
 
+fn not_node<Field: Parse>(i: &str) -> IResult<&str, Term<Field>> {
+    map(preceded(char('!'), field), |expr| Term::Not(expr.into()))(i)
+}
+
 fn field<Field: Parse>(i: &str) -> IResult<&str, Term<Field>> {
-    alt((map(Field::parse, |f| Term::Field(f)), subexpr_node))(i)
+    alt((
+        map(Field::parse, |f| Term::Field(f)),
+        subexpr_node,
+        not_node,
+    ))(i)
 }
 
 fn operator(i: &str) -> IResult<&str, TermOperator> {

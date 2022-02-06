@@ -7,72 +7,16 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 use nom::branch::alt;
-use nom::bytes::complete::{tag, take_while, take_while1};
+use nom::bytes::complete::tag;
 use nom::character::complete::char;
 use nom::combinator::map;
-use nom::sequence::{delimited, preceded, separated_pair, tuple};
+use nom::sequence::{preceded, separated_pair};
 use nom::IResult;
 
+use rapidquery::parse::util::{identifier, string};
 pub use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
-
-use crate::{BlobInfo, BlobMeta, BlobMetaRequest};
-
-pub enum ExpressionField {
-    Tag { tag: String },
-    KeyValue { key: String, value: String },
-    Parent { parent: String },
-    HasKey { key: String },
-}
-
-impl ExpressionField {
-    // TODO: Add public apikit::parser::util module for these util functions.
-    // They help for writing parsers a lot.
-    fn string(i: &str) -> IResult<&str, String> {
-        map(
-            delimited(
-                whitespace,
-                delimited(char('"'), take_till(|c| c == '"'), char('"')),
-                whitespace,
-            ),
-            String::from,
-        )(i)
-    }
-    fn identifier(i: &str) -> IResult<&str, String> {
-        map(
-            delimited(
-                whitespace,
-                tuple((
-                    take_while1(move |c: char| c == '_' || c == '-' || c.is_alphabetic()),
-                    take_while(move |c: char| c == '_' || c == '.' || c.is_alphanumeric()),
-                )),
-                whitespace,
-            ),
-            |(a, b)| String::from(a) + b,
-        )(i)
-    }
-    fn tag_node(i: &str) -> IResult<&str, Self> {
-        map(alt((identifier, string)), Term::Tag)(i)
-    }
-
-    fn key_value_node(i: &str) -> IResult<&str, Self> {
-        map(
-            separated_pair(identifier, tag("="), alt((Self::identifier, string))),
-            |(key, value)| Term::KeyValue((key, value)),
-        )(i)
-    }
-
-    fn haskey_node(i: &str) -> IResult<&str, Self> {
-        map(preceded(char('@'), identifier), Term::HasKey)(i)
-    }
-}
-
-impl rapidquery::Parse for ExpressionField {
-    fn parse(i: &str) -> IResult<&str, Self> {
-        alt((Self::tag_node, Self::key_value_node, Self::haskey_node))(i)
-    }
-}
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -163,7 +107,7 @@ pub enum SortOrder {
 #[serde(deny_unknown_fields)]
 pub struct Query {
     /// The query expression.
-    pub expression: Expression,
+    pub expression: Expression<ExpressionField>,
     pub from: usize,
     pub size: usize,
     pub sign_urls: bool,
@@ -180,7 +124,7 @@ impl Query {
 
     #[must_use]
     pub fn and_tag<S: Into<String>>(mut self, tag: S) -> Self {
-        let new_expr = Expression::Tag { tag: tag.into() };
+        let new_expr = Expression::Field(ExpressionField::Tag(tag.into()));
         self.expression = Expression::And {
             and: (Box::from(self.expression), Box::from(new_expr)),
         };
@@ -189,10 +133,7 @@ impl Query {
 
     #[must_use]
     pub fn and_meta<K: Into<String>, V: Into<String>>(mut self, k: K, v: V) -> Self {
-        let new_expr = Expression::KeyValue {
-            key: k.into(),
-            value: v.into(),
-        };
+        let new_expr = Expression::Field(ExpressionField::KeyValue((k.into(), v.into())));
         self.expression = Expression::And {
             and: (Box::from(self.expression), Box::from(new_expr)),
         };
@@ -201,7 +142,7 @@ impl Query {
 
     #[must_use]
     pub fn and_parent<P: Into<String>>(mut self, p: P) -> Self {
-        let new_expr = Expression::Parent { parent: p.into() };
+        let new_expr = Expression::Field(ExpressionField::Parent(p.into()));
         self.expression = Expression::And {
             and: (Box::from(self.expression), Box::from(new_expr)),
         };
