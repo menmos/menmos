@@ -73,7 +73,7 @@ async fn simple_put_query_loop() -> Result<()> {
     fixture.add_amphora("alpha").await?;
 
     let blob_id = fixture
-        .push_document("hello world", Meta::new("myfile", Type::File))
+        .push_document("hello world", Meta::new(Type::File))
         .await?;
 
     let results = fixture.client.query(Query::default()).await?;

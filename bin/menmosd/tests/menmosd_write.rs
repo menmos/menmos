@@ -12,9 +12,7 @@ async fn write_blob_basic() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster
-        .push_document("Hello world!", Meta::file("test_blob"))
-        .await?;
+    let blob_id = cluster.push_document("Hello world!", Meta::file()).await?;
 
     cluster
         .client
@@ -38,9 +36,7 @@ async fn extend_blob() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster
-        .push_document("Hello world", Meta::file("test_blob"))
-        .await?;
+    let blob_id = cluster.push_document("Hello world", Meta::file()).await?;
 
     cluster
         .client
@@ -65,9 +61,7 @@ async fn write_updates_datetime() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster
-        .push_document("Hello world", Meta::file("test_blob"))
-        .await?;
+    let blob_id = cluster.push_document("Hello world", Meta::file()).await?;
 
     cluster.flush().await?;
 
@@ -105,9 +99,7 @@ async fn meta_update_updates_datetime() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
 
-    let blob_id = cluster
-        .push_document("Hello world", Meta::file("test_blob"))
-        .await?;
+    let blob_id = cluster.push_document("Hello world", Meta::file()).await?;
 
     // Make sure datetimes make sense.
     let meta = cluster.client.get_meta(&blob_id).await?.unwrap();
@@ -118,10 +110,7 @@ async fn meta_update_updates_datetime() -> Result<()> {
     assert_eq!(created_at, modified_at);
 
     // Update the file and make sure the meta was updated.
-    cluster
-        .client
-        .update_meta(&blob_id, Meta::file("test_blob"))
-        .await?;
+    cluster.client.update_meta(&blob_id, Meta::file()).await?;
 
     cluster.flush().await?;
 

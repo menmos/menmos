@@ -50,9 +50,6 @@ impl CertificateInfo {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct BlobMetaRequest {
-    /// The name of this blob. Does not need to be unique.
-    pub name: String,
-
     /// The type of this blob.
     pub blob_type: Type,
 
@@ -70,9 +67,8 @@ pub struct BlobMetaRequest {
 }
 
 impl BlobMetaRequest {
-    pub fn new<S: Into<String>>(name: S, blob_type: Type) -> Self {
+    pub fn new(blob_type: Type) -> Self {
         Self {
-            name: name.into(),
             blob_type,
             metadata: Default::default(),
             tags: Default::default(),
@@ -82,13 +78,13 @@ impl BlobMetaRequest {
     }
 
     #[must_use]
-    pub fn file<S: Into<String>>(name: S) -> Self {
-        Self::new(name, Type::File)
+    pub fn file() -> Self {
+        Self::new(Type::File)
     }
 
     #[must_use]
-    pub fn directory<S: Into<String>>(name: S) -> Self {
-        Self::new(name, Type::Directory)
+    pub fn directory() -> Self {
+        Self::new(Type::Directory)
     }
 
     #[must_use]
@@ -117,7 +113,6 @@ impl BlobMetaRequest {
 
     pub fn into_meta(self, created_at: DateTime<Utc>, modified_at: DateTime<Utc>) -> BlobMeta {
         BlobMeta {
-            name: self.name,
             blob_type: self.blob_type,
             metadata: self.metadata,
             tags: self.tags,
@@ -133,9 +128,6 @@ impl BlobMetaRequest {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct BlobMeta {
-    /// The name of this blob. Does not need to be unique.
-    pub name: String,
-
     /// The type of this blob.
     pub blob_type: Type,
 
@@ -161,7 +153,6 @@ pub struct BlobMeta {
 impl From<BlobMeta> for BlobMetaRequest {
     fn from(m: BlobMeta) -> Self {
         Self {
-            name: m.name,
             blob_type: m.blob_type,
             metadata: m.metadata,
             tags: m.tags,
@@ -172,9 +163,8 @@ impl From<BlobMeta> for BlobMetaRequest {
 }
 
 impl BlobMeta {
-    pub fn new<S: Into<String>>(name: S, blob_type: Type) -> Self {
+    pub fn new(blob_type: Type) -> Self {
         Self {
-            name: name.into(),
             blob_type,
             metadata: Default::default(),
             tags: Default::default(),
@@ -186,13 +176,13 @@ impl BlobMeta {
     }
 
     #[must_use]
-    pub fn file<S: Into<String>>(name: S) -> Self {
-        BlobMeta::new(name, Type::File)
+    pub fn file() -> Self {
+        BlobMeta::new(Type::File)
     }
 
     #[must_use]
-    pub fn directory<S: Into<String>>(name: S) -> Self {
-        BlobMeta::new(name, Type::Directory)
+    pub fn directory() -> Self {
+        BlobMeta::new(Type::Directory)
     }
 
     #[must_use]
