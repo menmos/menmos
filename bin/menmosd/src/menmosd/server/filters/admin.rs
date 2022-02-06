@@ -10,6 +10,7 @@ const VERSION_PATH: &str = "version";
 const REBUILD_PATH: &str = "rebuild";
 const HEALTH_PATH: &str = "health";
 const FLUSH_PATH: &str = "flush";
+const CONFIG_PATH: &str = "config";
 
 pub fn all(
     context: Context,
@@ -18,7 +19,8 @@ pub fn all(
         .or(rebuild(context.clone()))
         .or(rebuild_complete(context.clone()))
         .or(flush(context.clone()))
-        .or(version(context))
+        .or(version(context.clone()))
+        .or(get_config(context))
 }
 
 fn health() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -68,4 +70,15 @@ fn version(
         .and(user(context.config.node.encryption_key.clone()))
         .and(warp::path(VERSION_PATH))
         .and_then(handlers::admin::version)
+}
+
+fn get_config(
+    context: Context,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::get()
+        .and(user(context.config.node.encryption_key.clone()))
+        .and(with_context(context))
+        .and(warp::path(CONFIG_PATH))
+        .and(warp::path::end())
+        .and_then(handlers::admin::get_config)
 }
