@@ -259,7 +259,7 @@ pub mod query {
 
 #[cfg(test)]
 mod tests {
-    use interface::Expression;
+    use interface::{Expression, ExpressionField};
 
     use super::query::RawExpression;
 
@@ -267,17 +267,11 @@ mod tests {
     fn mixed_expression_parsing() {
         let manual_expr = Expression::And {
             and: (
-                Box::new(Expression::Tag {
-                    tag: String::from("a"),
-                }),
+                Box::new(Expression::Field(ExpressionField::Tag("a".into()))),
                 Box::new(Expression::And {
                     and: (
-                        Box::new(Expression::Tag {
-                            tag: String::from("b"),
-                        }),
-                        Box::new(Expression::Tag {
-                            tag: String::from("c"),
-                        }),
+                        Box::new(Expression::Field(ExpressionField::Tag("b".into()))),
+                        Box::new(Expression::Field(ExpressionField::Tag("c".into()))),
                     ),
                 }),
             ),
