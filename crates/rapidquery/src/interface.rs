@@ -15,6 +15,12 @@ pub trait Sizeable {
     fn size(&self) -> usize;
 }
 
+impl Sizeable for bool {
+    fn size(&self) -> usize {
+        1
+    }
+}
+
 #[cfg(feature = "bitvec_size")]
 impl Sizeable for bitvec::prelude::BitVec {
     fn size(&self) -> usize {

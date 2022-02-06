@@ -47,6 +47,8 @@ impl rapidquery::Parse for ExpressionField {
 
 #[cfg(test)]
 mod test {
+    use std::{collections::HashMap, convert::Infallible};
+
     use super::*;
 
     use rapidquery::Expression;
@@ -227,5 +229,179 @@ mod test {
         };
 
         assert_eq!(e, expected_expression);
+    }
+
+    #[derive(Default)]
+    struct MockResolver {
+        tags: Vec<String>,
+        kv: HashMap<String, String>,
+        keys: Vec<String>,
+        parents: Vec<String>,
+    }
+
+    impl MockResolver {
+        pub fn with_tag<S: Into<String>>(mut self, tag: S) -> Self {
+            self.tags.push(tag.into());
+            self
+        }
+
+        pub fn with_key_value<K: Into<String>, V: Into<String>>(mut self, k: K, v: V) -> Self {
+            let key: String = k.into();
+            self.keys.push(key.clone());
+            self.kv.insert(key, v.into());
+            self
+        }
+
+        pub fn with_parent<S: Into<String>>(mut self, parent: S) -> Self {
+            self.parents.push(parent.into());
+            self
+        }
+    }
+
+    impl rapidquery::FieldResolver<bool> for MockResolver {
+        type FieldType = ExpressionField;
+        type Error = Infallible;
+
+        fn resolve_empty(&self) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+
+        fn resolve(&self, field: &Self::FieldType) -> Result<bool, Self::Error> {
+            let val = match field {
+                ExpressionField::Parent { parent } => self.parents.contains(parent),
+                ExpressionField::HasKey { key } => self.keys.contains(key),
+                ExpressionField::KeyValue { key, value } => self.kv.get(key) == Some(value),
+                ExpressionField::Tag { tag } => self.tags.contains(tag),
+            };
+
+            Ok(val)
+        }
+    }
+
+    #[test]
+    fn eval_empty_query() {
+        assert!(Expression::Empty
+            .evaluate(&MockResolver::default())
+            .unwrap())
+    }
+
+    #[test]
+    fn eval_tag_query() {
+        assert!(Expression::Field(ExpressionField::Tag {
+            tag: "hello".into()
+        })
+        .evaluate(&MockResolver::default().with_tag("hello"))
+        .unwrap());
+    }
+
+    #[test]
+    fn eval_tag_nomatch() {
+        assert!(!Expression::Field(ExpressionField::Tag {
+            tag: "yayeet".into()
+        })
+        .evaluate(&MockResolver::default().with_tag("Hello"))
+        .unwrap())
+    }
+
+    #[test]
+    fn eval_kv_query() {
+        assert!(Expression::Field(ExpressionField::KeyValue {
+            key: "key".into(),
+            value: "val".into(),
+        })
+        .evaluate(&MockResolver::default().with_key_value("key", "val"))
+        .unwrap())
+    }
+
+    #[test]
+    fn eval_kv_nomatch() {
+        assert!(!Expression::Field(ExpressionField::KeyValue {
+            key: "key".into(),
+            value: "val".into(),
+        })
+        .evaluate(&MockResolver::default().with_key_value("key", "yayeet"))
+        .unwrap())
+    }
+
+    #[test]
+    fn eval_and() {
+        assert!(Expression::parse("a && b")
+            .unwrap()
+            .evaluate(&MockResolver::default().with_tag("a").with_tag("b"))
+            .unwrap())
+    }
+
+    #[test]
+    fn eval_and_nomatch() {
+        assert!(!Expression::parse("a && b")
+            .unwrap()
+            .evaluate(&MockResolver::default().with_tag("a").with_tag("c"))
+            .unwrap())
+    }
+
+    #[test]
+    fn eval_or() {
+        assert!(Expression::parse("a || b")
+            .unwrap()
+            .evaluate(&MockResolver::default().with_tag("b"))
+            .unwrap())
+    }
+
+    #[test]
+    fn eval_or_nomatch() {
+        assert!(!Expression::parse("a || b")
+            .unwrap()
+            .evaluate(&MockResolver::default().with_tag("c"))
+            .unwrap())
+    }
+
+    #[test]
+    fn eval_not() {
+        assert!(Expression::parse("!a")
+            .unwrap()
+            .evaluate(&MockResolver::default().with_tag("b"))
+            .unwrap())
+    }
+
+    #[test]
+    fn eval_not_nomatch() {
+        assert!(!Expression::parse("!a")
+            .unwrap()
+            .evaluate(&MockResolver::default().with_tag("a"))
+            .unwrap())
+    }
+
+    #[test]
+    fn eval_parent() {
+        assert!(
+            Expression::Field(ExpressionField::Parent { parent: "p".into() }) // There's no query syntax for parent queries _yet_.
+                .evaluate(&MockResolver::default().with_parent("p"))
+                .unwrap()
+        )
+    }
+
+    #[test]
+    fn eval_parent_nomatch() {
+        assert!(
+            !Expression::Field(ExpressionField::Parent { parent: "p".into() })
+                .evaluate(&MockResolver::default().with_parent("3"))
+                .unwrap()
+        )
+    }
+
+    #[test]
+    fn eval_and_or_nested() {
+        assert!(Expression::parse("(a || b) && c")
+            .unwrap()
+            .evaluate(&MockResolver::default().with_tag("a").with_tag("c"))
+            .unwrap())
+    }
+
+    #[test]
+    fn eval_not_nested() {
+        assert!(Expression::parse("!(a && b) && !(!c)")
+            .unwrap()
+            .evaluate(&MockResolver::default().with_tag("a").with_tag("c"))
+            .unwrap())
     }
 }
