@@ -56,7 +56,7 @@ menmos-protocol = { version = "^0.1.1" }
 menmos-std = { version = "^0.1.1" }
 menmos-xecute = { version = "^0.1.1" }
 mime = "0.3"
-rapidquery = { version = "^0.1.1", features = ["bitvec_span"] }
+rapidquery = { version = "^0.1.1", features = ["bitvec_size"] }
 ring = "0.16"
 rust-argon2 = "1.0"
 serde = { version = "1", features = ["derive"] }
