@@ -1,5 +1,5 @@
-use apikit::auth::UserIdentity;
 use apikit::reject::{Forbidden, InternalServerError};
+use menmos_auth::UserIdentity;
 
 use protocol::directory::auth::{LoginResponse, RegisterRequest};
 
@@ -8,7 +8,7 @@ use warp::reply;
 use crate::server::Context;
 
 pub async fn register(
-    identity: apikit::auth::UserIdentity,
+    identity: menmos_auth::UserIdentity,
     context: Context,
     request: RegisterRequest,
 ) -> Result<reply::Response, warp::Rejection> {
@@ -35,7 +35,7 @@ pub async fn register(
         .await
         .map_err(InternalServerError::from)?;
 
-    let token = apikit::auth::make_token(
+    let token = menmos_auth::make_token(
         &context.config.node.encryption_key,
         UserIdentity {
             username: request.username,

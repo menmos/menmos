@@ -1,5 +1,5 @@
-use apikit::auth::UserIdentity;
 use apikit::reject::{Forbidden, InternalServerError};
+use menmos_auth::UserIdentity;
 
 use protocol::directory::auth::{LoginRequest, LoginResponse};
 
@@ -7,7 +7,7 @@ use warp::reply;
 
 use crate::server::Context;
 
-#[tracing::instrument(skip(context), fields(user = ?request.username))]
+#[tracing::instrument(skip(context), fields(user = ? request.username))]
 pub async fn login(
     context: Context,
     request: LoginRequest,
@@ -19,7 +19,7 @@ pub async fn login(
         .await
         .map_err(InternalServerError::from)?
     {
-        let token = apikit::auth::make_token(
+        let token = menmos_auth::make_token(
             &context.config.node.encryption_key,
             UserIdentity {
                 username: request.username,

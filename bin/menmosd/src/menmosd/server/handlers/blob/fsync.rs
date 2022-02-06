@@ -1,9 +1,8 @@
 use std::net::SocketAddr;
 
-use apikit::{
-    auth::UserIdentity,
-    reject::{InternalServerError, NotFound},
-};
+use apikit::reject::{InternalServerError, NotFound};
+
+use menmos_auth::UserIdentity;
 
 use warp::Reply;
 

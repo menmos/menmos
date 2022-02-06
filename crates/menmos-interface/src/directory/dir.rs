@@ -10,7 +10,7 @@ pub use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{BlobInfo, BlobMeta, BlobMetaRequest};
+use crate::{BlobInfo, BlobMeta, BlobMetaRequest, ExpressionField};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -101,11 +101,12 @@ pub enum SortOrder {
 #[serde(deny_unknown_fields)]
 pub struct Query {
     /// The query expression.
-    pub expression: Expression,
+    pub expression: Expression<ExpressionField>,
     pub from: usize,
     pub size: usize,
     pub sign_urls: bool,
-    pub facets: bool, // TODO: Permit requesting facets for specific tags instead of doing it for all.
+    pub facets: bool,
+    // TODO: Permit requesting facets for specific tags instead of doing it for all.
     pub sort_order: SortOrder,
 }
 
@@ -117,7 +118,7 @@ impl Query {
 
     #[must_use]
     pub fn and_tag<S: Into<String>>(mut self, tag: S) -> Self {
-        let new_expr = Expression::Tag { tag: tag.into() };
+        let new_expr = Expression::Field(ExpressionField::Tag { tag: tag.into() });
         self.expression = Expression::And {
             and: (Box::from(self.expression), Box::from(new_expr)),
         };
@@ -126,10 +127,10 @@ impl Query {
 
     #[must_use]
     pub fn and_meta<K: Into<String>, V: Into<String>>(mut self, k: K, v: V) -> Self {
-        let new_expr = Expression::KeyValue {
+        let new_expr = Expression::Field(ExpressionField::KeyValue {
             key: k.into(),
             value: v.into(),
-        };
+        });
         self.expression = Expression::And {
             and: (Box::from(self.expression), Box::from(new_expr)),
         };
@@ -138,7 +139,7 @@ impl Query {
 
     #[must_use]
     pub fn and_parent<P: Into<String>>(mut self, p: P) -> Self {
-        let new_expr = Expression::Parent { parent: p.into() };
+        let new_expr = Expression::Field(ExpressionField::Parent { parent: p.into() });
         self.expression = Expression::And {
             and: (Box::from(self.expression), Box::from(new_expr)),
         };
@@ -217,6 +218,7 @@ pub enum DirtyState {
     Dirty,
     Clean,
 }
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct RoutingConfigState {

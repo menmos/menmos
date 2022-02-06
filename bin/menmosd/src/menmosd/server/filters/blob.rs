@@ -1,7 +1,7 @@
 //! Blob-related routes.
 //! /blob/*
 
-use apikit::auth::user;
+use menmos_auth::user;
 use warp::Filter;
 
 use crate::server::{handlers, Context};

@@ -37,9 +37,9 @@ impl DirectoryProxy {
     }
 
     fn get_token(&self, id: &str) -> Result<String> {
-        apikit::auth::make_token(
+        menmos_auth::make_token(
             &self.encryption_key,
-            apikit::auth::StorageNodeIdentity {
+            menmos_auth::StorageNodeIdentity {
                 id: String::from(id),
             },
         )

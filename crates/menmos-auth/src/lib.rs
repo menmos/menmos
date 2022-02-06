@@ -1,5 +1,7 @@
-//! Everything related to authentication.
+//! Menmos authentication library
 use std::fmt::Debug;
+
+use apikit::reject;
 
 use branca::Branca;
 
@@ -7,8 +9,6 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 use warp::{filters::BoxedFilter, Filter};
-
-use crate::reject;
 
 const TOKEN_TTL_SECONDS: u32 = 60 * 60 * 6; // 6 hours.
 
@@ -31,7 +31,7 @@ const TOKEN_TTL_SECONDS: u32 = 60 * 60 * 6; // 6 hours.
 /// let encryption_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 32 characters.
 /// let token_data = UserInfo{username: "johnsmith".into(), is_admin: true};
 ///
-/// let token = apikit::auth::make_token(encryption_key, &token_data)?;
+/// let token = menmos_auth::make_token(encryption_key, &token_data)?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn make_token<K: AsRef<str>, D: Serialize>(key: K, data: D) -> anyhow::Result<String> {
@@ -136,7 +136,7 @@ async fn validate_user_tokens(
 ///
 /// # Examples
 /// ```
-/// use apikit::auth::{user, UserIdentity};
+/// use menmos_auth::{user, UserIdentity};
 /// use apikit::reply;
 ///
 /// use warp::Filter;
@@ -174,7 +174,7 @@ async fn validate_storage_node_token(
 ///
 /// # Examples
 /// ```
-/// use apikit::auth::{storage_node, StorageNodeIdentity};
+/// use menmos_auth::{storage_node, StorageNodeIdentity};
 /// use apikit::reply;
 ///
 /// use warp::Filter;

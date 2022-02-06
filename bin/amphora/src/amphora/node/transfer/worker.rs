@@ -60,9 +60,9 @@ impl TransferWorker {
     }
 
     fn get_token(&self, username: &str, blob_id: &str) -> Result<String> {
-        apikit::auth::make_token(
+        menmos_auth::make_token(
             &self.secret_key,
-            apikit::auth::UserIdentity {
+            menmos_auth::UserIdentity {
                 username: String::from(username),
                 admin: false,
                 blobs_whitelist: Some(vec![String::from(blob_id)]),

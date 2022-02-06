@@ -1,5 +1,5 @@
-use apikit::auth::StorageNodeIdentity;
 use apikit::reject::InternalServerError;
+use menmos_auth::StorageNodeIdentity;
 
 use warp::reply;
 

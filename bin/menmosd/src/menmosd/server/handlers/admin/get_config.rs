@@ -1,5 +1,6 @@
-use apikit::auth::UserIdentity;
 use apikit::reject::Forbidden;
+
+use menmos_auth::UserIdentity;
 
 use crate::server::Context;
 

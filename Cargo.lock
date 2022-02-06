@@ -46,6 +46,7 @@ dependencies = [
  "local_ipaddress",
  "machine-uid",
  "menmos-apikit 0.1.1",
+ "menmos-auth",
  "menmos-client 0.1.1",
  "menmos-interface 0.1.1",
  "menmos-protocol 0.1.1",
@@ -1677,9 +1678,20 @@ name = "menmos-apikit"
 version = "0.1.1"
 dependencies = [
  "anyhow",
+ "serde 1.0.136",
+ "tracing",
+ "warp",
+]
+
+[[package]]
+name = "menmos-auth"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
  "bincode",
  "branca",
  "chrono",
+ "menmos-apikit 0.1.1",
  "serde 1.0.136",
  "tracing",
  "warp",
@@ -1787,6 +1799,7 @@ dependencies = [
  "chrono",
  "futures",
  "headers",
+ "nom 7.1.0",
  "rapidquery 0.1.1",
  "reqwest",
  "serde 1.0.136",
@@ -1849,6 +1862,7 @@ dependencies = [
  "anyhow",
  "futures",
  "menmos-apikit 0.1.1",
+ "menmos-auth",
  "menmos-client 0.1.1",
  "menmos-interface 0.1.1",
  "menmos-protocol 0.1.1",
@@ -1902,6 +1916,7 @@ dependencies = [
  "ipnetwork",
  "menmos-antidns",
  "menmos-apikit 0.1.1",
+ "menmos-auth",
  "menmos-client 0.1.1",
  "menmos-interface 0.1.1",
  "menmos-protocol 0.1.1",

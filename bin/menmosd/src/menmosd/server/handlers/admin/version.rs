@@ -1,4 +1,4 @@
-use apikit::auth::UserIdentity;
+use menmos_auth::UserIdentity;
 
 use protocol::VersionResponse;
 

@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
-use apikit::{auth::UserIdentity, reject::InternalServerError};
+use apikit::reject::InternalServerError;
 
 use interface::StorageNode;
+
+use menmos_auth::UserIdentity;
 
 use warp::reply;
 

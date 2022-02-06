@@ -2,13 +2,11 @@ use std::ops::Bound;
 use std::sync::Arc;
 
 use anyhow::{ensure, Result};
-use apikit::{
-    auth::UserIdentity,
-    reject::{BadRequest, InternalServerError},
-};
+use apikit::reject::{BadRequest, InternalServerError};
 use bytes::Bytes;
 use headers::{Header, HeaderValue};
 use interface::StorageNode;
+use menmos_auth::UserIdentity;
 use warp::reply;
 
 fn parse_range_header(value: HeaderValue) -> Result<(Bound<u64>, Bound<u64>)> {
