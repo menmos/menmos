@@ -130,12 +130,12 @@ async fn direct_get_meta() -> Result<()> {
     cluster.add_amphora("alpha").await?;
 
     let blob_id = cluster
-        .push_document("bing bong", Meta::new().with_meta("name", "test.txt"))
+        .push_document("bing bong", Meta::new().with_field("name", "test.txt"))
         .await?;
 
     // Make sure the owner can get the metadata.
     let meta = cluster.client.get_meta(&blob_id).await?.unwrap();
-    assert_eq!(meta.metadata.get("name").unwrap(), "test.txt");
+    assert_eq!(meta.fields.get("name").unwrap(), "test.txt");
 
     // Make sure a new user can't get the metadata.
     cluster.add_user("john", "bingbong").await?;
@@ -222,7 +222,7 @@ async fn permissions_delete() -> Result<()> {
     cluster.add_amphora("alpha").await?;
 
     let blob_id = cluster
-        .push_document("bing bong", Meta::new().with_meta("name", "test.txt"))
+        .push_document("bing bong", Meta::new().with_field("name", "test.txt"))
         .await?;
 
     // Try deleting from non-owner.
@@ -232,7 +232,7 @@ async fn permissions_delete() -> Result<()> {
 
     // Make sure the blob is still there.
     let meta = cluster.client.get_meta(&blob_id).await?.unwrap();
-    assert_eq!(meta.metadata.get("name").unwrap(), "test.txt");
+    assert_eq!(meta.fields.get("name").unwrap(), "test.txt");
 
     // Delete as owner.
     cluster.client.delete(blob_id.clone()).await?;

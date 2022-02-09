@@ -89,7 +89,7 @@ impl NodeRouter {
     ) -> Result<Option<StorageNodeInfo>> {
         let routed_storage_node_maybe = if let Some(cfg) = routing_config {
             meta_request
-                .metadata
+                .fields
                 .get(&cfg.routing_key)
                 .and_then(|field_value| cfg.routes.get(field_value).cloned())
         } else {

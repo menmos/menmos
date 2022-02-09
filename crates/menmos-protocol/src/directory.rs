@@ -111,8 +111,8 @@ pub mod query {
         Tag { tag: String },
         /// Key/Value expression.
         ///
-        /// Evaluates to resolver items where the given key/value pair is present.
-        KeyValue { key: String, value: String },
+        /// Evaluates to resolver items where the given field/value pair is present.
+        Field { key: String, value: String },
         /// HasKey expression.
         ///
         /// Evaluates to resolver items where the given key is present (in any key/value pair).
@@ -165,8 +165,8 @@ pub mod query {
                     ),
                 },
                 RawExpression::HasKey { key } => Self::Field(ExpressionField::HasKey { key }),
-                RawExpression::KeyValue { key, value } => {
-                    Self::Field(ExpressionField::KeyValue { key, value })
+                RawExpression::Field { key, value } => {
+                    Self::Field(ExpressionField::Field { key, value })
                 }
                 RawExpression::Tag { tag } => Self::Field(ExpressionField::Tag { tag }),
             };

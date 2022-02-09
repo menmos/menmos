@@ -17,7 +17,7 @@ async fn query_pagination() -> Result<()> {
         cluster
             .push_document(
                 "some text",
-                Meta::new().with_meta("name", format!("doc_{}", i)),
+                Meta::new().with_field("name", format!("doc_{}", i)),
             )
             .await?;
     }
@@ -38,7 +38,7 @@ async fn query_pagination() -> Result<()> {
 
             for (i, hit) in results.hits.into_iter().enumerate() {
                 let expected_name = format!("doc_{}", from + i);
-                assert_eq!(hit.meta.metadata.get("name").unwrap(), &expected_name);
+                assert_eq!(hit.meta.fields.get("name").unwrap(), &expected_name);
             }
         }
     }
@@ -119,15 +119,15 @@ async fn query_sorting_order() -> Result<()> {
     cluster.add_amphora("alpha").await?;
 
     cluster
-        .push_document("Document 1", Meta::new().with_meta("name", "blob_1"))
+        .push_document("Document 1", Meta::new().with_field("name", "blob_1"))
         .await?;
 
     cluster
-        .push_document("Document 2", Meta::new().with_meta("name", "blob_2"))
+        .push_document("Document 2", Meta::new().with_field("name", "blob_2"))
         .await?;
 
     cluster
-        .push_document("Document 3", Meta::new().with_meta("name", "blob_3"))
+        .push_document("Document 3", Meta::new().with_field("name", "blob_3"))
         .await?;
 
     let results = cluster.client.query(Query::default()).await?;
@@ -136,7 +136,7 @@ async fn query_sorting_order() -> Result<()> {
         results
             .hits
             .iter()
-            .map(|r| r.meta.metadata.get("name").unwrap())
+            .map(|r| r.meta.fields.get("name").unwrap())
             .collect::<Vec<_>>(),
         vec!["blob_1", "blob_2", "blob_3"]
     );
@@ -150,7 +150,7 @@ async fn query_sorting_order() -> Result<()> {
         results
             .hits
             .iter()
-            .map(|r| r.meta.metadata.get("name").unwrap())
+            .map(|r| r.meta.fields.get("name").unwrap())
             .collect::<Vec<_>>(),
         vec!["blob_3", "blob_2", "blob_1"]
     );

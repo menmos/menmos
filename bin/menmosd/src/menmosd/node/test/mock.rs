@@ -224,7 +224,7 @@ impl MetadataStore for MockMetadataStore {
         meta_map.insert(id, info.clone());
 
         let mut taglist = info.meta.tags.clone();
-        for (k, v) in info.meta.metadata.iter() {
+        for (k, v) in info.meta.fields.iter() {
             taglist.push(format!("{}${}", k, v));
         }
 

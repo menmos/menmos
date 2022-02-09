@@ -44,7 +44,7 @@ impl CertificateInfo {
 #[serde(deny_unknown_fields)]
 pub struct BlobMetaRequest {
     /// The key/value pairs for this blob.
-    pub metadata: HashMap<String, String>,
+    pub fields: HashMap<String, String>,
 
     /// The tags for this blob.
     pub tags: Vec<String>,
@@ -56,8 +56,8 @@ impl BlobMetaRequest {
     }
 
     #[must_use]
-    pub fn with_meta<S: Into<String>, T: Into<String>>(mut self, key: S, value: T) -> Self {
-        self.metadata.insert(key.into(), value.into());
+    pub fn with_field<S: Into<String>, T: Into<String>>(mut self, key: S, value: T) -> Self {
+        self.fields.insert(key.into(), value.into());
         self
     }
 
@@ -74,7 +74,7 @@ impl BlobMetaRequest {
         size: u64,
     ) -> BlobMeta {
         BlobMeta {
-            metadata: self.metadata,
+            fields: self.fields,
             tags: self.tags,
             size,
             created_at,
@@ -88,7 +88,7 @@ impl BlobMetaRequest {
 #[serde(deny_unknown_fields)]
 pub struct BlobMeta {
     /// The key/value pairs for this blob.
-    pub metadata: HashMap<String, String>,
+    pub fields: HashMap<String, String>,
 
     /// The tags for this blob.
     pub tags: Vec<String>,
@@ -106,7 +106,7 @@ pub struct BlobMeta {
 impl From<BlobMeta> for BlobMetaRequest {
     fn from(m: BlobMeta) -> Self {
         Self {
-            metadata: m.metadata,
+            fields: m.fields,
             tags: m.tags,
         }
     }
@@ -115,7 +115,7 @@ impl From<BlobMeta> for BlobMetaRequest {
 impl Default for BlobMeta {
     fn default() -> Self {
         Self {
-            metadata: Default::default(),
+            fields: Default::default(),
             tags: Default::default(),
             size: 0,
             created_at: Utc::now(),
@@ -130,8 +130,8 @@ impl BlobMeta {
     }
 
     #[must_use]
-    pub fn with_meta<S: Into<String>, T: Into<String>>(mut self, key: S, value: T) -> Self {
-        self.metadata.insert(key.into(), value.into());
+    pub fn with_field<S: Into<String>, T: Into<String>>(mut self, key: S, value: T) -> Self {
+        self.fields.insert(key.into(), value.into());
         self
     }
 
