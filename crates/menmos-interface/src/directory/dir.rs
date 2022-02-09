@@ -127,7 +127,7 @@ impl Query {
 
     #[must_use]
     pub fn and_meta<K: Into<String>, V: Into<String>>(mut self, k: K, v: V) -> Self {
-        let new_expr = Expression::Field(ExpressionField::KeyValue {
+        let new_expr = Expression::Field(ExpressionField::Field {
             key: k.into(),
             value: v.into(),
         });

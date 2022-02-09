@@ -83,8 +83,8 @@ impl SledMetadataStore {
             }
         }
 
-        for (key, value) in old_meta.meta.metadata.into_iter() {
-            if new_meta.meta.metadata.get(&key) != Some(&value) {
+        for (key, value) in old_meta.meta.fields.into_iter() {
+            if new_meta.meta.fields.get(&key) != Some(&value) {
                 self.kv_map.purge_key(&kv_to_tag(&key, &value), for_idx)?;
                 tracing::trace!(key = %key, value = %value, index = for_idx, "purged key-value");
             }
@@ -153,7 +153,7 @@ impl MetadataStore for SledMetadataStore {
         }
 
         // Save key/value fields in the reverse map.
-        for (k, v) in info.meta.metadata.iter().filter(|(_, v)| !v.is_empty()) {
+        for (k, v) in info.meta.fields.iter().filter(|(_, v)| !v.is_empty()) {
             self.kv_map.insert(&kv_to_tag(k, v), &serialized_id)?;
         }
 

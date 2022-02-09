@@ -89,7 +89,7 @@ impl interface::QueryExecutor for QueryService {
                         *count += 1;
                     }
 
-                    for (key, value) in doc.meta.metadata.iter() {
+                    for (key, value) in doc.meta.fields.iter() {
                         let entry_map = kv_map.entry(key.clone()).or_insert_with(HashMap::new);
                         let count = entry_map.entry(value.clone()).or_insert(0);
                         *count += 1;
@@ -194,7 +194,7 @@ impl rapidquery::FieldResolver<BitVec> for QueryService {
     fn resolve(&self, field: &Self::FieldType) -> std::result::Result<BitVec, Self::Error> {
         match field {
             Self::FieldType::Tag { tag } => self.metadata.load_tag(tag),
-            Self::FieldType::KeyValue { key, value } => self.metadata.load_key_value(key, value),
+            Self::FieldType::Field { key, value } => self.metadata.load_key_value(key, value),
             Self::FieldType::HasKey { key } => self.metadata.load_key(key),
         }
     }

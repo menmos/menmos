@@ -13,7 +13,7 @@ use rapidquery::parse::util::{identifier, string};
 #[serde(untagged)]
 pub enum ExpressionField {
     Tag { tag: String },
-    KeyValue { key: String, value: String },
+    Field { key: String, value: String },
     HasKey { key: String },
 }
 
@@ -27,7 +27,7 @@ impl ExpressionField {
     fn key_value_node(i: &str) -> IResult<&str, Self> {
         map(
             separated_pair(identifier, tag("="), alt((identifier, string))),
-            |(key, value)| ExpressionField::KeyValue { key, value },
+            |(key, value)| ExpressionField::Field { key, value },
         )(i)
     }
 
@@ -97,7 +97,7 @@ mod test {
         let e = Expression::parse("bing=bong").unwrap();
         assert_eq!(
             e,
-            Expression::Field(ExpressionField::KeyValue {
+            Expression::Field(ExpressionField::Field {
                 key: "bing".into(),
                 value: "bong".into(),
             })
@@ -109,7 +109,7 @@ mod test {
         let e = Expression::parse("bing = \"bada boom\"").unwrap();
         assert_eq!(
             e,
-            Expression::Field(ExpressionField::KeyValue {
+            Expression::Field(ExpressionField::Field {
                 key: "bing".into(),
                 value: "bada boom".into(),
             })
@@ -126,7 +126,7 @@ mod test {
                     Box::new(Expression::Field(ExpressionField::Tag {
                         tag: "bing".into()
                     })),
-                    Box::new(Expression::Field(ExpressionField::KeyValue {
+                    Box::new(Expression::Field(ExpressionField::Field {
                         key: "type".into(),
                         value: "image".into(),
                     }))
@@ -166,7 +166,7 @@ mod test {
             e,
             Expression::Or {
                 or: (
-                    Box::from(Expression::Field(ExpressionField::KeyValue {
+                    Box::from(Expression::Field(ExpressionField::Field {
                         key: "type".into(),
                         value: "image".into(),
                     })),
@@ -204,7 +204,7 @@ mod test {
         assert_eq!(
             e,
             Expression::Not {
-                not: Box::from(Expression::Field(ExpressionField::KeyValue {
+                not: Box::from(Expression::Field(ExpressionField::Field {
                     key: "type".into(),
                     value: "image".into(),
                 }))
@@ -262,7 +262,7 @@ mod test {
         fn resolve(&self, field: &Self::FieldType) -> Result<bool, Self::Error> {
             let val = match field {
                 ExpressionField::HasKey { key } => self.keys.contains(key),
-                ExpressionField::KeyValue { key, value } => self.kv.get(key) == Some(value),
+                ExpressionField::Field { key, value } => self.kv.get(key) == Some(value),
                 ExpressionField::Tag { tag } => self.tags.contains(tag),
             };
 
@@ -297,7 +297,7 @@ mod test {
 
     #[test]
     fn eval_kv_query() {
-        assert!(Expression::Field(ExpressionField::KeyValue {
+        assert!(Expression::Field(ExpressionField::Field {
             key: "key".into(),
             value: "val".into(),
         })
@@ -307,7 +307,7 @@ mod test {
 
     #[test]
     fn eval_kv_nomatch() {
-        assert!(!Expression::Field(ExpressionField::KeyValue {
+        assert!(!Expression::Field(ExpressionField::Field {
             key: "key".into(),
             value: "val".into(),
         })

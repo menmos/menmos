@@ -100,7 +100,7 @@ pub async fn get<N: StorageNode>(
     }
 
     // If the blob has a mimetype, we want to return it as a header so browsers can use it.
-    if let Some(mimetype) = blob.info.meta.metadata.get("content-type") {
+    if let Some(mimetype) = blob.info.meta.fields.get("content-type") {
         if let Ok(hval) = HeaderValue::from_str(mimetype) {
             resp.headers_mut().append("content-type", hval);
         }

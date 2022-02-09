@@ -213,14 +213,14 @@ async fn query_single_kv() {
 
     index(
         "alpha",
-        BlobMetaRequest::new().with_meta("hello", "there"),
+        BlobMetaRequest::new().with_field("hello", "there"),
         &node,
     )
     .await;
 
     index(
         "beta",
-        BlobMetaRequest::new().with_meta("hello", "world"),
+        BlobMetaRequest::new().with_field("hello", "world"),
         &node,
     )
     .await;
@@ -352,7 +352,7 @@ async fn faceting_basic() -> Result<()> {
         "alpha",
         BlobMetaRequest::new()
             .with_tag("a")
-            .with_meta("hello", "world"),
+            .with_field("hello", "world"),
         &node,
     )
     .await;
@@ -361,7 +361,7 @@ async fn faceting_basic() -> Result<()> {
         "beta",
         BlobMetaRequest::new()
             .with_tag("b")
-            .with_meta("hello", "world"),
+            .with_field("hello", "world"),
         &node,
     )
     .await;
@@ -370,7 +370,7 @@ async fn faceting_basic() -> Result<()> {
         "gamma",
         BlobMetaRequest::new()
             .with_tag("a")
-            .with_meta("hello", "there"),
+            .with_field("hello", "there"),
         &node,
     )
     .await;
@@ -403,7 +403,7 @@ async fn facet_grouping() -> Result<()> {
         "alpha",
         BlobMetaRequest::new()
             .with_tag("a")
-            .with_meta("hello", "world"),
+            .with_field("hello", "world"),
         &node,
     )
     .await;
@@ -412,7 +412,7 @@ async fn facet_grouping() -> Result<()> {
         "beta",
         BlobMetaRequest::new()
             .with_tag("b")
-            .with_meta("hello", "world"),
+            .with_field("hello", "world"),
         &node,
     )
     .await;
@@ -421,7 +421,7 @@ async fn facet_grouping() -> Result<()> {
         "gamma",
         BlobMetaRequest::new()
             .with_tag("a")
-            .with_meta("hello", "there"),
+            .with_field("hello", "there"),
         &node,
     )
     .await;
@@ -490,7 +490,7 @@ async fn add_multi_blob_routing_key() -> Result<()> {
             .pick_node_for_blob(
                 "asdf",
                 BlobInfoRequest {
-                    meta_request: BlobMetaRequest::new().with_meta("some_field", "a"),
+                    meta_request: BlobMetaRequest::new().with_field("some_field", "a"),
                     owner: "admin".to_string(),
                     size: 0,
                 },
@@ -505,7 +505,7 @@ async fn add_multi_blob_routing_key() -> Result<()> {
             .pick_node_for_blob(
                 "asdf",
                 BlobInfoRequest {
-                    meta_request: BlobMetaRequest::new().with_meta("some_field", "b"),
+                    meta_request: BlobMetaRequest::new().with_field("some_field", "b"),
                     owner: "admin".to_string(),
                     size: 0,
                 },
@@ -541,7 +541,7 @@ async fn add_blob_routing_key_unknown_value() -> Result<()> {
             .pick_node_for_blob(
                 "asdf",
                 BlobInfoRequest {
-                    meta_request: BlobMetaRequest::new().with_meta("some_field", "unknown"),
+                    meta_request: BlobMetaRequest::new().with_field("some_field", "unknown"),
                     owner: "admin".to_string(),
                     size: 0,
                 },
@@ -576,7 +576,7 @@ async fn add_blob_routing_key_missing_storage_node() -> Result<()> {
         .pick_node_for_blob(
             "asdf",
             BlobInfoRequest {
-                meta_request: BlobMetaRequest::new().with_meta("some_field", "b"),
+                meta_request: BlobMetaRequest::new().with_field("some_field", "b"),
                 owner: "admin".to_string(),
                 size: 0,
             },
