@@ -14,7 +14,6 @@ use rapidquery::parse::util::{identifier, string};
 pub enum ExpressionField {
     Tag { tag: String },
     KeyValue { key: String, value: String },
-    Parent { parent: String },
     HasKey { key: String },
 }
 
@@ -236,7 +235,6 @@ mod test {
         tags: Vec<String>,
         kv: HashMap<String, String>,
         keys: Vec<String>,
-        parents: Vec<String>,
     }
 
     impl MockResolver {
@@ -251,11 +249,6 @@ mod test {
             self.kv.insert(key, v.into());
             self
         }
-
-        pub fn with_parent<S: Into<String>>(mut self, parent: S) -> Self {
-            self.parents.push(parent.into());
-            self
-        }
     }
 
     impl rapidquery::FieldResolver<bool> for MockResolver {
@@ -268,7 +261,6 @@ mod test {
 
         fn resolve(&self, field: &Self::FieldType) -> Result<bool, Self::Error> {
             let val = match field {
-                ExpressionField::Parent { parent } => self.parents.contains(parent),
                 ExpressionField::HasKey { key } => self.keys.contains(key),
                 ExpressionField::KeyValue { key, value } => self.kv.get(key) == Some(value),
                 ExpressionField::Tag { tag } => self.tags.contains(tag),
@@ -369,24 +361,6 @@ mod test {
             .unwrap()
             .evaluate(&MockResolver::default().with_tag("a"))
             .unwrap())
-    }
-
-    #[test]
-    fn eval_parent() {
-        assert!(
-            Expression::Field(ExpressionField::Parent { parent: "p".into() }) // There's no query syntax for parent queries _yet_.
-                .evaluate(&MockResolver::default().with_parent("p"))
-                .unwrap()
-        )
-    }
-
-    #[test]
-    fn eval_parent_nomatch() {
-        assert!(
-            !Expression::Field(ExpressionField::Parent { parent: "p".into() })
-                .evaluate(&MockResolver::default().with_parent("3"))
-                .unwrap()
-        )
     }
 
     #[test]

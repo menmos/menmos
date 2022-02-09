@@ -47,16 +47,17 @@ impl TransferWorker {
         worker.run().await
     }
 
-    fn encode_metadata(&self, blob_id: &str) -> Result<String> {
+    fn encode_metadata(&self, blob_id: &str) -> Result<(String, u64)> {
         let info = self
             .index
             .get(blob_id)?
             .ok_or_else(|| anyhow!("failed to load blob info"))?;
 
+        let size = info.meta.size;
         let meta_request = BlobMetaRequest::from(info.meta);
         let serialized_meta = serde_json::to_vec(&meta_request)?;
 
-        Ok(base64::encode(&serialized_meta))
+        Ok((base64::encode(&serialized_meta), size))
     }
 
     fn get_token(&self, username: &str, blob_id: &str) -> Result<String> {
@@ -78,7 +79,7 @@ impl TransferWorker {
             .get(&request.blob_id, None)
             .await?;
 
-        let encoded_meta = self.encode_metadata(&request.blob_id)?;
+        let (encoded_meta, size) = self.encode_metadata(&request.blob_id)?;
 
         let mut mpart = MultipartRequest::default();
         let pinned_stream = Pin::from(stream_info.stream);
@@ -98,6 +99,7 @@ impl TransferWorker {
                 format!("multipart/form-data; boundary={}", mpart.get_boundary()),
             )
             .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta)
+            .header(header::HeaderName::from_static("x-blob-size"), size)
             .body(reqwest::Body::wrap_stream(mpart))
             .build()?;
 

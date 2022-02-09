@@ -135,6 +135,7 @@ impl NodeRouter {
         &self,
         _blob_id: &str,
         meta_request: &BlobMetaRequest,
+        blob_size: u64,
         routing_config: &Option<RoutingConfig>,
     ) -> Result<StorageNodeInfo> {
         let mut i = 0;
@@ -145,7 +146,7 @@ impl NodeRouter {
                 None => self.route_policy().await,
             }?;
 
-            if node.available_space >= meta_request.size {
+            if node.available_space >= blob_size {
                 return Ok(node);
             }
 

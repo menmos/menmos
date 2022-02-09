@@ -4,7 +4,7 @@ use anyhow::{ensure, Result};
 
 use async_trait::async_trait;
 
-use interface::{BlobInfo, BlobMetaRequest, StorageNodeInfo};
+use interface::{BlobInfo, BlobInfoRequest, StorageNodeInfo};
 
 use crate::node::{
     routing::NodeRouter,
@@ -43,12 +43,19 @@ impl interface::BlobIndexer for IndexerService {
     async fn pick_node_for_blob(
         &self,
         blob_id: &str,
-        meta: BlobMetaRequest,
-        username: &str,
+        info_request: BlobInfoRequest,
     ) -> Result<StorageNodeInfo> {
-        let routing_config = self.routing_service.get_routing_config(username).await?;
+        let routing_config = self
+            .routing_service
+            .get_routing_config(&info_request.owner)
+            .await?;
         self.router
-            .route_blob(blob_id, &meta, &routing_config)
+            .route_blob(
+                blob_id,
+                &info_request.meta_request,
+                info_request.size,
+                &routing_config,
+            )
             .await
     }
 
@@ -120,7 +127,7 @@ impl interface::BlobIndexer for IndexerService {
         //  - Add the BlobIDX to a list of "free" indices (up for recycling) kept in the document index.
         if let Some(blob_idx) = self.documents.delete(blob_id)? {
             //  - If the blob exists in the index we need to "purge" the BlobIDX:
-            //  - For all tag, k/v and parent values in the metadata index, set to `0` the bit corresponding to the deleted BlobIDX.
+            //  - For all tag and k/v values in the metadata index, set to `0` the bit corresponding to the deleted BlobIDX.
             //  - Once a new insert comes, prioritize using a recycled BlobIDX over allocating a new one.
             self.metadata.purge(blob_idx)?;
         }

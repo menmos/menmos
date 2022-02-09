@@ -11,11 +11,10 @@ pub trait Repository {
     async fn save(
         &self,
         id: String,
-        size: u64,
         mut stream: Box<
             dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static,
         >,
-    ) -> Result<()>;
+    ) -> Result<u64>;
 
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64>;
 

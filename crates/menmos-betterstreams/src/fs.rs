@@ -31,7 +31,7 @@ const DEFAULT_READ_BUF_SIZE: usize = 8_192;
 ///     fs::write_all("/home/user/myfile.txt", mystream).await.unwrap();
 /// });
 /// ```
-pub async fn write_all<P: AsRef<Path>>(path: P, stream: UnpinDynIoStream) -> Result<()> {
+pub async fn write_all<P: AsRef<Path>>(path: P, stream: UnpinDynIoStream) -> Result<u64> {
     let mut stream_pin = Box::pin(stream);
 
     let mut f = fs::File::create(path.as_ref()).await?;
@@ -41,7 +41,9 @@ pub async fn write_all<P: AsRef<Path>>(path: P, stream: UnpinDynIoStream) -> Res
         f.write_all(chunk_bytes.as_ref()).await?;
     }
 
-    Ok(())
+    f.flush().await?;
+
+    Ok(f.metadata().await?.len())
 }
 
 fn optimal_buf_size(metadata: &std::fs::Metadata) -> usize {

@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use apikit::reject::{BadRequest, InternalServerError};
 
-use interface::BlobMetaRequest;
+use interface::{BlobInfoRequest, BlobMetaRequest};
 
 use menmos_auth::UserIdentity;
 
@@ -25,6 +25,7 @@ pub async fn put(
     user: UserIdentity,
     context: Context,
     meta: String,
+    blob_size: Option<u64>,
     addr: Option<SocketAddr>,
 ) -> Result<warp::reply::Response, warp::Rejection> {
     let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
@@ -33,10 +34,17 @@ pub async fn put(
 
     // Pick a storage node for our new blob.
     let new_blob_id = uuid::Uuid::new_v4().to_string();
+
+    let blob_info_request = BlobInfoRequest {
+        meta_request: meta,
+        size: blob_size.unwrap_or_default(),
+        owner: user.username,
+    };
+
     let targeted_storage_node = context
         .node
         .indexer()
-        .pick_node_for_blob(&new_blob_id, meta, &user.username)
+        .pick_node_for_blob(&new_blob_id, blob_info_request)
         .await
         .map_err(InternalServerError::from)?;
 

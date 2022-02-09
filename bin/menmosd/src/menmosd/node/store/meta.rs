@@ -20,8 +20,6 @@ pub trait MetadataStore: Flush {
 
     fn load_key(&self, k: &str) -> Result<BitVec>;
 
-    fn load_children(&self, parent_id: &str) -> Result<BitVec>;
-
     fn list_all_tags(&self, mask: Option<&BitVec>) -> Result<HashMap<String, usize>>;
     fn list_all_kv_fields(
         &self,
@@ -36,7 +34,6 @@ pub trait MetadataStore: Flush {
 const META_MAP: &str = "metadata";
 const TAG_MAP: &str = "tags";
 const KV_MAP: &str = "keyvalue";
-const PARENTS_MAP: &str = "parents";
 const USER_MASK_MAP: &str = "users";
 
 fn kv_to_tag(key: &str, value: &str) -> String {
@@ -53,7 +50,6 @@ pub struct SledMetadataStore {
     meta_map: sled::Tree,
     tag_map: BitvecTree,
     kv_map: BitvecTree,
-    parents_map: BitvecTree,
     user_mask_map: BitvecTree,
 }
 
@@ -63,14 +59,12 @@ impl SledMetadataStore {
 
         let tag_map = BitvecTree::new(db, TAG_MAP)?;
         let kv_map = BitvecTree::new(db, KV_MAP)?;
-        let parents_map = BitvecTree::new(db, PARENTS_MAP)?;
         let user_mask_map = BitvecTree::new(db, USER_MASK_MAP)?;
 
         Ok(Self {
             meta_map,
             tag_map,
             kv_map,
-            parents_map,
             user_mask_map,
         })
     }
@@ -96,13 +90,6 @@ impl SledMetadataStore {
             }
         }
 
-        for parent in old_meta.meta.parents.into_iter() {
-            if !new_meta.meta.parents.contains(&parent) {
-                self.parents_map.purge_key(&parent, for_idx)?;
-                tracing::trace!(parent = %parent, index = for_idx, "purged parent");
-            }
-        }
-
         Ok(())
     }
 }
@@ -117,9 +104,8 @@ impl Flush for SledMetadataStore {
             .map_err(|e| anyhow!(e.to_string()));
         let tag_flush = self.tag_map.flush();
         let kv_flush = self.kv_map.flush();
-        let parents_flush = self.parents_map.flush();
 
-        tokio::try_join!(meta_flush, tag_flush, kv_flush, parents_flush).map(|_u| ())?;
+        tokio::try_join!(meta_flush, tag_flush, kv_flush).map(|_u| ())?;
 
         tracing::debug!("flush complete");
         Ok(())
@@ -155,7 +141,7 @@ impl MetadataStore for SledMetadataStore {
         let r: &[u8] = serialized.as_ref();
         if let Some(last_meta_ivec) = self.meta_map.insert(&serialized_id, r)? {
             tracing::trace!("blob already exists, we need to purge previous tags");
-            // We need to purge tags, parents, and k/v pairs that were _removed_ from the meta
+            // We need to purge tags, and k/v pairs that were _removed_ from the meta
             // so they don't come up in searches anymore.
             let old_info: BlobInfo = bincode::deserialize(last_meta_ivec.as_ref())?;
             self.diff_and_purge_on_meta_update(old_info, info, id)?;
@@ -169,11 +155,6 @@ impl MetadataStore for SledMetadataStore {
         // Save key/value fields in the reverse map.
         for (k, v) in info.meta.metadata.iter().filter(|(_, v)| !v.is_empty()) {
             self.kv_map.insert(&kv_to_tag(k, v), &serialized_id)?;
-        }
-
-        // Set parent fields in the reverse map.
-        for parent_id in info.meta.parents.iter() {
-            self.parents_map.insert(parent_id, &serialized_id)?;
         }
 
         Ok(())
@@ -217,11 +198,6 @@ impl MetadataStore for SledMetadataStore {
         }
 
         Ok(bv)
-    }
-
-    #[tracing::instrument(level = "trace", skip(self))]
-    fn load_children(&self, parent_id: &str) -> Result<BitVec> {
-        self.parents_map.load(parent_id)
     }
 
     #[tracing::instrument(level = "trace", skip(self, mask))]
@@ -319,10 +295,9 @@ impl MetadataStore for SledMetadataStore {
 
         // Purge.
         // TODO: Improve, this is _really_ expensive.
-        // This is in O(2n) the number of unique [parents + tags + kv].
+        // This is in O(2n) the number of unique [tags + kv].
         self.tag_map.purge(idx)?;
         self.kv_map.purge(idx)?;
-        self.parents_map.purge(idx)?;
         self.user_mask_map.purge(idx)?;
 
         Ok(())
@@ -332,7 +307,6 @@ impl MetadataStore for SledMetadataStore {
         self.meta_map.clear()?;
         self.tag_map.clear()?;
         self.kv_map.clear()?;
-        self.parents_map.clear()?;
         tracing::debug!("meta index destroyed");
         Ok(())
     }

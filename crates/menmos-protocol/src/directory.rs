@@ -117,10 +117,6 @@ pub mod query {
         ///
         /// Evaluates to resolver items where the given key is present (in any key/value pair).
         HasKey { key: String },
-        /// Parent expression.
-        ///
-        /// Evaluates to resolver items having the provided value as a parent.
-        Parent { parent: String },
         /// And expression.
         ///
         /// Evaluates to the intersection of its two sub-expressions.
@@ -168,7 +164,6 @@ pub mod query {
                         Box::new(Expression::try_from(*b)?),
                     ),
                 },
-                RawExpression::Parent { parent } => Self::Field(ExpressionField::Parent { parent }),
                 RawExpression::HasKey { key } => Self::Field(ExpressionField::HasKey { key }),
                 RawExpression::KeyValue { key, value } => {
                     Self::Field(ExpressionField::KeyValue { key, value })

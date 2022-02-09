@@ -10,7 +10,7 @@ pub use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{BlobInfo, BlobMeta, BlobMetaRequest, ExpressionField};
+use crate::{BlobInfo, BlobInfoRequest, BlobMeta, ExpressionField};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -138,15 +138,6 @@ impl Query {
     }
 
     #[must_use]
-    pub fn and_parent<P: Into<String>>(mut self, p: P) -> Self {
-        let new_expr = Expression::Field(ExpressionField::Parent { parent: p.into() });
-        self.expression = Expression::And {
-            and: (Box::from(self.expression), Box::from(new_expr)),
-        };
-        self
-    }
-
-    #[must_use]
     pub fn with_from(mut self, f: usize) -> Self {
         self.from = f;
         self
@@ -246,8 +237,7 @@ pub trait BlobIndexer {
     async fn pick_node_for_blob(
         &self,
         blob_id: &str,
-        meta: BlobMetaRequest,
-        username: &str,
+        info_request: BlobInfoRequest,
     ) -> Result<StorageNodeInfo>;
     async fn get_blob_meta(&self, blob_id: &str, user: &str) -> Result<Option<BlobInfo>>;
     async fn index_blob(&self, blob_id: &str, meta: BlobInfo, storage_node_id: &str) -> Result<()>;

@@ -39,6 +39,12 @@ pub enum ClientError {
     #[snafu(display("file [{:?}] does not exist", path))]
     FileDoesNotExist { path: PathBuf },
 
+    #[snafu(display("failed to load the metadata for '{:?}': {}", path, source))]
+    FileMetadataError {
+        source: std::io::Error,
+        path: PathBuf,
+    },
+
     #[snafu(display("failed to serialize metadata [{:?}]: {}", meta, source))]
     MetaSerializationError {
         source: serde_json::Error,
@@ -184,6 +190,7 @@ impl Client {
         url: &str,
         path: P,
         encoded_meta: &str,
+        file_length: u64,
     ) -> Result<reqwest::Request> {
         if path.as_ref().is_file() {
             let mut mpart = MultipartRequest::default();
@@ -197,6 +204,7 @@ impl Client {
                     format!("multipart/form-data; boundary={}", mpart.get_boundary()),
                 )
                 .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta)
+                .header(HeaderName::from_static("x-blob-size"), file_length)
                 .body(Body::wrap_stream(mpart))
                 .build()
                 .context(RequestBuildSnafu)
@@ -322,6 +330,14 @@ impl Client {
         let mut url = base_url;
         let meta_b64 = encode_metadata(meta)?;
 
+        let file_length = path
+            .as_ref()
+            .metadata()
+            .context(FileMetadataSnafu {
+                path: PathBuf::from(path.as_ref()),
+            })?
+            .len();
+
         let initial_redirect_request = self
             .client
             .post(&url)
@@ -330,13 +346,14 @@ impl Client {
                 header::HeaderName::from_static("x-blob-meta"),
                 meta_b64.clone(),
             )
+            .header(HeaderName::from_static("x-blob-size"), file_length)
             .build()
             .context(RequestBuildSnafu)?;
 
         url = self.request_with_redirect(initial_redirect_request).await?;
 
         let response = self
-            .execute(|| self.prepare_push_request(&url, path.as_ref(), &meta_b64))
+            .execute(|| self.prepare_push_request(&url, path.as_ref(), &meta_b64, file_length))
             .await?;
 
         let put_response: PutResponse = extract(response).await?;

@@ -16,13 +16,6 @@ use serde::{Deserialize, Serialize};
 
 use warp::hyper::body::Bytes;
 
-/// The type of a blob in a menmos cluster (file or directory).
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub enum Type {
-    File,
-    Directory,
-}
-
 fn file_to_base64<P: AsRef<Path>>(path: P) -> Result<String> {
     Ok(base64::encode(fs::read(path.as_ref())?))
 }
@@ -47,44 +40,19 @@ impl CertificateInfo {
 }
 
 /// Metadata accepted when indexing a blob.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct BlobMetaRequest {
-    /// The type of this blob.
-    pub blob_type: Type,
-
     /// The key/value pairs for this blob.
     pub metadata: HashMap<String, String>,
 
     /// The tags for this blob.
     pub tags: Vec<String>,
-
-    /// This blob's parent IDs.
-    pub parents: Vec<String>,
-
-    /// This blob's size, in bytes.
-    pub size: u64,
 }
 
 impl BlobMetaRequest {
-    pub fn new(blob_type: Type) -> Self {
-        Self {
-            blob_type,
-            metadata: Default::default(),
-            tags: Default::default(),
-            parents: Default::default(),
-            size: 0,
-        }
-    }
-
-    #[must_use]
-    pub fn file() -> Self {
-        Self::new(Type::File)
-    }
-
-    #[must_use]
-    pub fn directory() -> Self {
-        Self::new(Type::Directory)
+    pub fn new() -> Self {
+        Self::default()
     }
 
     #[must_use]
@@ -99,25 +67,16 @@ impl BlobMetaRequest {
         self
     }
 
-    #[must_use]
-    pub fn with_parent<S: Into<String>>(mut self, s: S) -> Self {
-        self.parents.push(s.into());
-        self
-    }
-
-    #[must_use]
-    pub fn with_size(mut self, size: u64) -> Self {
-        self.size = size;
-        self
-    }
-
-    pub fn into_meta(self, created_at: DateTime<Utc>, modified_at: DateTime<Utc>) -> BlobMeta {
+    pub fn into_meta(
+        self,
+        created_at: DateTime<Utc>,
+        modified_at: DateTime<Utc>,
+        size: u64,
+    ) -> BlobMeta {
         BlobMeta {
-            blob_type: self.blob_type,
             metadata: self.metadata,
             tags: self.tags,
-            parents: self.parents,
-            size: self.size,
+            size,
             created_at,
             modified_at,
         }
@@ -128,17 +87,11 @@ impl BlobMetaRequest {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct BlobMeta {
-    /// The type of this blob.
-    pub blob_type: Type,
-
     /// The key/value pairs for this blob.
     pub metadata: HashMap<String, String>,
 
     /// The tags for this blob.
     pub tags: Vec<String>,
-
-    /// This blob's parent IDs.
-    pub parents: Vec<String>,
 
     /// This blob's size, in bytes.
     pub size: u64,
@@ -153,36 +106,27 @@ pub struct BlobMeta {
 impl From<BlobMeta> for BlobMetaRequest {
     fn from(m: BlobMeta) -> Self {
         Self {
-            blob_type: m.blob_type,
             metadata: m.metadata,
             tags: m.tags,
-            parents: m.parents,
-            size: m.size,
         }
     }
 }
 
-impl BlobMeta {
-    pub fn new(blob_type: Type) -> Self {
+impl Default for BlobMeta {
+    fn default() -> Self {
         Self {
-            blob_type,
             metadata: Default::default(),
             tags: Default::default(),
-            parents: Default::default(),
             size: 0,
             created_at: Utc::now(),
             modified_at: Utc::now(),
         }
     }
+}
 
-    #[must_use]
-    pub fn file() -> Self {
-        BlobMeta::new(Type::File)
-    }
-
-    #[must_use]
-    pub fn directory() -> Self {
-        BlobMeta::new(Type::Directory)
+impl BlobMeta {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     #[must_use]
@@ -194,12 +138,6 @@ impl BlobMeta {
     #[must_use]
     pub fn with_tag<S: Into<String>>(mut self, s: S) -> Self {
         self.tags.push(s.into());
-        self
-    }
-
-    #[must_use]
-    pub fn with_parent<S: Into<String>>(mut self, s: S) -> Self {
-        self.parents.push(s.into());
         self
     }
 
@@ -215,12 +153,15 @@ impl BlobMeta {
 pub struct BlobInfoRequest {
     pub meta_request: BlobMetaRequest,
     pub owner: String,
+    pub size: u64,
 }
 
 impl BlobInfoRequest {
     pub fn into_blob_info(self, created_at: DateTime<Utc>, modified_at: DateTime<Utc>) -> BlobInfo {
         BlobInfo {
-            meta: self.meta_request.into_meta(created_at, modified_at),
+            meta: self
+                .meta_request
+                .into_meta(created_at, modified_at, self.size),
             owner: self.owner,
         }
     }
