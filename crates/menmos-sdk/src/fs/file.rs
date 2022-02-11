@@ -3,7 +3,7 @@ use std::io::SeekFrom;
 use bytes::Bytes;
 
 use interface::BlobMeta;
-use menmos_client::{Meta, Type};
+use menmos_client::Meta;
 
 use snafu::prelude::*;
 
@@ -14,12 +14,8 @@ use super::error::*;
 
 fn make_file_meta(m: FileMetadata) -> Meta {
     Meta {
-        name: m.name,
-        blob_type: Type::File,
-        metadata: m.metadata,
+        fields: m.fields,
         tags: m.tags,
-        parents: m.parents,
-        size: m.size,
     }
 }
 
@@ -57,13 +53,6 @@ impl MenmosFile {
     }
 
     pub(crate) fn open_raw(client: ClientRC, id: &str, meta: BlobMeta) -> Result<Self> {
-        ensure!(
-            meta.blob_type == Type::File,
-            ExpectedFileSnafu {
-                blob_id: String::from(id)
-            }
-        );
-
         Ok(Self {
             blob_id: String::from(id),
             client,

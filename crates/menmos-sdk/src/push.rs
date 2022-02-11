@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use menmos_client::{Meta, Type};
+use menmos_client::Meta;
 
 use snafu::prelude::*;
 

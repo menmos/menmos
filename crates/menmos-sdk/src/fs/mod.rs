@@ -9,8 +9,6 @@ pub use file::MenmosFile;
 
 use futures::TryStreamExt;
 
-use menmos_client::Type;
-
 use snafu::prelude::*;
 
 use crate::util;

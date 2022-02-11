@@ -35,12 +35,11 @@ impl MetadataDetector {
 
     pub fn populate<P: AsRef<Path>>(&self, path: P, meta: &mut Meta) -> Result<()> {
         if let Some(mime_type) = self.detect_mime_type(&path) {
-            meta.metadata
-                .insert(String::from("content-type"), mime_type);
+            meta.fields.insert(String::from("content-type"), mime_type);
         }
 
         if let Some(extension) = path.as_ref().extension().and_then(|e| e.to_str()) {
-            meta.metadata
+            meta.fields
                 .insert(String::from("extension"), String::from(extension));
         }
 

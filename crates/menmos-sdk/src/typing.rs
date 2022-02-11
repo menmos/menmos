@@ -18,8 +18,10 @@ pub struct FileMetadata {
 
 impl FileMetadata {
     pub fn new<S: Into<String>>(name: S) -> Self {
+        let mut fields = HashMap::new();
+        fields.insert("name".into(), name.into());
         Self {
-            name: name.into(),
+            fields,
             ..Default::default()
         }
     }
