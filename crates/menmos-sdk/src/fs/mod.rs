@@ -1,10 +1,8 @@
 //! The filesystem SDK module.
 
-mod dir;
 mod error;
 mod file;
 
-pub use dir::{DirEntry, MenmosDirectory};
 pub use file::MenmosFile;
 
 use futures::TryStreamExt;
@@ -87,15 +85,7 @@ impl MenmosFs {
             .context(FileRemoveSnafu {
                 blob_id: String::from(id.as_ref()),
             })? {
-            Some(meta) => {
-                ensure!(
-                    meta.blob_type == Type::File,
-                    ExpectedFileSnafu {
-                        blob_id: String::from(id.as_ref())
-                    }
-                );
-                self.remove_blob_unchecked(id).await
-            }
+            Some(meta) => self.remove_blob_unchecked(id).await,
             None => Ok(()),
         }
     }
@@ -203,20 +193,15 @@ impl MenmosFs {
                     }
                 );
 
-                let dir = MenmosDirectory::open_raw(self.client.clone(), id.as_ref(), meta)?;
+                let dir = MenmosFile::open_raw(self.client.clone(), id.as_ref(), meta)?;
 
                 // We don't do the deletion recursively because recursivity + async requires a lot of indirection.
-                let mut delete_stack: Vec<DirEntry> = vec![DirEntry::Directory(dir)];
+                let mut delete_stack: Vec<MenmosFile> = vec![];
                 while let Some(target) = delete_stack.pop() {
-                    match target {
-                        DirEntry::File(file) => self.remove_blob_unchecked(file.id()).await?,
-                        DirEntry::Directory(dir) => {
-                            let children = dir.list().try_collect::<Vec<_>>().await?;
+                    let children = target.list().try_collect::<Vec<_>>().await?;
 
-                            delete_stack.extend(children.into_iter());
-                            self.remove_blob_unchecked(dir.id()).await?;
-                        }
-                    }
+                    delete_stack.extend(children.into_iter());
+                    self.remove_blob_unchecked(target.id()).await?;
                 }
 
                 Ok(())

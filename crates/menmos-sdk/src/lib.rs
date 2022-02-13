@@ -22,7 +22,7 @@ use interface::Hit;
 
 pub use interface;
 
-use menmos_client::{Client, Type};
+use menmos_client::Client;
 
 use snafu::prelude::*;
 

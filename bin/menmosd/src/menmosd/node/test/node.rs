@@ -227,7 +227,7 @@ async fn query_single_kv() {
 
     let r = node
         .query()
-        .query(&Query::default().and_meta("hello", "world"), "admin")
+        .query(&Query::default().and_field("hello", "world"), "admin")
         .await
         .unwrap();
 

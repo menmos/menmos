@@ -2,7 +2,10 @@ use std::io::SeekFrom;
 
 use bytes::Bytes;
 
-use interface::BlobMeta;
+use futures::{TryStream, TryStreamExt};
+
+use interface::{BlobMeta, Query};
+
 use menmos_client::Meta;
 
 use snafu::prelude::*;
@@ -167,5 +170,38 @@ impl MenmosFile {
         *string = String::from_utf8(v).context(BufferEncodingSnafu)?;
 
         Ok(buf_read)
+    }
+
+    /// Get a stream of entries present in this directory.
+    pub fn list(&self) -> impl TryStream<Ok = Self, Error = FsError> + Unpin {
+        let query = Query::default()
+            .and_field("parent", &self.blob_id)
+            .with_from(0)
+            .with_size(50);
+
+        let client = self.client.clone();
+        Box::pin(
+            util::scroll_query(query, &client)
+                .map_err(|source| FsError::DirQueryError { source })
+                .and_then(move |hit| {
+                    let client = client.clone();
+                    async move {
+                        let entry = MenmosFile::open_raw(client, &hit.id, hit.meta)?;
+                        Ok(entry)
+                    }
+                }),
+        )
+    }
+
+    /// Get whether this directory has any children.
+    pub async fn is_empty(&self) -> Result<bool> {
+        let query = Query::default().and_parent(&self.blob_id).with_size(0);
+        let results = self
+            .client
+            .query(query)
+            .await
+            .map_err(|_| FsError::DirListError)?;
+
+        Ok(results.total == 0)
     }
 }

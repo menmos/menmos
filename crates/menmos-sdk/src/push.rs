@@ -29,7 +29,6 @@ pub struct PushResult {
 pub(crate) async fn push_file(
     client: ClientRC,
     metadata_detector: &MetadataDetectorRC,
-    blob_type: Type,
     request: UploadRequest,
 ) -> Result<String> {
     let mut meta = Meta::new(
@@ -39,7 +38,6 @@ pub(crate) async fn push_file(
             .unwrap()
             .to_string_lossy()
             .to_string(),
-        blob_type.clone(),
     );
 
     metadata_detector
