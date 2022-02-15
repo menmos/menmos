@@ -55,9 +55,14 @@ impl DownloadCommand {
                     let stream = client.client().get_file(&blob_id).await?;
                     let mut stream_pin = Box::pin(stream);
 
+                    let file_name = match meta.fields.get("name") {
+                        Some(name) => name.clone(),
+                        None => blob_id.clone(),
+                    };
+
                     let file_path = match &dst_dir {
-                        Some(d) => d.join(&meta.name),
-                        None => PathBuf::from(meta.name),
+                        Some(d) => d.join(file_name),
+                        None => PathBuf::from(file_name),
                     };
 
                     let mut f = fs::File::create(&file_path).await?;

@@ -15,16 +15,6 @@ pub enum FsError {
         blob_id: String,
     },
 
-    #[snafu(display("expected blob '{}' to be a file, found a directory", blob_id))]
-    ExpectedFileError {
-        blob_id: String,
-    },
-
-    #[snafu(display("expected blob '{}' to be a directory, found a file", blob_id))]
-    ExpectedDirectoryError {
-        blob_id: String,
-    },
-
     #[snafu(display("failed to open file '{}': {}", blob_id, source))]
     FileOpenError {
         source: util::UtilError,
@@ -51,11 +41,6 @@ pub enum FsError {
     #[snafu(display("failed to create directory"))]
     DirCreateError,
 
-    #[snafu(display("failed to open directory: {}", source))]
-    DirOpenError {
-        source: util::UtilError,
-    },
-
     // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
     #[snafu(display("failed to list directory"))]
     DirListError,
@@ -68,11 +53,6 @@ pub enum FsError {
     #[snafu(display("failed to remove directory: {}", source))]
     DirRemoveError {
         source: util::UtilError,
-    },
-
-    #[snafu(display("directory '{}' is not empty", blob_id))]
-    DirIsNotEmptyError {
-        blob_id: String,
     },
 
     #[snafu(display("failed to get blob size for seeking"))]

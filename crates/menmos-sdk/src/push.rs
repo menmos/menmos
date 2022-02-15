@@ -23,7 +23,6 @@ type Result<T> = std::result::Result<T, PushError>;
 pub struct PushResult {
     pub source_path: PathBuf,
     pub blob_id: String,
-    pub parent_id: Option<String>,
 }
 
 pub(crate) async fn push_file(
@@ -31,7 +30,10 @@ pub(crate) async fn push_file(
     metadata_detector: &MetadataDetectorRC,
     request: UploadRequest,
 ) -> Result<String> {
-    let mut meta = Meta::new(
+    let mut meta = Meta::new();
+
+    meta = meta.with_field(
+        "name",
         request
             .path
             .file_name()
@@ -44,20 +46,12 @@ pub(crate) async fn push_file(
         .populate(&request.path, &mut meta)
         .context(MetadataPopulationSnafu)?;
 
-    if blob_type == Type::File {
-        meta = meta.with_size(request.path.metadata().unwrap().len())
-    }
-
-    if let Some(parent) = request.parent_id {
-        meta = meta.with_parent(parent);
-    }
-
     for tag in request.tags.iter() {
         meta = meta.with_tag(tag);
     }
 
-    for (k, v) in request.metadata.iter() {
-        meta = meta.with_meta(k, v);
+    for (k, v) in request.fields.iter() {
+        meta = meta.with_field(k, v);
     }
 
     let item_id = client

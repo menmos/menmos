@@ -14,20 +14,23 @@ pub async fn all(
     client: Menmos,
     paths: Vec<PathBuf>,
     tags: Vec<String>,
-    meta: Vec<String>,
+    fields: Vec<String>,
     concurrency: usize,
     parent_id: Option<String>,
 ) -> Result<u64> {
     let count_rc = Arc::new(AtomicU64::new(0));
-    let meta_map = util::convert_meta_vec_to_map(meta)?;
+    let mut fields = util::convert_meta_vec_to_map(fields)?;
+
+    if let Some(parent_id) = parent_id {
+        fields.insert(String::from("parent"), parent_id);
+    }
 
     let upload_requests = paths
         .into_iter()
         .map(|path| UploadRequest {
             path,
-            metadata: meta_map.clone(),
+            fields: fields.clone(),
             tags: tags.clone(),
-            parent_id: parent_id.clone(),
         })
         .collect::<Vec<_>>();
 

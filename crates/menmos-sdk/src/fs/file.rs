@@ -4,7 +4,7 @@ use bytes::Bytes;
 
 use futures::{TryStream, TryStreamExt};
 
-use interface::{BlobMeta, Query};
+use interface::Query;
 
 use menmos_client::Meta;
 
@@ -47,15 +47,7 @@ impl MenmosFile {
         })
     }
 
-    #[doc(hidden)]
-    pub async fn open(client: ClientRC, id: &str) -> Result<Self> {
-        let metadata = util::get_meta(&client, id).await.context(FileOpenSnafu {
-            blob_id: String::from(id),
-        })?;
-        Self::open_raw(client, id, metadata)
-    }
-
-    pub(crate) fn open_raw(client: ClientRC, id: &str, meta: BlobMeta) -> Result<Self> {
+    pub fn open(client: ClientRC, id: &str) -> Result<Self> {
         Ok(Self {
             blob_id: String::from(id),
             client,
@@ -186,7 +178,7 @@ impl MenmosFile {
                 .and_then(move |hit| {
                     let client = client.clone();
                     async move {
-                        let entry = MenmosFile::open_raw(client, &hit.id, hit.meta)?;
+                        let entry = MenmosFile::open(client, &hit.id)?;
                         Ok(entry)
                     }
                 }),
@@ -195,7 +187,10 @@ impl MenmosFile {
 
     /// Get whether this directory has any children.
     pub async fn is_empty(&self) -> Result<bool> {
-        let query = Query::default().and_parent(&self.blob_id).with_size(0);
+        let query = Query::default()
+            .and_field("parent", &self.blob_id)
+            .with_size(0);
+
         let results = self
             .client
             .query(query)

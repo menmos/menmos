@@ -145,14 +145,12 @@ impl Menmos {
             while let Some(upload_request) = working_stack.pop(){
                 if upload_request.path.is_file() {
                     let source_path = upload_request.path.clone();
-                    let parent_id = upload_request.parent_id.clone();
-                    let blob_id = push::push_file(client.clone(), &metadata_detector, Type::File, upload_request).await.map_err(|e| MenmosError::FilePush{source: e})?;
-                    yield push::PushResult{source_path, blob_id, parent_id};
+                    let blob_id = push::push_file(client.clone(), &metadata_detector, upload_request).await.map_err(|e| MenmosError::FilePush{source: e})?;
+                    yield push::PushResult{source_path, blob_id};
                 } else {
                     let directory_id: String = push::push_file(
                         client.clone(),
                         &metadata_detector,
-                        Type::Directory,
                         upload_request.clone()                    )
                     .await.context(FilePushSnafu)?;
 
@@ -161,7 +159,7 @@ impl Menmos {
                     for child in read_dir_result?.filter_map(|f| f.ok()) {
                         let mut req_clone = upload_request.clone();
                         req_clone.path = child.path().clone();
-                        req_clone.parent_id = Some(directory_id.clone());
+                        req_clone.fields.insert("parent".to_string(), directory_id.clone());
                         working_stack.push(req_clone);
                     }
                 }
