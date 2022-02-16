@@ -1,17 +1,21 @@
-use snafu::prelude::*;
 use std::string::FromUtf8Error;
+
+use menmos_client::ClientError;
+
+use snafu::prelude::*;
 
 use crate::util;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum FsError {
-    // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
-    FileCreateError,
+    FileCreateError {
+        source: ClientError,
+    },
 
-    // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
     #[snafu(display("failed to delete blob '{}'", blob_id))]
     BlobDeleteError {
+        source: ClientError,
         blob_id: String,
     },
 
@@ -21,13 +25,14 @@ pub enum FsError {
         blob_id: String,
     },
 
-    // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
     #[snafu(display("failed to write to file"))]
-    FileWriteError,
+    FileWriteError {
+        source: ClientError,
+    },
 
-    // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
     #[snafu(display("failed to read from file '{}'", blob_id))]
     FileReadError {
+        source: ClientError,
         blob_id: String,
     },
 
@@ -37,15 +42,12 @@ pub enum FsError {
         blob_id: String,
     },
 
-    // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
-    #[snafu(display("failed to create directory"))]
-    DirCreateError,
+    #[snafu(display("failed to list children"))]
+    DirListError {
+        source: ClientError,
+    },
 
-    // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
-    #[snafu(display("failed to list directory"))]
-    DirListError,
-
-    #[snafu(display("failed to query directory"))]
+    #[snafu(display("failed to query children"))]
     DirQueryError {
         source: util::UtilError,
     },

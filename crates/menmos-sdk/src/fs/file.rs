@@ -38,7 +38,7 @@ impl MenmosFile {
         let blob_id = client
             .create_empty(metadata)
             .await
-            .map_err(|_| FsError::FileCreateError)?;
+            .context(FileCreateSnafu)?;
 
         Ok(Self {
             blob_id,
@@ -70,7 +70,7 @@ impl MenmosFile {
         self.client
             .write(&self.blob_id, self.offset, buf)
             .await
-            .map_err(|_| FsError::FileWriteError)?;
+            .context(FileWriteSnafu)?;
         self.offset += buf_len as u64;
         Ok(buf_len)
     }
@@ -122,7 +122,7 @@ impl MenmosFile {
                 (self.offset, (self.offset + buf.len() as u64) - 1),
             )
             .await
-            .map_err(|_| FsError::FileReadError {
+            .with_context(|_| FileReadSnafu {
                 blob_id: self.blob_id.clone(),
             })?;
         buf.copy_from_slice(&r);
@@ -141,7 +141,7 @@ impl MenmosFile {
             .client
             .read_range(&self.blob_id, (self.offset, metadata.size))
             .await
-            .map_err(|_| FsError::FileReadError {
+            .with_context(|_| FileReadSnafu {
                 blob_id: self.blob_id.clone(),
             })?;
         *buf = out;
@@ -191,11 +191,7 @@ impl MenmosFile {
             .and_field("parent", &self.blob_id)
             .with_size(0);
 
-        let results = self
-            .client
-            .query(query)
-            .await
-            .map_err(|_| FsError::DirListError)?;
+        let results = self.client.query(query).await.context(DirListSnafu)?;
 
         Ok(results.total == 0)
     }

@@ -5,7 +5,7 @@ pub mod push;
 mod typing;
 mod util;
 
-pub use menmos_client::Query;
+pub use menmos_client::{BuildError, Query};
 pub use profile::{Config, Profile};
 pub use typing::{FileMetadata, UploadRequest};
 
@@ -37,9 +37,10 @@ pub enum MenmosError {
         profile: String,
     },
 
-    // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
     #[snafu(display("failed to build client"))]
-    ClientBuild,
+    ClientBuild {
+        source: BuildError,
+    },
 
     FilePush {
         source: error::PushError,
@@ -111,7 +112,7 @@ impl Menmos {
             .with_password(profile.password)
             .build()
             .await
-            .map_err(|_| MenmosError::ClientBuild)?;
+            .context(ClientBuildSnafu)?;
         Ok(Self::new_with_client(client))
     }
 
@@ -222,10 +223,7 @@ impl MenmosBuilder {
             builder = builder.with_retry_interval(retry_interval);
         }
 
-        let client = builder
-            .build()
-            .await
-            .map_err(|_| MenmosError::ClientBuild)?;
+        let client = builder.build().await.context(ClientBuildSnafu)?;
 
         Ok(Menmos::new_with_client(client))
     }

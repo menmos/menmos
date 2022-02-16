@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use menmos_client::Meta;
+use menmos_client::{ClientError, Meta};
 
 use snafu::prelude::*;
 
@@ -13,9 +13,8 @@ pub enum PushError {
     MetadataPopulationError {
         source: error::MetadataDetectorError,
     },
-    // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
     #[snafu(display("failed to push '{:?}'", path))]
-    BlobPushError { path: PathBuf },
+    BlobPushError { path: PathBuf, source: ClientError },
 }
 
 type Result<T> = std::result::Result<T, PushError>;
@@ -57,7 +56,7 @@ pub(crate) async fn push_file(
     let item_id = client
         .push(&request.path, meta)
         .await
-        .map_err(|_| PushError::BlobPushError {
+        .with_context(|_| BlobPushSnafu {
             path: request.path.clone(),
         })?;
 

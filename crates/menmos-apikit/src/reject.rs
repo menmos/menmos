@@ -57,7 +57,7 @@ impl reject::Reject for NotFound {}
 /// Catches all rejections defined in this module, converting them to the proper HTTP status code.
 /// Converts all remaining unknown rejections to an HTTP 500.
 pub async fn recover(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
-    if let Some(Forbidden) = err.find() {
+    if let Some(Forbidden {}) = err.find() {
         tracing::info!("rejection: Forbidden");
         Ok(reply::error(MESSAGE_FORBIDDEN, StatusCode::FORBIDDEN))
     } else if let Some(BadRequest { message }) = err.find() {

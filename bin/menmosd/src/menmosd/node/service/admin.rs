@@ -58,7 +58,7 @@ impl interface::NodeAdminController for NodeAdminService {
         self.indexer_service.clear().await?;
 
         let mut rebuild_queue_guard = self.rebuild_queue.lock().map_err(|e| anyhow!("{}", e))?;
-        (&mut *rebuild_queue_guard).extend(storage_nodes.into_iter());
+        (*rebuild_queue_guard).extend(storage_nodes.into_iter());
 
         Ok(())
     }

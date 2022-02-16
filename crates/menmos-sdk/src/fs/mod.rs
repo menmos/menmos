@@ -54,9 +54,10 @@ impl MenmosFs {
         self.client
             .delete(String::from(id.as_ref()))
             .await
-            .map_err(|_| FsError::BlobDeleteError {
-                blob_id: id.as_ref().into(),
-            })
+            .with_context(|_| BlobDeleteSnafu {
+                blob_id: String::from(id.as_ref()),
+            })?;
+        Ok(())
     }
 
     /// Remove a blob by its ID.

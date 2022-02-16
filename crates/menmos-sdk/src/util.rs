@@ -2,7 +2,7 @@ use futures::TryStream;
 
 use interface::{BlobMeta, Hit};
 
-use menmos_client::Query;
+use menmos_client::{ClientError, Query};
 
 use snafu::prelude::*;
 
@@ -10,16 +10,17 @@ use crate::ClientRC;
 
 #[derive(Debug, Snafu)]
 pub enum UtilError {
-    // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
     #[snafu(display("failed to get metadata for blob '{}'", blob_id))]
-    GetMetaError { blob_id: String },
+    GetMetaError {
+        blob_id: String,
+        source: ClientError,
+    },
 
     #[snafu(display("blob '{}' does not exist", blob_id))]
     BlobDoesNotExist { blob_id: String },
 
-    // TODO: add source: ClientError once its exposed in menmos-client >= 0.1.0
     #[snafu(display("query failed"))]
-    QueryError,
+    QueryError { source: ClientError },
 }
 
 type Result<T> = std::result::Result<T, UtilError>;
@@ -28,8 +29,8 @@ pub async fn get_meta_if_exists(client: &ClientRC, blob_id: &str) -> Result<Opti
     let r = client
         .get_meta(blob_id)
         .await
-        .map_err(|_| UtilError::GetMetaError {
-            blob_id: blob_id.into(),
+        .with_context(|_| GetMetaSnafu {
+            blob_id: String::from(blob_id),
         })?;
     Ok(r)
 }
@@ -61,10 +62,7 @@ pub fn scroll_query(
                 return Ok(None);
             }
 
-            let results = client
-                .query(n_query.clone())
-                .await
-                .map_err(|_| UtilError::QueryError)?;
+            let results = client.query(n_query.clone()).await.context(QuerySnafu)?;
 
             pending_hits.extend(results.hits.into_iter());
 
