@@ -11,15 +11,15 @@ const WEB_REPO_PATH: &str = "https://github.com/menmos/menmos-web.git";
 const LOCAL_PATH: &str = "menmos-web";
 
 #[cfg(windows)]
-fn npm() -> Command {
+fn yarn() -> Command {
     let mut cmd = Command::new("cmd");
-    cmd.arg("/c").arg("npm.cmd");
+    cmd.arg("/c").arg("yarn.cmd");
     cmd
 }
 
 #[cfg(not(windows))]
-fn npm() -> Command {
-    Command::new("npm")
+fn yarn() -> Command {
+    Command::new("yarn")
 }
 
 enum Target<S>
@@ -72,11 +72,10 @@ fn ensure_clone<S: AsRef<str>>(target: Target<S>) -> Result<()> {
     Ok(())
 }
 
-fn npm_build() -> Result<()> {
+fn yarn_build() -> Result<()> {
     // Do the build
-    runcmd(npm(), &["install"])?;
-    runcmd(npm(), &["run", "build"])?;
-    runcmd(npm(), &["run", "export"])
+    runcmd(yarn(), &["install"])?;
+    runcmd(yarn(), &["build"])
 }
 
 fn parse_env_var(val: &str) -> Result<Target<String>> {
@@ -95,7 +94,7 @@ fn apply(tgt_env: String) -> Result<()> {
     // TODO: Branch & version arguments. (default to latest tag, can specify either branch or tag in env var).
     let target = parse_env_var(&tgt_env)?;
     ensure_clone(target)?;
-    npm_build()?;
+    yarn_build()?;
 
     Ok(())
 }
