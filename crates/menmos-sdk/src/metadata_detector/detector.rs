@@ -37,8 +37,3 @@ impl MetadataDetector {
 }
 
 pub type MetadataDetectorRC = Arc<MetadataDetector>;
-
-#[cfg(test)]
-mod tests {
-    use super::MetadataDetector;
-}

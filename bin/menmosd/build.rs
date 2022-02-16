@@ -72,7 +72,7 @@ fn ensure_clone<S: AsRef<str>>(target: Target<S>) -> Result<()> {
     Ok(())
 }
 
-fn npm_build() -> Result<()> {
+fn yarn_build() -> Result<()> {
     // Do the build
     runcmd(yarn(), &["install"])?;
     runcmd(yarn(), &["build"])
@@ -94,7 +94,7 @@ fn apply(tgt_env: String) -> Result<()> {
     // TODO: Branch & version arguments. (default to latest tag, can specify either branch or tag in env var).
     let target = parse_env_var(&tgt_env)?;
     ensure_clone(target)?;
-    npm_build()?;
+    yarn_build()?;
 
     Ok(())
 }

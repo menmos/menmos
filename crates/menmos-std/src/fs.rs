@@ -8,7 +8,7 @@ const MIMETYPES_BYTES: &[u8] = include_bytes!("data/mime-types.json");
 fn mimetype_map() -> &'static HashMap<String, String> {
     static MIME_MAP: OnceCell<HashMap<String, String>> = OnceCell::new();
     MIME_MAP.get_or_init(|| {
-        match serde_json::from_slice::<HashMap<String, String>>(&MIMETYPES_BYTES) {
+        match serde_json::from_slice::<HashMap<String, String>>(MIMETYPES_BYTES) {
             Ok(map) => map,
             Err(e) => {
                 // We're ok with panicking here, this can only happen if we ship invalid JSON.
