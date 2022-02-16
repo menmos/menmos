@@ -12,9 +12,9 @@ pub struct PushCommand {
     #[clap(long = "concurrency", short = 'c', default_value = "4")]
     concurrency: usize,
 
-    /// A key/value pair to add to all content uploaded in this run.
-    #[clap(long = "meta", short = 'm')]
-    meta: Vec<String>,
+    /// A field:value pair to add to all content uploaded in this run.
+    #[clap(long = "field", short = 'f')]
+    fields: Vec<String>,
 
     /// Tags to add to all content uploaded in this run.
     #[clap(long = "tag", short = 't')]
@@ -34,7 +34,7 @@ impl PushCommand {
             client,
             self.paths,
             self.tags,
-            self.meta,
+            self.fields,
             self.concurrency,
             None,
         )

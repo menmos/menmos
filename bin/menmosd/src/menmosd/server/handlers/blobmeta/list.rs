@@ -16,13 +16,13 @@ pub async fn list(
 ) -> Result<reply::Response, warp::Rejection> {
     tracing::trace!(
         tags = %&req.tags.clone().unwrap_or_default().join(","),
-        keys = %&req.meta_keys.clone().unwrap_or_default().join(","),
+        keys = %&req.fields.clone().unwrap_or_default().join(","),
         "list metadata request"
     );
     let response = context
         .node
         .query()
-        .list_metadata(req.tags, req.meta_keys, &user.username)
+        .list_metadata(req.tags, req.fields, &user.username)
         .await
         .map_err(InternalServerError::from)?;
 
