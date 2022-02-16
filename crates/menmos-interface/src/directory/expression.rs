@@ -14,7 +14,7 @@ use rapidquery::parse::util::{identifier, string};
 pub enum ExpressionField {
     Tag { tag: String },
     Field { key: String, value: String },
-    HasKey { key: String },
+    HasField { key: String },
 }
 
 impl ExpressionField {
@@ -31,16 +31,16 @@ impl ExpressionField {
         )(i)
     }
 
-    fn haskey_node(i: &str) -> IResult<&str, Self> {
+    fn hasfield_node(i: &str) -> IResult<&str, Self> {
         map(preceded(char('@'), identifier), |key| {
-            ExpressionField::HasKey { key }
+            ExpressionField::HasField { key }
         })(i)
     }
 }
 
 impl rapidquery::Parse for ExpressionField {
     fn parse(i: &str) -> IResult<&str, Self> {
-        alt((Self::haskey_node, Self::key_value_node, Self::tag_node))(i)
+        alt((Self::hasfield_node, Self::key_value_node, Self::tag_node))(i)
     }
 }
 
@@ -48,9 +48,9 @@ impl rapidquery::Parse for ExpressionField {
 mod test {
     use std::{collections::HashMap, convert::Infallible};
 
-    use super::*;
-
     use rapidquery::Expression;
+
+    use super::*;
 
     #[test]
     fn parse_basic_tag() {
@@ -62,11 +62,11 @@ mod test {
     }
 
     #[test]
-    fn parse_basic_haskey() {
+    fn parse_basic_hasfield() {
         let e = Expression::parse(" @type").unwrap();
         assert_eq!(
             e,
-            Expression::Field(ExpressionField::HasKey { key: "type".into() })
+            Expression::Field(ExpressionField::HasField { key: "type".into() })
         )
     }
 
@@ -261,7 +261,7 @@ mod test {
 
         fn resolve(&self, field: &Self::FieldType) -> Result<bool, Self::Error> {
             let val = match field {
-                ExpressionField::HasKey { key } => self.keys.contains(key),
+                ExpressionField::HasField { key } => self.keys.contains(key),
                 ExpressionField::Field { key, value } => self.kv.get(key) == Some(value),
                 ExpressionField::Tag { tag } => self.tags.contains(tag),
             };

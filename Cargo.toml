@@ -12,6 +12,7 @@ members = [
     "crates/menmos-interface",
     "crates/menmos-protocol",
     "crates/menmos-repository",
+    "crates/menmos-sdk",
     "crates/menmos-std",
     "crates/menmos-testing",
     "crates/menmos-xecute",
@@ -28,6 +29,7 @@ menmos-client = { path = 'crates/menmos-client' }
 menmos-interface = { path = 'crates/menmos-interface' }
 menmos-protocol = { path = 'crates/menmos-protocol' }
 menmos-repository = { path = 'crates/menmos-repository' }
+menmos = { path = 'crates/menmos-sdk' }
 menmos-std = { path = 'crates/menmos-std' }
 menmos-testing = { path = 'crates/menmos-testing' }
 menmos-xecute = { path = 'crates/menmos-xecute' }

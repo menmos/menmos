@@ -17,8 +17,8 @@ pub mod blobmeta {
         /// Optionally filter which tags to return (defaults to all).
         pub tags: Option<Vec<String>>,
 
-        /// Optionally filter which keys to return (defaults to all). [e.g. "filetype"]
-        pub meta_keys: Option<Vec<String>>,
+        /// Optionally filter which fields to return (defaults to all). [e.g. "filetype"]
+        pub fields: Option<Vec<String>>,
     }
 
     #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -113,10 +113,10 @@ pub mod query {
         ///
         /// Evaluates to resolver items where the given field/value pair is present.
         Field { key: String, value: String },
-        /// HasKey expression.
+        /// HasField expression.
         ///
-        /// Evaluates to resolver items where the given key is present (in any key/value pair).
-        HasKey { key: String },
+        /// Evaluates to resolver items where the given field is present.
+        HasField { key: String },
         /// And expression.
         ///
         /// Evaluates to the intersection of its two sub-expressions.
@@ -164,7 +164,7 @@ pub mod query {
                         Box::new(Expression::try_from(*b)?),
                     ),
                 },
-                RawExpression::HasKey { key } => Self::Field(ExpressionField::HasKey { key }),
+                RawExpression::HasField { key } => Self::Field(ExpressionField::HasField { key }),
                 RawExpression::Field { key, value } => {
                     Self::Field(ExpressionField::Field { key, value })
                 }

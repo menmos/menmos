@@ -433,7 +433,10 @@ impl Client {
             .client
             .get(&url)
             .bearer_auth(&self.token)
-            .json(&ListMetadataRequest { tags, meta_keys })
+            .json(&ListMetadataRequest {
+                tags,
+                fields: meta_keys,
+            })
             .send()
             .await
             .context(RequestExecutionSnafu)?;

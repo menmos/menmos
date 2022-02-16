@@ -195,7 +195,7 @@ impl rapidquery::FieldResolver<BitVec> for QueryService {
         match field {
             Self::FieldType::Tag { tag } => self.metadata.load_tag(tag),
             Self::FieldType::Field { key, value } => self.metadata.load_key_value(key, value),
-            Self::FieldType::HasKey { key } => self.metadata.load_key(key),
+            Self::FieldType::HasField { key } => self.metadata.load_key(key),
         }
     }
 
