@@ -1,5 +1,6 @@
 mod bitvec_tree;
 mod documents;
+mod id_map;
 mod meta;
 mod routing;
 mod storage;
