@@ -18,7 +18,7 @@ use crate::node::store::bitvec_tree::BitvecTree;
 use crate::node::store::id_map::IDMap;
 use crate::node::store::iface::Flush;
 
-use super::MetadataStore;
+use super::{FieldsIndex, MetadataStore};
 
 const META_MAP: &str = "metadata";
 const TAG_MAP: &str = "tags";
@@ -34,11 +34,8 @@ pub struct SledMetadataStore {
     /// Stores the index of blob bitvectors by tag.
     tag_map: BitvecTree,
 
-    /// Stores the index of blob bitvectors by field/value pair.
-    field_map: BitvecTree,
-
-    /// Stores the FieldName <=> FieldID mapping.
-    field_ids: IDMap,
+    /// Stores and manages the field/value index
+    field_index: FieldsIndex,
 
     /// Stores the masks tracking which documents can be seen by each user.
     user_mask_map: BitvecTree,
@@ -49,74 +46,15 @@ impl SledMetadataStore {
         let meta_map = db.open_tree(META_MAP)?;
 
         let tag_map = BitvecTree::new(db, TAG_MAP)?;
-        let field_map = BitvecTree::new(db, FIELD_MAP)?;
-        let field_ids = IDMap::new(db, FIELD_MAP)?;
+        let field_index = FieldsIndex::new(db)?;
         let user_mask_map = BitvecTree::new(db, USER_MASK_MAP)?;
 
         Ok(Self {
             meta_map,
             tag_map,
-            field_map,
-            field_ids,
+            field_index,
             user_mask_map,
         })
-    }
-
-    fn build_field_key(
-        &self,
-        field: &str,
-        value: &str,
-        allocate_field: bool,
-    ) -> Result<Option<Bytes>> {
-        let field_id = if allocate_field {
-            self.field_ids.get_or_assign(field)?
-        } else {
-            match self.field_ids.get(field)? {
-                Some(id) => id,
-                None => {
-                    return Ok(None);
-                }
-            }
-        };
-
-        let value_slice = value.as_bytes();
-
-        let buffer = BytesMut::with_capacity(mem::size_of::<u32>() + value_slice.len());
-        let mut bufwriter = buffer.writer();
-
-        // 4 Bytes for the field ID.
-        bufwriter.write_u32::<BigEndian>(field_id)?;
-
-        // The rest of the key for the field value.
-        bufwriter.write_all(value_slice)?;
-
-        Ok(Some(bufwriter.into_inner().freeze()))
-    }
-
-    /// Loads the field/value pair from a field key.
-    fn parse_field_key<B: Buf>(&self, field_key: B) -> Result<(String, String)> {
-        // If any of the errors in this method trip up, this means we've either written bad data
-        // into the tree _or_ the tree got corrupted. Godspeed.
-
-        let mut bufreader = field_key.reader();
-        let field_id = bufreader
-            .read_u32::<BigEndian>()
-            .context("corrupted field key")?;
-
-        let field_name_ivec = self
-            .field_ids
-            .lookup(field_id)?
-            .ok_or_else(|| anyhow!("field ID not found"))?;
-
-        let field_name = String::from_utf8(field_name_ivec.to_vec())
-            .context("field name corruption: recuperated a non-UTF-8 byte sequence")?;
-
-        let expected_len = bufreader.get_ref().remaining();
-        let mut field_value = String::with_capacity(expected_len);
-        let actual_len = bufreader.read_to_string(&mut field_value)?;
-        ensure!(expected_len == actual_len, "unexpect field value for field_id={field_id}. expected:{expected_len}, got:{actual_len}");
-
-        Ok((field_name, field_value))
     }
 
     #[tracing::instrument(level = "trace", skip(self, old_meta, new_meta))]
@@ -135,17 +73,11 @@ impl SledMetadataStore {
 
         for (key, value) in old_meta.meta.fields.into_iter() {
             if new_meta.meta.fields.get(&key) != Some(&value) {
-                let field_key = self
-                    .build_field_key(&key, &value, false)?
-                    .ok_or_else(|| anyhow!("field ID should exist for field {key}"))?;
-
-                self.field_map.purge_key(&field_key, for_idx)?;
-                tracing::trace!(key = %key, value = %value, index = for_idx, "purged key-value");
+                self.field_index.purge_field_value(&key, &value, for_idx)?
             }
-
-            // TODO: If the new value is None and no values in the index start by the field ID,
-            //       recycle the ID.
         }
+        // TODO: If the new value is None and no values in the index start by the field ID,
+        //       recycle the ID.
 
         Ok(())
     }
@@ -160,7 +92,7 @@ impl Flush for SledMetadataStore {
             .flush_async()
             .map_err(|e| anyhow!(e.to_string()));
         let tag_flush = self.tag_map.flush();
-        let kv_flush = self.field_map.flush();
+        let kv_flush = self.field_index.flush();
 
         tokio::try_join!(meta_flush, tag_flush, kv_flush).map(|_u| ())?;
 
@@ -212,12 +144,7 @@ impl MetadataStore for SledMetadataStore {
 
         // Save key/value fields in the reverse map.
         for (k, v) in info.meta.fields.iter().filter(|(_, v)| !v.is_empty()) {
-            let k = k.to_lowercase();
-
-            let field_key = self
-                .build_field_key(&k, &v, true)?
-                .ok_or_else(|| anyhow!("ID allocation for field {k} returned no ID"))?;
-            self.field_map.insert_bytes(&field_key, &serialized_id)?;
+            self.field_index.insert(k, v, &serialized_id)?;
         }
 
         Ok(())
@@ -235,42 +162,12 @@ impl MetadataStore for SledMetadataStore {
 
     #[tracing::instrument(level = "trace", skip(self))]
     fn load_key_value(&self, k: &str, v: &str) -> Result<BitVec> {
-        match self.build_field_key(k, v, false)? {
-            Some(field_key) => self.field_map.load_bytes(&field_key),
-            None => {
-                tracing::debug!(field = k, "fieldID not found, returning empty bitvector");
-                Ok(BitVec::default())
-            }
-        }
+        self.field_index.load_field_value(k, v)
     }
 
     #[tracing::instrument(level = "trace", skip(self))]
     fn load_key(&self, k: &str) -> Result<BitVec> {
-        let mut bv = BitVec::default();
-
-        if let Some(field_id) = self.field_ids.get(k)? {
-            for (_, v_ivec) in self
-                .field_map
-                .tree()
-                .scan_prefix(field_id.to_be_bytes())
-                .filter_map(|f| f.ok())
-            {
-                let resolved: BitVec = bincode::deserialize(v_ivec.as_ref())?;
-                let (biggest, smallest) = if bv.len() > resolved.len() {
-                    (bv, resolved)
-                } else {
-                    (resolved, bv)
-                };
-
-                bv = biggest;
-                bv |= smallest;
-            }
-        } else {
-            // We can skip the whole scan if the fieldID doesn't exist in the map! :)
-            tracing::debug!(field = k, "fieldID not found, returning empty bitvector");
-        }
-
-        Ok(bv)
+        self.field_index.load_field(k)
     }
 
     #[tracing::instrument(level = "trace", skip(self, mask))]
@@ -308,41 +205,29 @@ impl MetadataStore for SledMetadataStore {
         match field_filter {
             Some(filter) => {
                 for field in filter.iter() {
-                    let field_id = {
-                        match self.field_ids.get(field)? {
-                            Some(field_id) => field_id,
-                            None => continue,
-                        }
-                    };
+                    if let Some(result_it) = self.field_index.get_field_values(field)? {
+                        for result in result_it {
+                            let ((field_name, value), mut bv) = result?;
 
-                    for (field_key_ivec, vector) in self
-                        .field_map
-                        .tree()
-                        .scan_prefix(field_id.to_be_bytes())
-                        .filter_map(|entry| entry.ok())
-                    {
-                        let (k, v) = self.parse_field_key(field_key_ivec.as_ref())?;
+                            // if this trips, the field name we got back from disk for the field the user requested
+                            // does _not_ match the field the user requested. will _hopefully_ never be thrown.
+                            ensure!(
+                                &field_name == field,
+                                "the loaded field key doesn't match the requested field"
+                            );
 
-                        // if this trips, the field name we got back from disk for the field the user requested
-                        // does _not_ match the field the user requested. will _hopefully_ never be thrown.
-                        ensure!(
-                            &k == field,
-                            "the loaded field key doesn't match the requested field"
-                        );
+                            if let Some(user_bitvec) = mask {
+                                bv &= user_bitvec.clone();
+                            }
 
-                        let mut bv: BitVec = bincode::deserialize(vector.as_ref())?;
+                            let count = bv.count_ones();
 
-                        if let Some(user_bitvec) = mask {
-                            bv &= user_bitvec.clone();
-                        }
-
-                        let count = bv.count_ones();
-
-                        if count > 0 {
-                            tracing::trace!(key=%field, value=%v, count=count, "loaded key-value");
-                            hsh.entry(k)
-                                .or_insert_with(HashMap::default)
-                                .insert(v, count);
+                            if count > 0 {
+                                tracing::trace!(key=%field, value=%value, count=count, "loaded field-value");
+                                hsh.entry(field_name)
+                                    .or_insert_with(HashMap::default)
+                                    .insert(value, count);
+                            }
                         }
                     }
                 }
@@ -350,10 +235,8 @@ impl MetadataStore for SledMetadataStore {
             None => {
                 // List everything.
                 // This will most likely lead to a massive response body - sorry about that.
-                for r in self.field_map.tree().iter() {
-                    let (field_key_ivec, vector) = r?;
-                    let (k, v) = self.parse_field_key(field_key_ivec.as_ref())?;
-                    let mut bv: BitVec = bincode::deserialize(vector.as_ref())?;
+                for result in self.field_index.iter() {
+                    let ((field_name, value), mut bv) = result?;
 
                     if let Some(user_bitvec) = mask {
                         bv &= user_bitvec.clone();
@@ -361,10 +244,10 @@ impl MetadataStore for SledMetadataStore {
 
                     let count = bv.count_ones();
                     if count > 0 {
-                        tracing::trace!(key=%k, value=%v, count=count, "loaded key-value");
-                        hsh.entry(k)
+                        tracing::trace!(key=%field_name, value=%value, count=count, "loaded field-value");
+                        hsh.entry(field_name)
                             .or_insert_with(HashMap::default)
-                            .insert(v, count);
+                            .insert(value, count);
                     }
                 }
             }
@@ -383,7 +266,7 @@ impl MetadataStore for SledMetadataStore {
         // TODO: Improve, this is _really_ expensive.
         // This is in O(2n) the number of unique [tags + kv].
         self.tag_map.purge(idx)?;
-        self.field_map.purge(idx)?;
+        self.field_index.purge(idx)?;
         self.user_mask_map.purge(idx)?;
 
         Ok(())
@@ -392,7 +275,7 @@ impl MetadataStore for SledMetadataStore {
     fn clear(&self) -> Result<()> {
         self.meta_map.clear()?;
         self.tag_map.clear()?;
-        self.field_map.clear()?;
+        self.field_index.clear()?;
         tracing::debug!("meta index destroyed");
         Ok(())
     }
