@@ -44,7 +44,7 @@ pub struct BitvecTree {
 
 impl BitvecTree {
     pub fn new(db: &sled::Db, name: &str) -> Result<Self> {
-        let tree = db.open_tree(name)?;
+        let tree = db.open_tree(format!("{}-bv-tree", name))?;
         tree.set_merge_operator(concatenate_merge);
 
         Ok(Self {
@@ -53,16 +53,23 @@ impl BitvecTree {
         })
     }
 
-    #[tracing::instrument(level = "trace", skip(self, serialized_idx), fields(name = %self.name))]
+    #[tracing::instrument(level = "trace", skip(self, serialized_idx), fields(name = % self.name))]
     pub fn insert(&self, key: &str, serialized_idx: &[u8]) -> Result<()> {
-        self.tree
-            .merge(key.to_lowercase().as_bytes(), serialized_idx)?;
+        self.insert_bytes(key.to_lowercase().as_bytes(), serialized_idx)
+    }
+
+    pub fn insert_bytes<T: AsRef<[u8]>>(&self, key: T, serialized_idx: &[u8]) -> Result<()> {
+        self.tree.merge(key.as_ref(), serialized_idx)?;
         Ok(())
     }
 
-    #[tracing::instrument(level = "trace", skip(self), fields(name = %self.name))]
+    #[tracing::instrument(level = "trace", skip(self), fields(name = % self.name))]
     pub fn load(&self, key: &str) -> Result<BitVec> {
-        if let Some(ivec) = self.tree.get(key.to_lowercase().as_bytes())? {
+        self.load_bytes(key.to_lowercase().as_bytes())
+    }
+
+    pub fn load_bytes<T: AsRef<[u8]>>(&self, key: T) -> Result<BitVec> {
+        if let Some(ivec) = self.tree.get(key.as_ref())? {
             let ivec_slice: &[u8] = ivec.as_ref();
             let bv: BitVec = bincode::deserialize(ivec_slice)?;
             tracing::trace!(count = bv.count_ones(), "loaded");
@@ -72,7 +79,7 @@ impl BitvecTree {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(self, key), fields(name = %self.name))]
+    #[tracing::instrument(level = "trace", skip(self, key), fields(name = % self.name))]
     pub fn purge_key<K: AsRef<[u8]>>(&self, key: K, idx: u32) -> Result<()> {
         self.tree.update_and_fetch(key, |f| {
             let ivec = f.unwrap();
@@ -93,7 +100,7 @@ impl BitvecTree {
         Ok(())
     }
 
-    #[tracing::instrument(level = "trace", skip(self), fields(name = %self.name))]
+    #[tracing::instrument(level = "trace", skip(self), fields(name = % self.name))]
     pub fn purge(&self, idx: u32) -> Result<()> {
         for (k, _) in self.tree.iter().filter_map(|f| f.ok()) {
             self.purge_key(k, idx)?;
@@ -123,7 +130,6 @@ impl BitvecTree {
 
 #[cfg(test)]
 mod tests {
-
     use bitvec::prelude::*;
 
     #[test]

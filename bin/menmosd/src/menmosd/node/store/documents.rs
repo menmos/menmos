@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 
-use super::id_map::SledIDMap;
+use super::id_map::IDMap;
 use super::iface::Flush;
 
 pub trait DocumentIdStore: Flush {
@@ -18,12 +18,12 @@ pub trait DocumentIdStore: Flush {
 }
 
 pub struct SledDocumentIdStore {
-    doc_id_map: SledIDMap,
+    doc_id_map: IDMap,
 }
 
 impl SledDocumentIdStore {
     pub fn new(db: &sled::Db) -> Result<Self> {
-        let doc_id_map = SledIDMap::new(db, "documents")?;
+        let doc_id_map = IDMap::new(db, "documents")?;
         Ok(Self { doc_id_map })
     }
 }

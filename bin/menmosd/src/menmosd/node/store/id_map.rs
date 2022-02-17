@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use anyhow::{Context, Result};
 
 use byteorder::{BigEndian, ReadBytesExt};
+
 use sled::IVec;
 
 use crate::node::store::iface::Flush;
@@ -10,7 +11,7 @@ use crate::node::store::iface::Flush;
 /// Generic structure to associate IDs with arbitrary byte slices.
 ///
 /// Supports concurrent use and ID recycling.
-pub struct SledIDMap {
+pub struct IDMap {
     /// Stores Bytes => ID
     fwd_map: sled::Tree,
 
@@ -26,7 +27,7 @@ pub struct SledIDMap {
     name: String,
 }
 
-impl SledIDMap {
+impl IDMap {
     pub fn new(db: &sled::Db, name: &str) -> Result<Self> {
         let fwd_map = db.open_tree(format!("idmap-{}-fwd", name))?;
         let rev_map = db.open_tree(format!("idmap-{}-rev", name))?;
@@ -133,7 +134,7 @@ impl SledIDMap {
 }
 
 #[async_trait::async_trait]
-impl Flush for SledIDMap {
+impl Flush for IDMap {
     #[tracing::instrument(level = "trace", skip(self), fields(name = % self.name))]
     async fn flush(&self) -> Result<()> {
         let (a, b, c) = tokio::join!(
