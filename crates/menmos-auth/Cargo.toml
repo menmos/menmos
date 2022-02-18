@@ -15,5 +15,5 @@ branca = "0.10.1"
 chrono = "0.4.19"
 menmos-apikit = { "version" = "^0.1.1" }
 serde = { version = "1.0.136", features = ["derive"] }
-tracing = { version = "0.1.30", features = ["max_level_trace", "release_max_level_debug"] }
+tracing = { version = "0.1.31", features = ["max_level_trace", "release_max_level_debug"] }
 warp = { version = "0.3.2", features = ["tls"] }
