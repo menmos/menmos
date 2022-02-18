@@ -88,13 +88,35 @@ impl FieldsIndex {
         Ok(Some(bufwriter.into_inner().freeze()))
     }
 
-    pub fn purge_field_value(&self, field: &str, value: &str, for_idx: u32) -> Result<()> {
+    pub fn purge_field_value(
+        &self,
+        field: &str,
+        value: &str,
+        for_idx: u32,
+        try_recycling: bool,
+    ) -> Result<()> {
         let field_key = self
-            .build_field_key(&field, &value, false)?
+            .build_field_key(field, value, false)?
             .ok_or_else(|| anyhow!("field ID should exist for field {field}"))?;
 
         self.field_map.purge_key(&field_key, for_idx)?;
         tracing::trace!(key = %field, value = %value, index = for_idx, "purged field-value");
+
+        // We can try recycling here because the caller indicated that the field value for this doc
+        // was _removed_, not modified. In that case, we need to check if the field is still in use,
+        // and recycle its ID if not.
+        if try_recycling
+            && self
+                .field_map
+                .tree()
+                .scan_prefix(&field_key[0..mem::size_of::<u32>()])
+                .next()
+                .is_none()
+        {
+            // We can recycle the field.
+            self.field_ids.delete(field)?;
+        }
+
         Ok(())
     }
 
@@ -102,10 +124,10 @@ impl FieldsIndex {
         let field = field.to_lowercase();
 
         let field_key = self
-            .build_field_key(&field, &value, true)?
+            .build_field_key(&field, value, true)?
             .ok_or_else(|| anyhow!("ID allocation for field {field} returned no ID"))?;
 
-        self.field_map.insert_bytes(&field_key, &serialized_docid)
+        self.field_map.insert_bytes(&field_key, serialized_docid)
     }
 
     pub fn load_field_value(&self, field: &str, value: &str) -> Result<BitVec> {

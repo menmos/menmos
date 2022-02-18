@@ -1,32 +1,22 @@
 use std::collections::HashMap;
-use std::io::{Read, Write};
-use std::mem;
 
-use anyhow::{anyhow, ensure, Context, Result};
+use anyhow::{anyhow, ensure, Result};
 
 use bitvec::prelude::*;
-
-use bytes::{Buf, BufMut, Bytes, BytesMut};
-
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use futures::TryFutureExt;
 
 use interface::BlobInfo;
 
 use crate::node::store::bitvec_tree::BitvecTree;
-use crate::node::store::id_map::IDMap;
 use crate::node::store::iface::Flush;
 
 use super::{FieldsIndex, MetadataStore};
 
 const META_MAP: &str = "metadata";
 const TAG_MAP: &str = "tags";
-const FIELD_MAP: &str = "fields";
 const USER_MASK_MAP: &str = "users";
 
-// TODO: Extract all the field related stuff (field_map + field_ids) into a separate structure.
-//       This would encapsulate all weird field computation away from the root metadata index.
 pub struct SledMetadataStore {
     /// Stores the raw metadata of every blob.
     meta_map: sled::Tree,
@@ -72,12 +62,12 @@ impl SledMetadataStore {
         }
 
         for (key, value) in old_meta.meta.fields.into_iter() {
-            if new_meta.meta.fields.get(&key) != Some(&value) {
-                self.field_index.purge_field_value(&key, &value, for_idx)?
+            let field_maybe = new_meta.meta.fields.get(&key);
+            if field_maybe != Some(&value) {
+                self.field_index
+                    .purge_field_value(&key, &value, for_idx, field_maybe.is_none())?
             }
         }
-        // TODO: If the new value is None and no values in the index start by the field ID,
-        //       recycle the ID.
 
         Ok(())
     }
