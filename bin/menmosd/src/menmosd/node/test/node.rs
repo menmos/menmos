@@ -312,7 +312,7 @@ async fn list_metadata_tags() -> Result<()> {
 
     assert_eq!(r.tags.len(), 1);
     assert_eq!(r.tags["bing"], 2);
-    assert_eq!(r.meta.len(), 0);
+    assert_eq!(r.fields.len(), 0);
 
     Ok(())
 }

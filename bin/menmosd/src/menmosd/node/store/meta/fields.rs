@@ -227,3 +227,83 @@ impl Flush for FieldsIndex {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use bitvec::prelude::*;
+
+    use super::FieldsIndex;
+
+    #[test]
+    fn insert_load_field_value() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("somefield", "somevalue", &5_u32.to_le_bytes())?;
+        index.insert("somefield", "somevalue", &3_u32.to_le_bytes())?;
+        index.insert("somefield", "othervalue", &1_u32.to_le_bytes())?;
+
+        let bv = index.load_field_value("somefield", "somevalue")?;
+        assert_eq!(&bv, bits![0, 0, 0, 1, 0, 1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn insert_load_field() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("somefield", "somevalue", &5_u32.to_le_bytes())?;
+        index.insert("somefield", "somevalue", &3_u32.to_le_bytes())?;
+        index.insert("somefield", "othervalue", &1_u32.to_le_bytes())?;
+
+        let bv = index.load_field("somefield")?;
+        assert_eq!(&bv, bits![0, 1, 0, 1, 0, 1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn field_id_recycling() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("somefield", "somevalue", &3_u32.to_le_bytes())?;
+        index.insert("somefield", "somevalue", &4_u32.to_le_bytes())?;
+        index.insert("somefield", "othervalue", &1_u32.to_le_bytes())?;
+
+        // Create another field to make sure recycling works.
+        index.insert("otherfield", "somevalue", &0_u32.to_le_bytes())?;
+
+        let somefield_id = index.field_ids.get("somefield")?.unwrap();
+
+        // Purge one field values & ask for recycling
+        index.purge_field_value("somefield", "somevalue", 3, true)?;
+
+        // Here the field ID should still exist.
+        assert!(index.field_ids.get("somefield")?.is_some());
+
+        // Purge the second document of the same value.
+        index.purge_field_value("somefield", "somevalue", 4, true)?;
+
+        // Here the field ID should still exist.
+        assert!(index.field_ids.get("somefield")?.is_some());
+
+        // Purge the second field value & ask for recycling - the field id should be recycled here.
+        index.purge_field_value("somefield", "othervalue", 1, true)?;
+
+        // Make sure we deleted the field correctly from the map.
+        assert!(index.field_ids.get("somefield")?.is_none());
+        // And as such we should be able to load anything.
+        assert!(index.get_field_values("somefield")?.is_none());
+
+        // Create a new field and make sure we used our recycled ID.
+        index.insert("shinynewfield", "myvalue", &3_u32.to_le_bytes())?;
+        let new_field_id = index.field_ids.get("shinynewfield")?.unwrap();
+        assert_eq!(somefield_id, new_field_id);
+
+        Ok(())
+    }
+}

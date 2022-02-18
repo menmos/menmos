@@ -90,8 +90,14 @@ impl BitvecTree {
             // In that case, simply skip setting the index.
             if (idx as usize) < bv.len() {
                 bv.set(idx as usize, false);
-                let serialized_update = bincode::serialize(&bv).unwrap();
-                Some(serialized_update)
+                if bv.count_ones() == 0 {
+                    // Delete the bitvector.
+                    None
+                } else {
+                    // Return the updated bitvector.
+                    let serialized_update = bincode::serialize(&bv).unwrap();
+                    Some(serialized_update)
+                }
             } else {
                 // Don't update the bitvector.
                 f.map(Vec::from)
