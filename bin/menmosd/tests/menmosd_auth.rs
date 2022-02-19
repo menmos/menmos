@@ -5,7 +5,7 @@ use core::panic;
 
 use anyhow::Result;
 use bytes::Bytes;
-use interface::Query;
+use interface::{FieldValue, Query};
 use menmos_client::{Client, Meta};
 use testing::fixtures::Menmos;
 use util::stream_to_bytes;
@@ -135,7 +135,10 @@ async fn direct_get_meta() -> Result<()> {
 
     // Make sure the owner can get the metadata.
     let meta = cluster.client.get_meta(&blob_id).await?.unwrap();
-    assert_eq!(meta.fields.get("name").unwrap(), "test.txt");
+    assert_eq!(
+        meta.fields.get("name").unwrap(),
+        &FieldValue::from("test.txt")
+    );
 
     // Make sure a new user can't get the metadata.
     cluster.add_user("john", "bingbong").await?;
@@ -232,7 +235,10 @@ async fn permissions_delete() -> Result<()> {
 
     // Make sure the blob is still there.
     let meta = cluster.client.get_meta(&blob_id).await?.unwrap();
-    assert_eq!(meta.fields.get("name").unwrap(), "test.txt");
+    assert_eq!(
+        meta.fields.get("name").unwrap(),
+        &FieldValue::from("test.txt")
+    );
 
     // Delete as owner.
     cluster.client.delete(blob_id.clone()).await?;

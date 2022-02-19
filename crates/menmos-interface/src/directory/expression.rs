@@ -7,13 +7,14 @@ use nom::combinator::map;
 use nom::sequence::{preceded, separated_pair};
 use nom::IResult;
 
+use crate::FieldValue;
 use rapidquery::parse::util::{identifier, string};
 
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ExpressionField {
     Tag { tag: String },
-    Field { key: String, value: String },
+    Field { key: String, value: FieldValue },
     HasField { key: String },
 }
 
@@ -25,9 +26,13 @@ impl ExpressionField {
     }
 
     fn key_value_node(i: &str) -> IResult<&str, Self> {
+        // TODO: Support parsing other field types here once we have them.
         map(
             separated_pair(identifier, tag("="), alt((identifier, string))),
-            |(key, value)| ExpressionField::Field { key, value },
+            |(key, value)| ExpressionField::Field {
+                key,
+                value: FieldValue::Str(value),
+            },
         )(i)
     }
 
@@ -233,7 +238,7 @@ mod test {
     #[derive(Default)]
     struct MockResolver {
         tags: Vec<String>,
-        kv: HashMap<String, String>,
+        kv: HashMap<String, FieldValue>,
         keys: Vec<String>,
     }
 
@@ -243,7 +248,7 @@ mod test {
             self
         }
 
-        pub fn with_key_value<K: Into<String>, V: Into<String>>(mut self, k: K, v: V) -> Self {
+        pub fn with_field<K: Into<String>, V: Into<FieldValue>>(mut self, k: K, v: V) -> Self {
             let key: String = k.into();
             self.keys.push(key.clone());
             self.kv.insert(key, v.into());
@@ -301,7 +306,7 @@ mod test {
             key: "key".into(),
             value: "val".into(),
         })
-        .evaluate(&MockResolver::default().with_key_value("key", "val"))
+        .evaluate(&MockResolver::default().with_field("key", "val"))
         .unwrap())
     }
 
@@ -311,7 +316,7 @@ mod test {
             key: "key".into(),
             value: "val".into(),
         })
-        .evaluate(&MockResolver::default().with_key_value("key", "yayeet"))
+        .evaluate(&MockResolver::default().with_field("key", "yayeet"))
         .unwrap())
     }
 

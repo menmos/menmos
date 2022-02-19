@@ -7,8 +7,8 @@ use anyhow::Result;
 use chrono::Utc;
 
 use interface::{
-    BlobInfo, BlobInfoRequest, BlobMetaRequest, DirectoryNode, Query, QueryResponse, RoutingConfig,
-    StorageNodeInfo,
+    BlobInfo, BlobInfoRequest, BlobMetaRequest, DirectoryNode, FieldValue, Query, QueryResponse,
+    RoutingConfig, StorageNodeInfo,
 };
 
 use crate::Directory;
@@ -386,8 +386,8 @@ async fn faceting_basic() -> Result<()> {
     assert_eq!(facets.meta["hello"].len(), 2);
     assert_eq!(facets.tags["a"], 2);
     assert_eq!(facets.tags["b"], 1);
-    assert_eq!(facets.meta["hello"]["world"], 2);
-    assert_eq!(facets.meta["hello"]["there"], 1);
+    assert_eq!(facets.meta["hello"][&FieldValue::from("world")], 2);
+    assert_eq!(facets.meta["hello"][&FieldValue::from("there")], 1);
 
     Ok(())
 }
@@ -437,8 +437,8 @@ async fn facet_grouping() -> Result<()> {
     assert_eq!(facets.meta.len(), 1);
     assert_eq!(facets.meta["hello"].len(), 2);
     assert_eq!(facets.tags["a"], 2);
-    assert_eq!(facets.meta["hello"]["world"], 1);
-    assert_eq!(facets.meta["hello"]["there"], 1);
+    assert_eq!(facets.meta["hello"][&FieldValue::from("world")], 1);
+    assert_eq!(facets.meta["hello"][&FieldValue::from("there")], 1);
 
     Ok(())
 }

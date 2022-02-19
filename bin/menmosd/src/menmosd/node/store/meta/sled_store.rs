@@ -6,7 +6,7 @@ use bitvec::prelude::*;
 
 use futures::TryFutureExt;
 
-use interface::BlobInfo;
+use interface::{BlobInfo, FieldValue, TaggedBlobInfo};
 
 use crate::node::store::bitvec_tree::BitvecTree;
 use crate::node::store::iface::Flush;
@@ -95,8 +95,8 @@ impl MetadataStore for SledMetadataStore {
     #[tracing::instrument(level = "trace", skip(self))]
     fn get(&self, idx: u32) -> Result<Option<BlobInfo>> {
         if let Some(ivec) = self.meta_map.get(idx.to_le_bytes())? {
-            let info: BlobInfo = bincode::deserialize(&ivec)?;
-            Ok(Some(info))
+            let info: TaggedBlobInfo = bincode::deserialize(&ivec)?;
+            Ok(Some(info.into()))
         } else {
             tracing::trace!(index = idx, "not found");
             Ok(None)
@@ -117,7 +117,8 @@ impl MetadataStore for SledMetadataStore {
         self.user_mask_map.insert(&info.owner, &serialized_id)?;
 
         // Save the whole meta for recuperation.
-        let serialized = bincode::serialize(&info)?;
+        let tagged_info = TaggedBlobInfo::from(info.clone());
+        let serialized = bincode::serialize(&tagged_info)?;
         let r: &[u8] = serialized.as_ref();
         if let Some(last_meta_ivec) = self.meta_map.insert(&serialized_id, r)? {
             tracing::trace!("blob already exists, we need to purge previous tags");
@@ -133,7 +134,7 @@ impl MetadataStore for SledMetadataStore {
         }
 
         // Save key/value fields in the reverse map.
-        for (k, v) in info.meta.fields.iter().filter(|(_, v)| !v.is_empty()) {
+        for (k, v) in info.meta.fields.iter() {
             self.field_index.insert(k, v, &serialized_id)?;
         }
 
@@ -151,7 +152,7 @@ impl MetadataStore for SledMetadataStore {
     }
 
     #[tracing::instrument(level = "trace", skip(self))]
-    fn load_key_value(&self, k: &str, v: &str) -> Result<BitVec> {
+    fn load_key_value(&self, k: &str, v: &FieldValue) -> Result<BitVec> {
         self.field_index.load_field_value(k, v)
     }
 
@@ -189,8 +190,8 @@ impl MetadataStore for SledMetadataStore {
         &self,
         field_filter: &Option<Vec<String>>,
         mask: Option<&BitVec>,
-    ) -> Result<HashMap<String, HashMap<String, usize>>> {
-        let mut hsh: HashMap<String, HashMap<String, usize>> = HashMap::new();
+    ) -> Result<HashMap<String, HashMap<FieldValue, usize>>> {
+        let mut hsh: HashMap<String, HashMap<FieldValue, usize>> = HashMap::new();
 
         match field_filter {
             Some(filter) => {

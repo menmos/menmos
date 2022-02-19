@@ -9,7 +9,7 @@ use headers::{ContentLength, ContentRange, Header, HeaderMapExt, HeaderValue};
 
 use http::StatusCode;
 
-use interface::StorageNode;
+use interface::{FieldValue, StorageNode};
 
 use menmos_auth::UserIdentity;
 
@@ -99,8 +99,8 @@ pub async fn get<N: StorageNode>(
         .map_err(InternalServerError::from)?;
     }
 
-    // If the blob has a mimetype, we want to return it as a header so browsers can use it.
-    if let Some(mimetype) = blob.info.meta.fields.get("content-type") {
+    // If the blob has a string mimetype, we want to return it as a header so browsers can use it.
+    if let Some(FieldValue::Str(mimetype)) = blob.info.meta.fields.get("content-type") {
         if let Ok(hval) = HeaderValue::from_str(mimetype) {
             resp.headers_mut().append("content-type", hval);
         }

@@ -1,7 +1,7 @@
 //! Test query-related features.
 
 use anyhow::Result;
-use interface::SortOrder;
+use interface::{FieldValue, SortOrder};
 use menmos_client::{Meta, Query};
 use protocol::directory::auth::{LoginRequest, LoginResponse};
 use reqwest::StatusCode;
@@ -37,7 +37,7 @@ async fn query_pagination() -> Result<()> {
             assert_eq!(results.count, results.hits.len());
 
             for (i, hit) in results.hits.into_iter().enumerate() {
-                let expected_name = format!("doc_{}", from + i);
+                let expected_name = FieldValue::Str(format!("doc_{}", from + i));
                 assert_eq!(hit.meta.fields.get("name").unwrap(), &expected_name);
             }
         }
@@ -136,9 +136,13 @@ async fn query_sorting_order() -> Result<()> {
         results
             .hits
             .iter()
-            .map(|r| r.meta.fields.get("name").unwrap())
+            .map(|r| r.meta.fields.get("name").unwrap().clone())
             .collect::<Vec<_>>(),
-        vec!["blob_1", "blob_2", "blob_3"]
+        vec![
+            FieldValue::from("blob_1"),
+            FieldValue::from("blob_2"),
+            FieldValue::from("blob_3"),
+        ]
     );
 
     let results = cluster
@@ -150,9 +154,13 @@ async fn query_sorting_order() -> Result<()> {
         results
             .hits
             .iter()
-            .map(|r| r.meta.fields.get("name").unwrap())
+            .map(|r| r.meta.fields.get("name").unwrap().clone())
             .collect::<Vec<_>>(),
-        vec!["blob_3", "blob_2", "blob_1"]
+        vec![
+            FieldValue::from("blob_3"),
+            FieldValue::from("blob_2"),
+            FieldValue::from("blob_1"),
+        ]
     );
 
     Ok(())

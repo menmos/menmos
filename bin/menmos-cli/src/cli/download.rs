@@ -6,6 +6,7 @@ use std::{
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use futures::StreamExt;
+use menmos::interface::FieldValue;
 use menmos::Menmos;
 use rood::cli::OutputManager;
 use tokio::fs;
@@ -56,7 +57,7 @@ impl DownloadCommand {
                     let mut stream_pin = Box::pin(stream);
 
                     let file_name = match meta.fields.get("name") {
-                        Some(name) => name.clone(),
+                        Some(FieldValue::Str(name)) => name.clone(),
                         None => blob_id.clone(),
                     };
 

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
-use std::fs;
+use std::fmt::Formatter;
 use std::io;
 use std::ops::Bound;
 use std::path::Path;
+use std::{fmt, fs};
 
 use anyhow::Result;
 
@@ -44,7 +45,7 @@ impl CertificateInfo {
 #[serde(deny_unknown_fields)]
 pub struct BlobMetaRequest {
     /// The key/value pairs for this blob.
-    pub fields: HashMap<String, String>,
+    pub fields: HashMap<String, FieldValue>,
 
     /// The tags for this blob.
     pub tags: Vec<String>,
@@ -56,7 +57,7 @@ impl BlobMetaRequest {
     }
 
     #[must_use]
-    pub fn with_field<S: Into<String>, T: Into<String>>(mut self, key: S, value: T) -> Self {
+    pub fn with_field<S: Into<String>, T: Into<FieldValue>>(mut self, key: S, value: T) -> Self {
         self.fields.insert(key.into(), value.into());
         self
     }
@@ -83,12 +84,65 @@ impl BlobMetaRequest {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum FieldValue {
+    Str(String),
+}
+
+#[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
+pub enum TaggedFieldValue {
+    Str(String),
+}
+
+impl From<FieldValue> for TaggedFieldValue {
+    fn from(v: FieldValue) -> Self {
+        match v {
+            FieldValue::Str(s) => TaggedFieldValue::Str(s),
+        }
+    }
+}
+
+impl From<TaggedFieldValue> for FieldValue {
+    fn from(v: TaggedFieldValue) -> Self {
+        match v {
+            TaggedFieldValue::Str(s) => FieldValue::Str(s),
+        }
+    }
+}
+
+impl From<String> for FieldValue {
+    fn from(v: String) -> Self {
+        Self::Str(v)
+    }
+}
+
+impl From<&str> for FieldValue {
+    fn from(v: &str) -> Self {
+        Self::Str(String::from(v))
+    }
+}
+
+impl From<&String> for FieldValue {
+    fn from(v: &String) -> Self {
+        Self::Str(String::from(v))
+    }
+}
+
+impl fmt::Display for FieldValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Str(s) => write!(f, "\"{}\"", s),
+        }
+    }
+}
+
 /// Metadata associated with a blob.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct BlobMeta {
     /// The key/value pairs for this blob.
-    pub fields: HashMap<String, String>,
+    pub fields: HashMap<String, FieldValue>,
 
     /// The tags for this blob.
     pub tags: Vec<String>,
@@ -130,7 +184,7 @@ impl BlobMeta {
     }
 
     #[must_use]
-    pub fn with_field<S: Into<String>, T: Into<String>>(mut self, key: S, value: T) -> Self {
+    pub fn with_field<S: Into<String>, T: Into<FieldValue>>(mut self, key: S, value: T) -> Self {
         self.fields.insert(key.into(), value.into());
         self
     }
@@ -145,6 +199,61 @@ impl BlobMeta {
     pub fn with_size(mut self, size: u64) -> Self {
         self.size = size;
         self
+    }
+}
+
+/// Tagged version of the metadata associated with a blob.
+///
+/// This is used to persist the metadata in the sled tree.
+/// bincode doesn't like untagged enums, so we have to make a tagged alternative.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct TaggedBlobMeta {
+    /// The key/value pairs for this blob.
+    pub fields: HashMap<String, TaggedFieldValue>,
+
+    /// The tags for this blob.
+    pub tags: Vec<String>,
+
+    /// This blob's size, in bytes.
+    pub size: u64,
+
+    /// This blob's creation time.
+    pub created_at: DateTime<Utc>,
+
+    /// This blob's last modified time.
+    pub modified_at: DateTime<Utc>,
+}
+
+impl From<BlobMeta> for TaggedBlobMeta {
+    fn from(m: BlobMeta) -> Self {
+        Self {
+            fields: m
+                .fields
+                .into_iter()
+                .map(|(k, v)| (k, v.into()))
+                .collect::<HashMap<_, _>>(),
+            tags: m.tags,
+            size: m.size,
+            created_at: m.created_at,
+            modified_at: m.modified_at,
+        }
+    }
+}
+
+impl From<TaggedBlobMeta> for BlobMeta {
+    fn from(m: TaggedBlobMeta) -> Self {
+        Self {
+            fields: m
+                .fields
+                .into_iter()
+                .map(|(k, v)| (k, v.into()))
+                .collect::<HashMap<_, _>>(),
+            tags: m.tags,
+            size: m.size,
+            created_at: m.created_at,
+            modified_at: m.modified_at,
+        }
     }
 }
 
@@ -172,6 +281,31 @@ impl BlobInfoRequest {
 pub struct BlobInfo {
     pub meta: BlobMeta,
     pub owner: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct TaggedBlobInfo {
+    pub meta: TaggedBlobMeta,
+    pub owner: String,
+}
+
+impl From<BlobInfo> for TaggedBlobInfo {
+    fn from(v: BlobInfo) -> Self {
+        Self {
+            meta: v.meta.into(),
+            owner: v.owner,
+        }
+    }
+}
+
+impl From<TaggedBlobInfo> for BlobInfo {
+    fn from(v: TaggedBlobInfo) -> Self {
+        Self {
+            meta: v.meta.into(),
+            owner: v.owner,
+        }
+    }
 }
 
 pub struct Blob {

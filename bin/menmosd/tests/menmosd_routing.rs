@@ -16,15 +16,19 @@ async fn get_set_delete_routing_config() -> Result<()> {
     // Key doesn't exist in the beginning.
     let response = cluster.client.get_routing_config().await?;
     assert_eq!(response, None);
+    tracing::info!("validate that there is no routing config");
 
     let cfg = RoutingConfig::new("some_field").with_route("a", "b");
 
     cluster.client.set_routing_config(&cfg).await?;
     cluster.flush().await?;
+    tracing::info!("successfully created routing config");
 
     // Key exists afterwards.
     let response = cluster.client.get_routing_config().await?;
     assert_eq!(response, Some(cfg.clone()));
+
+    tracing::info!("got back routing config: {:?}", response);
 
     // Other user doesn't see the routing key.
     cluster.add_user("john", "bingbong").await?;

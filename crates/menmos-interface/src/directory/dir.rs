@@ -10,7 +10,7 @@ pub use rapidquery::Expression;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{BlobInfo, BlobInfoRequest, BlobMeta, ExpressionField};
+use crate::{BlobInfo, BlobInfoRequest, BlobMeta, ExpressionField, FieldValue, TaggedFieldValue};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -30,7 +30,7 @@ impl Hit {
 #[serde(deny_unknown_fields)]
 pub struct FacetResponse {
     pub tags: HashMap<String, u64>,
-    pub meta: HashMap<String, HashMap<String, u64>>,
+    pub meta: HashMap<String, HashMap<FieldValue, u64>>,
 }
 
 /// The results of a query.
@@ -85,7 +85,7 @@ pub struct StorageNodeResponseData {
 #[serde(deny_unknown_fields)]
 pub struct MetadataList {
     pub tags: HashMap<String, usize>,
-    pub fields: HashMap<String, HashMap<String, usize>>,
+    pub fields: HashMap<String, HashMap<FieldValue, usize>>,
 }
 
 /// A sorting order.
@@ -126,7 +126,7 @@ impl Query {
     }
 
     #[must_use]
-    pub fn and_field<K: Into<String>, V: Into<String>>(mut self, k: K, v: V) -> Self {
+    pub fn and_field<K: Into<String>, V: Into<FieldValue>>(mut self, k: K, v: V) -> Self {
         let new_expr = Expression::Field(ExpressionField::Field {
             key: k.into(),
             value: v.into(),
@@ -181,7 +181,7 @@ pub struct RoutingConfig {
     pub routing_key: String,
 
     /// A map of field values -> storage node IDs.
-    pub routes: HashMap<String, String>,
+    pub routes: HashMap<FieldValue, String>,
 }
 
 impl RoutingConfig {
@@ -193,7 +193,7 @@ impl RoutingConfig {
     }
 
     #[must_use]
-    pub fn with_route<K: Into<String>, V: Into<String>>(
+    pub fn with_route<K: Into<FieldValue>, V: Into<String>>(
         mut self,
         field_value: K,
         storage_node_id: V,
@@ -201,6 +201,42 @@ impl RoutingConfig {
         self.routes
             .insert(field_value.into(), storage_node_id.into());
         self
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct TaggedRoutingConfig {
+    /// The field name to use for routing.
+    pub routing_key: String,
+
+    /// A map of field values -> storage node IDs.
+    pub routes: HashMap<TaggedFieldValue, String>,
+}
+
+impl From<RoutingConfig> for TaggedRoutingConfig {
+    fn from(v: RoutingConfig) -> Self {
+        Self {
+            routing_key: v.routing_key,
+            routes: v
+                .routes
+                .into_iter()
+                .map(|(k, v)| (k.into(), v))
+                .collect::<HashMap<_, _>>(),
+        }
+    }
+}
+
+impl From<TaggedRoutingConfig> for RoutingConfig {
+    fn from(v: TaggedRoutingConfig) -> Self {
+        Self {
+            routing_key: v.routing_key,
+            routes: v
+                .routes
+                .into_iter()
+                .map(|(k, v)| (k.into(), v))
+                .collect::<HashMap<_, _>>(),
+        }
     }
 }
 
@@ -215,6 +251,31 @@ pub enum DirtyState {
 pub struct RoutingConfigState {
     pub routing_config: RoutingConfig,
     pub state: DirtyState,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct TaggedRoutingConfigState {
+    pub routing_config: TaggedRoutingConfig,
+    pub state: DirtyState,
+}
+
+impl From<RoutingConfigState> for TaggedRoutingConfigState {
+    fn from(v: RoutingConfigState) -> Self {
+        Self {
+            routing_config: v.routing_config.into(),
+            state: v.state,
+        }
+    }
+}
+
+impl From<TaggedRoutingConfigState> for RoutingConfigState {
+    fn from(v: TaggedRoutingConfigState) -> Self {
+        Self {
+            routing_config: v.routing_config.into(),
+            state: v.state,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

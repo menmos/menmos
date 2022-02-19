@@ -1,3 +1,5 @@
+# -- Build & Test Workflows --
+
 docker:
     docker build -t menmos/menmosd --target menmosd .
     docker build -t menmos/amphora --target amphora .
@@ -20,3 +22,6 @@ test:
     @just lint
     @just unit
     @just integration
+
+# -- Local Setup Workflows --
+# TODO: Add trace-level logging preset
