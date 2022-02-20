@@ -71,7 +71,9 @@ impl TransferWorker {
         )
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     async fn sync_blob(&self, request: &MoveRequest) -> Result<()> {
+        tracing::debug!("beginning sync");
         let stream_info = self
             .repo
             .unsafe_repository()
