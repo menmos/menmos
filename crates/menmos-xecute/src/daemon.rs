@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use clap::{App, Arg};
+use clap::{Arg, Command};
 use tokio::runtime;
 use tracing::instrument;
 
@@ -60,7 +60,7 @@ pub struct DaemonProcess {}
 
 impl DaemonProcess {
     pub fn start<D: Daemon>(name: &str, about: &str, daemon: D) {
-        let matches = App::new(name)
+        let matches = Command::new(name)
             .version(VERSION)
             .about(about)
             .arg(
