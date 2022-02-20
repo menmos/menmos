@@ -56,7 +56,7 @@ impl FieldsIndex {
                 let expected_len = bufreader.get_ref().remaining();
                 let mut str_buf = String::with_capacity(expected_len);
                 let actual_len = bufreader.read_to_string(&mut str_buf)?;
-                ensure!(expected_len == actual_len, "unexpect field value for field_id={field_id}. expected:{expected_len}, got:{actual_len}");
+                ensure!(expected_len == actual_len, "unexpected field value for field_id={field_id}. expected:{expected_len}, got:{actual_len}");
                 FieldValue::Str(str_buf)
             }
             _ => {
