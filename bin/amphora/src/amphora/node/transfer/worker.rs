@@ -161,6 +161,7 @@ impl TransferWorker {
                         "exceeded retries while attempting to transfer blob '{}'",
                         request.blob_id
                     );
+                    break;
                 }
             }
         }

@@ -124,8 +124,8 @@ impl MetadataStore for SledMetadataStore {
             tracing::trace!("blob already exists, we need to purge previous tags");
             // We need to purge tags, and k/v pairs that were _removed_ from the meta
             // so they don't come up in searches anymore.
-            let old_info: BlobInfo = bincode::deserialize(last_meta_ivec.as_ref())?;
-            self.diff_and_purge_on_meta_update(old_info, info, id)?;
+            let old_info: TaggedBlobInfo = bincode::deserialize(last_meta_ivec.as_ref())?;
+            self.diff_and_purge_on_meta_update(old_info.into(), info, id)?;
         }
 
         // Save tags in the reverse map.

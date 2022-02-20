@@ -96,12 +96,14 @@ where
     K: AsRef<str>,
 {
     let token_decoder = Branca::new(key.as_ref().as_bytes()).map_err(|_| reject::Forbidden)?;
-
     let decoded = token_decoder
         .decode(token, TOKEN_TTL_SECONDS)
         .map_err(|_| reject::Forbidden)?;
 
-    Ok(bincode::deserialize(&decoded).map_err(|_| reject::Forbidden)?)
+    Ok(bincode::deserialize(&decoded).map_err(|e| {
+        tracing::debug!("token deserialize error: {}", e);
+        reject::Forbidden
+    })?)
 }
 
 fn strip_bearer(tok: &str) -> Result<&str, warp::Rejection> {
@@ -124,7 +126,6 @@ async fn validate_user_tokens(
         .and_then(|t| strip_bearer(&t).map(String::from).ok())
         .or(url_signature_token)
         .ok_or(reject::Forbidden)?;
-
     extract_token(&key, &token)
 }
 
