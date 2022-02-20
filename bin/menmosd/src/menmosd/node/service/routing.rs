@@ -102,7 +102,7 @@ impl interface::RoutingConfigManager for RoutingService {
 
                 let destination_node = destination_node_maybe.unwrap();
 
-                let query = Query::default().and_field(routing_field.clone(), field_value);
+                let query = Query::default().and_field(routing_field.clone(), field_value.clone());
                 let out_of_place_blobs = self
                     .query_service
                     .query_move_requests(&query, &username, src_node)

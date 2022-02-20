@@ -8,7 +8,7 @@ use async_trait::async_trait;
 
 use bitvec::prelude::*;
 use interface::{
-    BlobIndexer, BlobInfo, NodeAdminController, QueryExecutor, RoutingAlgorithm,
+    BlobIndexer, BlobInfo, FieldValue, NodeAdminController, QueryExecutor, RoutingAlgorithm,
     RoutingConfigManager, RoutingConfigState, UserManagement,
 };
 
@@ -31,10 +31,10 @@ use crate::{
     Directory,
 };
 
-fn tag_to_kv(tag: &str) -> Result<(&str, &str)> {
+fn tag_to_kv(tag: &str) -> Result<(&str, FieldValue)> {
     let splitted: Vec<_> = tag.split('$').collect();
     ensure!(splitted.len() == 2, "invalid kv tag");
-    Ok((splitted[0], splitted[1]))
+    Ok((splitted[0], FieldValue::from(splitted[1])))
 }
 
 #[derive(Default)]
@@ -260,7 +260,7 @@ impl MetadataStore for MockMetadataStore {
         }
     }
 
-    fn load_key_value(&self, k: &str, v: &str) -> Result<BitVec> {
+    fn load_key_value(&self, k: &str, v: &FieldValue) -> Result<BitVec> {
         self.load_tag(&format!("{}${}", k, v))
     }
 
@@ -306,7 +306,7 @@ impl MetadataStore for MockMetadataStore {
         &self,
         key_filter: &Option<Vec<String>>,
         user_bv: Option<&BitVec>,
-    ) -> Result<HashMap<String, HashMap<String, usize>>> {
+    ) -> Result<HashMap<String, HashMap<FieldValue, usize>>> {
         let tag_guard = self.tag_map.lock().unwrap();
         let tag_map = &*tag_guard;
 
@@ -326,7 +326,7 @@ impl MetadataStore for MockMetadataStore {
                         };
                         hsh.entry(key.clone())
                             .or_insert_with(HashMap::default)
-                            .insert(val.to_string(), bv.count_ones());
+                            .insert(val, bv.count_ones());
                     }
                 }
             }
@@ -342,7 +342,7 @@ impl MetadataStore for MockMetadataStore {
                     };
                     hsh.entry(key.to_string())
                         .or_insert_with(HashMap::default)
-                        .insert(val.to_string(), bv.count_ones());
+                        .insert(val, bv.count_ones());
                 }
             }
         }

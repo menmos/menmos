@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use bitvec::prelude::*;
 
-use interface::BlobInfo;
+use interface::{BlobInfo, FieldValue};
 
 use crate::node::store::iface::Flush;
 
@@ -16,7 +16,7 @@ pub trait MetadataStore: Flush {
 
     fn load_tag(&self, tag: &str) -> Result<BitVec>;
 
-    fn load_key_value(&self, k: &str, v: &str) -> Result<BitVec>;
+    fn load_key_value(&self, k: &str, v: &FieldValue) -> Result<BitVec>;
 
     fn load_key(&self, k: &str) -> Result<BitVec>;
 
@@ -25,7 +25,7 @@ pub trait MetadataStore: Flush {
         &self,
         key_filter: &Option<Vec<String>>,
         mask: Option<&BitVec>,
-    ) -> Result<HashMap<String, HashMap<String, usize>>>;
+    ) -> Result<HashMap<String, HashMap<FieldValue, usize>>>;
 
     fn purge(&self, idx: u32) -> Result<()>;
     fn clear(&self) -> Result<()>;

@@ -1,3 +1,4 @@
+use interface::FieldValue;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -10,7 +11,7 @@ pub type ClientRC = Arc<Client>;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FileMetadata {
     /// The key/value pairs for this file.
-    pub fields: HashMap<String, String>,
+    pub fields: HashMap<String, FieldValue>,
 
     /// The tags for this file.
     pub tags: Vec<String>,
@@ -18,8 +19,8 @@ pub struct FileMetadata {
 
 impl FileMetadata {
     pub fn new<S: Into<String>>(name: S) -> Self {
-        let mut fields = HashMap::new();
-        fields.insert("name".into(), name.into());
+        let mut fields: HashMap<String, FieldValue> = HashMap::new();
+        fields.insert("name".into(), FieldValue::Str(name.into()));
         Self {
             fields,
             ..Default::default()
@@ -33,7 +34,7 @@ impl FileMetadata {
     }
 
     #[must_use]
-    pub fn with_field<K: Into<String>, V: Into<String>>(mut self, key: K, value: V) -> Self {
+    pub fn with_field<K: Into<String>, V: Into<FieldValue>>(mut self, key: K, value: V) -> Self {
         self.fields.insert(key.into(), value.into());
         self
     }

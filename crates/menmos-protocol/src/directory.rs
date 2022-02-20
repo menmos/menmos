@@ -98,7 +98,7 @@ pub mod storage {
 }
 
 pub mod query {
-    use interface::{ExpressionField, SortOrder};
+    use interface::{ExpressionField, FieldValue, SortOrder};
 
     use super::*;
 
@@ -112,7 +112,7 @@ pub mod query {
         /// Key/Value expression.
         ///
         /// Evaluates to resolver items where the given field/value pair is present.
-        Field { key: String, value: String },
+        Field { key: String, value: FieldValue },
         /// HasField expression.
         ///
         /// Evaluates to resolver items where the given field is present.

@@ -1,23 +1,49 @@
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::{anyhow, Result};
-use interface::BlobInfo;
+use interface::{BlobInfo, TaggedBlobInfo};
 
 pub struct Index {
     db: sled::Db,
+    size: AtomicU64,
 }
 
 impl Index {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
         let db = sled::open(path.as_ref())?;
-        Ok(Index { db })
+        let size = db
+            .iter()
+            .filter_map(|result| match result {
+                Ok((_key_ivec, value_ivec)) => {
+                    match bincode::deserialize::<TaggedBlobInfo>(value_ivec.as_ref()) {
+                        Ok(e) => Some(e.meta.size),
+                        Err(e) => {
+                            tracing::warn!(
+                                "failed to deserialize blob during size computation: {}",
+                                e
+                            );
+                            None
+                        }
+                    }
+                }
+                Err(_) => None,
+            })
+            .sum();
+
+        Ok(Index {
+            db,
+            size: AtomicU64::new(size),
+        })
     }
 
     pub fn get(&self, blob_id: &str) -> Result<Option<BlobInfo>> {
         self.db
             .get(blob_id.as_bytes())?
             .map(|blob_info_iv| {
-                bincode::deserialize(blob_info_iv.as_ref()).map_err(|e| anyhow!("{}", e))
+                let tagged_info: TaggedBlobInfo =
+                    bincode::deserialize(blob_info_iv.as_ref()).map_err(|e| anyhow!("{}", e))?;
+                Ok(tagged_info.into())
             })
             .transpose()
     }
@@ -31,13 +57,32 @@ impl Index {
     }
 
     pub fn insert(&self, blob_id: &str, info: &BlobInfo) -> Result<()> {
-        self.db
-            .insert(blob_id.as_bytes(), bincode::serialize(&info)?)?;
+        let tagged_info = TaggedBlobInfo::from(info.clone());
+        let size_diff = match self
+            .db
+            .insert(blob_id.as_bytes(), bincode::serialize(&tagged_info)?)?
+        {
+            Some(old_ivec) => {
+                let old_info: TaggedBlobInfo = bincode::deserialize(&old_ivec)?;
+                -(old_info.meta.size as i128) + info.meta.size as i128
+            }
+            None => info.meta.size as i128,
+        };
+
+        if size_diff >= 0 {
+            self.size.fetch_add(size_diff as u64, Ordering::SeqCst);
+        } else {
+            self.size.fetch_sub((-size_diff) as u64, Ordering::SeqCst);
+        }
+
         Ok(())
     }
 
     pub fn remove(&self, blob_id: &str) -> Result<()> {
-        self.db.remove(blob_id.as_bytes())?;
+        if let Some(ivec) = self.db.remove(blob_id.as_bytes())? {
+            let tagged_info: TaggedBlobInfo = bincode::deserialize(&ivec)?;
+            self.size.fetch_sub(tagged_info.meta.size, Ordering::SeqCst);
+        }
         Ok(())
     }
 
@@ -47,24 +92,7 @@ impl Index {
     }
 
     pub fn size(&self) -> u64 {
-        self.db
-            .iter()
-            .filter_map(|result| match result {
-                Ok((_key_ivec, value_ivec)) => {
-                    match bincode::deserialize::<BlobInfo>(value_ivec.as_ref()) {
-                        Ok(e) => Some(e.meta.size),
-                        Err(e) => {
-                            tracing::warn!(
-                                "failed to deserialize blob during size computation: {}",
-                                e
-                            );
-                            None
-                        }
-                    }
-                }
-                Err(_) => None,
-            })
-            .sum()
+        self.size.load(Ordering::SeqCst)
     }
 }
 

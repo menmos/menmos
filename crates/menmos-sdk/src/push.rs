@@ -50,7 +50,7 @@ pub(crate) async fn push_file(
     }
 
     for (k, v) in request.fields.iter() {
-        meta = meta.with_field(k, v);
+        meta = meta.with_field(k, v.clone());
     }
 
     let item_id = client
