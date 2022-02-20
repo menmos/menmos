@@ -82,25 +82,29 @@ impl BitvecTree {
     #[tracing::instrument(level = "trace", skip(self, key), fields(name = % self.name))]
     pub fn purge_key<K: AsRef<[u8]>>(&self, key: K, idx: u32) -> Result<()> {
         self.tree.update_and_fetch(key, |f| {
-            let ivec = f.unwrap();
-            let mut bv: BitVec = bincode::deserialize(ivec).unwrap();
+            if let Some(ivec) = f {
+                let mut bv: BitVec = bincode::deserialize(ivec).unwrap();
 
-            // It's possible we just loaded a bitvector that is too small for the index we're
-            // trying to purge.
-            // In that case, simply skip setting the index.
-            if (idx as usize) < bv.len() {
-                bv.set(idx as usize, false);
-                if bv.count_ones() == 0 {
-                    // Delete the bitvector.
-                    None
+                // It's possible we just loaded a bitvector that is too small for the index we're
+                // trying to purge.
+                // In that case, simply skip setting the index.
+                if (idx as usize) < bv.len() {
+                    bv.set(idx as usize, false);
+                    if bv.count_ones() == 0 {
+                        // Delete the bitvector.
+                        None
+                    } else {
+                        // Return the updated bitvector.
+                        let serialized_update = bincode::serialize(&bv).unwrap();
+                        Some(serialized_update)
+                    }
                 } else {
-                    // Return the updated bitvector.
-                    let serialized_update = bincode::serialize(&bv).unwrap();
-                    Some(serialized_update)
+                    // Don't update the bitvector.
+                    f.map(Vec::from)
                 }
             } else {
-                // Don't update the bitvector.
-                f.map(Vec::from)
+                // Some other thread might've come in before us and deleted it already
+                None
             }
         })?;
         Ok(())
