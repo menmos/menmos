@@ -85,7 +85,7 @@ pub struct StorageNodeResponseData {
 #[serde(deny_unknown_fields)]
 pub struct MetadataList {
     pub tags: HashMap<String, usize>,
-    pub meta: HashMap<String, HashMap<String, usize>>,
+    pub fields: HashMap<String, HashMap<String, usize>>,
 }
 
 /// A sorting order.

@@ -182,7 +182,7 @@ impl interface::QueryExecutor for QueryService {
 
         Ok(MetadataList {
             tags: tag_list,
-            meta: kv_list,
+            fields: kv_list,
         })
     }
 }

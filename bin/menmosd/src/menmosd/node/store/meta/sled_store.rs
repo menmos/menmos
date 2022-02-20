@@ -1,55 +1,33 @@
-use anyhow::{anyhow, ensure, Result};
-use async_trait::async_trait;
-use bitvec::prelude::*;
-use futures::TryFutureExt;
-use interface::BlobInfo;
 use std::collections::HashMap;
 
-use super::bitvec_tree::BitvecTree;
-use super::iface::Flush;
+use anyhow::{anyhow, ensure, Result};
 
-pub trait MetadataStore: Flush {
-    fn get(&self, idx: u32) -> Result<Option<BlobInfo>>;
-    fn insert(&self, id: u32, info: &BlobInfo) -> Result<()>;
+use bitvec::prelude::*;
 
-    fn load_user_mask(&self, username: &str) -> Result<BitVec>;
+use futures::TryFutureExt;
 
-    fn load_tag(&self, tag: &str) -> Result<BitVec>;
+use interface::BlobInfo;
 
-    fn load_key_value(&self, k: &str, v: &str) -> Result<BitVec>;
+use crate::node::store::bitvec_tree::BitvecTree;
+use crate::node::store::iface::Flush;
 
-    fn load_key(&self, k: &str) -> Result<BitVec>;
-
-    fn list_all_tags(&self, mask: Option<&BitVec>) -> Result<HashMap<String, usize>>;
-    fn list_all_kv_fields(
-        &self,
-        key_filter: &Option<Vec<String>>,
-        mask: Option<&BitVec>,
-    ) -> Result<HashMap<String, HashMap<String, usize>>>;
-
-    fn purge(&self, idx: u32) -> Result<()>;
-    fn clear(&self) -> Result<()>;
-}
+use super::{FieldsIndex, MetadataStore};
 
 const META_MAP: &str = "metadata";
 const TAG_MAP: &str = "tags";
-const KV_MAP: &str = "keyvalue";
 const USER_MASK_MAP: &str = "users";
 
-fn kv_to_tag(key: &str, value: &str) -> String {
-    format!("{}${}", key, value)
-}
-
-fn tag_to_kv(tag: &str) -> Result<(&str, &str)> {
-    let splitted: Vec<_> = tag.split('$').collect();
-    ensure!(splitted.len() == 2, "invalid kv tag");
-    Ok((splitted[0], splitted[1]))
-}
-
 pub struct SledMetadataStore {
+    /// Stores the raw metadata of every blob.
     meta_map: sled::Tree,
+
+    /// Stores the index of blob bitvectors by tag.
     tag_map: BitvecTree,
-    kv_map: BitvecTree,
+
+    /// Stores and manages the field/value index
+    field_index: FieldsIndex,
+
+    /// Stores the masks tracking which documents can be seen by each user.
     user_mask_map: BitvecTree,
 }
 
@@ -58,13 +36,13 @@ impl SledMetadataStore {
         let meta_map = db.open_tree(META_MAP)?;
 
         let tag_map = BitvecTree::new(db, TAG_MAP)?;
-        let kv_map = BitvecTree::new(db, KV_MAP)?;
+        let field_index = FieldsIndex::new(db)?;
         let user_mask_map = BitvecTree::new(db, USER_MASK_MAP)?;
 
         Ok(Self {
             meta_map,
             tag_map,
-            kv_map,
+            field_index,
             user_mask_map,
         })
     }
@@ -84,9 +62,10 @@ impl SledMetadataStore {
         }
 
         for (key, value) in old_meta.meta.fields.into_iter() {
-            if new_meta.meta.fields.get(&key) != Some(&value) {
-                self.kv_map.purge_key(&kv_to_tag(&key, &value), for_idx)?;
-                tracing::trace!(key = %key, value = %value, index = for_idx, "purged key-value");
+            let field_maybe = new_meta.meta.fields.get(&key);
+            if field_maybe != Some(&value) {
+                self.field_index
+                    .purge_field_value(&key, &value, for_idx, field_maybe.is_none())?
             }
         }
 
@@ -94,7 +73,7 @@ impl SledMetadataStore {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl Flush for SledMetadataStore {
     async fn flush(&self) -> Result<()> {
         tracing::debug!("starting flush");
@@ -103,7 +82,7 @@ impl Flush for SledMetadataStore {
             .flush_async()
             .map_err(|e| anyhow!(e.to_string()));
         let tag_flush = self.tag_map.flush();
-        let kv_flush = self.kv_map.flush();
+        let kv_flush = self.field_index.flush();
 
         tokio::try_join!(meta_flush, tag_flush, kv_flush).map(|_u| ())?;
 
@@ -128,6 +107,7 @@ impl MetadataStore for SledMetadataStore {
     fn insert(&self, id: u32, info: &BlobInfo) -> Result<()> {
         // Validate tags are ok.
         for tag in info.meta.tags.iter() {
+            // TODO: Remove this.
             ensure!(!tag.contains('$'), "tag cannot contain separator");
         }
 
@@ -154,7 +134,7 @@ impl MetadataStore for SledMetadataStore {
 
         // Save key/value fields in the reverse map.
         for (k, v) in info.meta.fields.iter().filter(|(_, v)| !v.is_empty()) {
-            self.kv_map.insert(&kv_to_tag(k, v), &serialized_id)?;
+            self.field_index.insert(k, v, &serialized_id)?;
         }
 
         Ok(())
@@ -172,32 +152,12 @@ impl MetadataStore for SledMetadataStore {
 
     #[tracing::instrument(level = "trace", skip(self))]
     fn load_key_value(&self, k: &str, v: &str) -> Result<BitVec> {
-        self.kv_map.load(&kv_to_tag(k, v))
+        self.field_index.load_field_value(k, v)
     }
 
     #[tracing::instrument(level = "trace", skip(self))]
     fn load_key(&self, k: &str) -> Result<BitVec> {
-        // TODO: This is WIP. Computing this at query time is expensive, we could store it at indexing time instead.
-        let mut bv = BitVec::default();
-
-        for (_, v_ivec) in self
-            .kv_map
-            .tree()
-            .scan_prefix(format!("{}$", k).as_bytes())
-            .filter_map(|f| f.ok())
-        {
-            let resolved: BitVec = bincode::deserialize(v_ivec.as_ref())?;
-            let (biggest, smallest) = if bv.len() > resolved.len() {
-                (bv, resolved)
-            } else {
-                (resolved, bv)
-            };
-
-            bv = biggest;
-            bv |= smallest;
-        }
-
-        Ok(bv)
+        self.field_index.load_field(k)
     }
 
     #[tracing::instrument(level = "trace", skip(self, mask))]
@@ -224,38 +184,40 @@ impl MetadataStore for SledMetadataStore {
         Ok(hsh)
     }
 
-    #[tracing::instrument(level = "trace", skip(self, key_filter, mask))]
+    #[tracing::instrument(level = "trace", skip(self, field_filter, mask))]
     fn list_all_kv_fields(
         &self,
-        key_filter: &Option<Vec<String>>,
+        field_filter: &Option<Vec<String>>,
         mask: Option<&BitVec>,
     ) -> Result<HashMap<String, HashMap<String, usize>>> {
         let mut hsh: HashMap<String, HashMap<String, usize>> = HashMap::new();
 
-        match key_filter {
+        match field_filter {
             Some(filter) => {
-                for key in filter.iter() {
-                    for (kv_iv, vector) in self
-                        .kv_map
-                        .tree()
-                        .scan_prefix(&format!("{}$", key))
-                        .filter_map(|entry| entry.ok())
-                    {
-                        let tag_str = String::from_utf8_lossy(kv_iv.as_ref()).to_string();
-                        let (k, v) = tag_to_kv(&tag_str)?;
-                        let mut bv: BitVec = bincode::deserialize(vector.as_ref())?;
+                for field in filter.iter() {
+                    if let Some(result_it) = self.field_index.get_field_values(field)? {
+                        for result in result_it {
+                            let ((field_name, value), mut bv) = result?;
 
-                        if let Some(user_bitvec) = mask {
-                            bv &= user_bitvec.clone();
-                        }
+                            // if this trips, the field name we got back from disk for the field the user requested
+                            // does _not_ match the field the user requested. will _hopefully_ never be thrown.
+                            ensure!(
+                                &field_name == field,
+                                "the loaded field key doesn't match the requested field"
+                            );
 
-                        let count = bv.count_ones();
+                            if let Some(user_bitvec) = mask {
+                                bv &= user_bitvec.clone();
+                            }
 
-                        if count > 0 {
-                            tracing::trace!(key=%key, value=%v, count=count, "loaded key-value");
-                            hsh.entry(k.to_string())
-                                .or_insert_with(HashMap::default)
-                                .insert(v.to_string(), count);
+                            let count = bv.count_ones();
+
+                            if count > 0 {
+                                tracing::trace!(key=%field, value=%value, count=count, "loaded field-value");
+                                hsh.entry(field_name)
+                                    .or_insert_with(HashMap::default)
+                                    .insert(value, count);
+                            }
                         }
                     }
                 }
@@ -263,11 +225,8 @@ impl MetadataStore for SledMetadataStore {
             None => {
                 // List everything.
                 // This will most likely lead to a massive response body - sorry about that.
-                for r in self.kv_map.tree().iter() {
-                    let (k_v_pair, vector) = r?;
-                    let tag_str = String::from_utf8_lossy(k_v_pair.as_ref()).to_string();
-                    let (k, v) = tag_to_kv(&tag_str)?;
-                    let mut bv: BitVec = bincode::deserialize(vector.as_ref())?;
+                for result in self.field_index.iter() {
+                    let ((field_name, value), mut bv) = result?;
 
                     if let Some(user_bitvec) = mask {
                         bv &= user_bitvec.clone();
@@ -275,10 +234,10 @@ impl MetadataStore for SledMetadataStore {
 
                     let count = bv.count_ones();
                     if count > 0 {
-                        tracing::trace!(key=%k, value=%v, count=count, "loaded key-value");
-                        hsh.entry(k.to_string())
+                        tracing::trace!(key=%field_name, value=%value, count=count, "loaded field-value");
+                        hsh.entry(field_name)
                             .or_insert_with(HashMap::default)
-                            .insert(v.to_string(), count);
+                            .insert(value, count);
                     }
                 }
             }
@@ -297,7 +256,7 @@ impl MetadataStore for SledMetadataStore {
         // TODO: Improve, this is _really_ expensive.
         // This is in O(2n) the number of unique [tags + kv].
         self.tag_map.purge(idx)?;
-        self.kv_map.purge(idx)?;
+        self.field_index.purge(idx)?;
         self.user_mask_map.purge(idx)?;
 
         Ok(())
@@ -306,7 +265,7 @@ impl MetadataStore for SledMetadataStore {
     fn clear(&self) -> Result<()> {
         self.meta_map.clear()?;
         self.tag_map.clear()?;
-        self.kv_map.clear()?;
+        self.field_index.clear()?;
         tracing::debug!("meta index destroyed");
         Ok(())
     }
