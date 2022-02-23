@@ -58,6 +58,7 @@ impl DownloadCommand {
 
                     let file_name = match meta.fields.get("name") {
                         Some(FieldValue::Str(name)) => name.clone(),
+                        Some(FieldValue::Numeric(i)) => format!("{i}"),
                         None => blob_id.clone(),
                     };
 

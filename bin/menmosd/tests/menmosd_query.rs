@@ -48,6 +48,56 @@ async fn query_pagination() -> Result<()> {
     Ok(())
 }
 
+/// Tests that numeric fields are indexable & queryable properly.
+#[tokio::test]
+async fn query_numeric_fields() -> Result<()> {
+    let mut cluster = Menmos::new().await?;
+    cluster.add_amphora("alpha").await?;
+
+    let blob_id = cluster
+        .push_document(
+            "some text",
+            Meta::new()
+                .with_field("name", "good movie")
+                .with_field("rating", 5),
+        )
+        .await?;
+
+    cluster
+        .push_document(
+            "some text",
+            Meta::new()
+                .with_field("name", "bad movie")
+                .with_field("rating", 2),
+        )
+        .await?;
+
+    // We insert one doc with a "rating" field with a string value to test that
+    // we handle multi-type fields properly.
+    cluster
+        .push_document(
+            "some text",
+            Meta::new()
+                .with_field("name", "not a movie")
+                .with_field("rating", "string rating"),
+        )
+        .await?;
+
+    let results = cluster
+        .client
+        .query(Query::default().and_field("rating", 5))
+        .await?;
+
+    assert_eq!(results.count, 1);
+    assert_eq!(results.hits[0].id, blob_id);
+    assert_eq!(
+        results.hits[0].meta.fields.get("rating"),
+        Some(FieldValue::Numeric(5)).as_ref()
+    );
+
+    Ok(())
+}
+
 #[tokio::test]
 async fn query_bad_request() -> Result<()> {
     let cluster = Menmos::new().await?;

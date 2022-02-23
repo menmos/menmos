@@ -88,17 +88,20 @@ impl BlobMetaRequest {
 #[serde(untagged)]
 pub enum FieldValue {
     Str(String),
+    Numeric(i64),
 }
 
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 pub enum TaggedFieldValue {
     Str(String),
+    Numeric(i64),
 }
 
 impl From<FieldValue> for TaggedFieldValue {
     fn from(v: FieldValue) -> Self {
         match v {
             FieldValue::Str(s) => TaggedFieldValue::Str(s),
+            FieldValue::Numeric(i) => TaggedFieldValue::Numeric(i),
         }
     }
 }
@@ -107,6 +110,7 @@ impl From<TaggedFieldValue> for FieldValue {
     fn from(v: TaggedFieldValue) -> Self {
         match v {
             TaggedFieldValue::Str(s) => FieldValue::Str(s),
+            TaggedFieldValue::Numeric(i) => FieldValue::Numeric(i),
         }
     }
 }
@@ -129,10 +133,17 @@ impl From<&String> for FieldValue {
     }
 }
 
+impl From<i64> for FieldValue {
+    fn from(v: i64) -> Self {
+        Self::Numeric(v)
+    }
+}
+
 impl fmt::Display for FieldValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Str(s) => write!(f, "\"{}\"", s),
+            Self::Numeric(i) => write!(f, "{}", i),
         }
     }
 }
