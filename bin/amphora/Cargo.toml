@@ -27,7 +27,7 @@ base64 = "0.13"
 bincode = "1.3.1"
 bytes = "1.0"
 chrono = "0.4"
-clap = { version = "3.1.0", features = ["derive"] }
+clap = { version = "3.1.1", features = ["derive"] }
 config = { git = "https://github.com/dalloriam/config-rs", branch = "parse-env-numbers" }
 dirs = "4"
 futures = "0.3"
