@@ -265,6 +265,8 @@ impl Flush for FieldsIndex {
 mod tests {
     use anyhow::Result;
     use bitvec::prelude::*;
+    use interface::FieldValue;
+    use std::collections::HashSet;
 
     use super::FieldsIndex;
 
@@ -311,6 +313,46 @@ mod tests {
 
         let bv = index.load_field_value("mynumeric", &18_i64.into())?;
         assert_eq!(&bv, bits![0, 0, 0, 0, 0, 1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn list_numeric_field_values() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("mynumeric", &18.into(), &5_u32.to_le_bytes())?;
+        index.insert("mynumeric", &22.into(), &1_u32.to_le_bytes())?;
+        index.insert("mynumeric", &"asdf".into(), &2_u32.to_le_bytes())?;
+
+        let mut seen_vals = HashSet::new();
+        let mut val_count = 0;
+
+        for value in index.get_field_values("mynumeric")?.unwrap() {
+            let ((field_name, field_value), bv) = value?;
+            assert_eq!(&field_name, "mynumeric");
+
+            seen_vals.insert(field_value.clone());
+            val_count += 1;
+
+            match field_value {
+                FieldValue::Str(s) => {
+                    assert_eq!(&s, "asdf");
+                    assert_eq!(&bv, bits![0, 0, 1]);
+                }
+                FieldValue::Numeric(18) => {
+                    assert_eq!(&bv, bits![0, 0, 0, 0, 0, 1]);
+                }
+                FieldValue::Numeric(22) => {
+                    assert_eq!(&bv, bits![0, 1]);
+                }
+                _ => panic!(),
+            }
+        }
+
+        assert_eq!(seen_vals.len(), val_count);
+        assert_eq!(val_count, 3);
 
         Ok(())
     }
