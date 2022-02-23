@@ -25,3 +25,8 @@ test:
 
 # -- Local Setup Workflows --
 # TODO: Add trace-level logging preset
+
+export WORKDIR := "./tmp"
+
+clean:
+    rm -rf {{WORKDIR}}/blob-cache {{WORKDIR}}/blobs {{WORKDIR}}/db  {{WORKDIR}}/storage_db

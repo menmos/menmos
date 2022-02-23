@@ -22,7 +22,11 @@ pub struct Hit {
 
 impl Hit {
     pub fn new(id: String, meta: BlobMeta, url: String) -> Self {
-        Self { id, meta, url }
+        Self {
+            id,
+            meta: meta,
+            url,
+        }
     }
 }
 

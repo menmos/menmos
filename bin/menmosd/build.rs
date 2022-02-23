@@ -3,7 +3,7 @@ use std::{
     process::{exit, Command},
 };
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{bail, ensure, Context, Result};
 
 // TODO: Allow override via env var.
 const WEB_REPO_PATH: &str = "https://github.com/menmos/menmos-web.git";
@@ -55,7 +55,7 @@ fn ensure_clone<S: AsRef<str>>(target: Target<S>) -> Result<()> {
     // TODO: Detect if git exists.
     let tgt_path = PathBuf::from(LOCAL_PATH);
     if !tgt_path.exists() {
-        run(&["git", "clone", WEB_REPO_PATH, LOCAL_PATH])?;
+        run(&["git", "clone", WEB_REPO_PATH, LOCAL_PATH]).context("git clone failed")?;
     }
 
     std::env::set_current_dir(&tgt_path)?;
@@ -74,8 +74,8 @@ fn ensure_clone<S: AsRef<str>>(target: Target<S>) -> Result<()> {
 
 fn yarn_build() -> Result<()> {
     // Do the build
-    runcmd(yarn(), &["install"])?;
-    runcmd(yarn(), &["build"])
+    runcmd(yarn(), &["install"]).context("yarn install failed")?;
+    runcmd(yarn(), &["build"]).context("yarn build failed")
 }
 
 fn parse_env_var(val: &str) -> Result<Target<String>> {
@@ -105,7 +105,12 @@ fn main() {
 
     if let Ok(val) = std::env::var("MENMOS_WEBUI") {
         if let Err(e) = apply(val) {
-            eprintln!("{}", e);
+            let mut buf = String::from("error");
+            for part in e.chain() {
+                buf += ": ";
+                buf += part.to_string().as_ref();
+            }
+            eprintln!("{}", buf);
             exit(1);
         }
     }

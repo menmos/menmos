@@ -16,6 +16,7 @@ use crate::node::store::iface::Flush;
 const FIELDS_FILE_ID: &str = "fields";
 
 const TYPEID_STR: u8 = 0;
+const TYPEID_NUMERIC: u8 = 1;
 
 /// Contains the data and behavior relating to the indexing of fields and their values.
 pub struct FieldsIndex {
@@ -59,6 +60,16 @@ impl FieldsIndex {
                 ensure!(expected_len == actual_len, "unexpected field value for field_id={field_id}. expected:{expected_len}, got:{actual_len}");
                 FieldValue::Str(str_buf)
             }
+            TYPEID_NUMERIC => {
+                let expected_len = mem::size_of::<i64>();
+                ensure!(
+                    expected_len == bufreader.get_ref().remaining(),
+                    "corrupted field key: expected {} bytes for numeric value",
+                    expected_len
+                );
+                let value = bufreader.read_i64::<BigEndian>()?;
+                FieldValue::Numeric(value)
+            }
             _ => {
                 bail!("unknown field type_id: {}", type_id);
             }
@@ -88,7 +99,8 @@ impl FieldsIndex {
         };
 
         let (type_id, value_slice) = match value {
-            FieldValue::Str(s) => (TYPEID_STR, s.as_bytes()),
+            FieldValue::Str(s) => (TYPEID_STR, s.as_bytes().to_vec()),
+            FieldValue::Numeric(i) => (TYPEID_NUMERIC, i.to_be_bytes().to_vec()),
         };
 
         // Key format: [FieldID (4 bytes), TypeID (1 byte), FieldValue (N Bytes)]
@@ -104,7 +116,7 @@ impl FieldsIndex {
         bufwriter.write_u8(type_id)?;
 
         // The rest of the key for the field value.
-        bufwriter.write_all(value_slice)?;
+        bufwriter.write_all(&value_slice)?;
 
         Ok(Some(bufwriter.into_inner().freeze()))
     }
@@ -253,6 +265,8 @@ impl Flush for FieldsIndex {
 mod tests {
     use anyhow::Result;
     use bitvec::prelude::*;
+    use interface::FieldValue;
+    use std::collections::HashSet;
 
     use super::FieldsIndex;
 
@@ -282,6 +296,80 @@ mod tests {
 
         let bv = index.load_field("somefield")?;
         assert_eq!(&bv, bits![0, 1, 0, 1, 0, 1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn insert_numeric_field() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("mynumeric", &18.into(), &5_u32.to_le_bytes())?;
+        index.insert("mynumeric", &12.into(), &2_u32.to_le_bytes())?;
+
+        let bv = index.load_field("mynumeric")?;
+        assert_eq!(&bv, bits![0, 0, 1, 0, 0, 1]);
+
+        let bv = index.load_field_value("mynumeric", &18_i64.into())?;
+        assert_eq!(&bv, bits![0, 0, 0, 0, 0, 1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn list_numeric_field_values() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("mynumeric", &18.into(), &5_u32.to_le_bytes())?;
+        index.insert("mynumeric", &22.into(), &1_u32.to_le_bytes())?;
+        index.insert("mynumeric", &"asdf".into(), &2_u32.to_le_bytes())?;
+
+        let mut seen_vals = HashSet::new();
+        let mut val_count = 0;
+
+        for value in index.get_field_values("mynumeric")?.unwrap() {
+            let ((field_name, field_value), bv) = value?;
+            assert_eq!(&field_name, "mynumeric");
+
+            seen_vals.insert(field_value.clone());
+            val_count += 1;
+
+            match field_value {
+                FieldValue::Str(s) => {
+                    assert_eq!(&s, "asdf");
+                    assert_eq!(&bv, bits![0, 0, 1]);
+                }
+                FieldValue::Numeric(18) => {
+                    assert_eq!(&bv, bits![0, 0, 0, 0, 0, 1]);
+                }
+                FieldValue::Numeric(22) => {
+                    assert_eq!(&bv, bits![0, 1]);
+                }
+                _ => panic!(),
+            }
+        }
+
+        assert_eq!(seen_vals.len(), val_count);
+        assert_eq!(val_count, 3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn field_mixed_types() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("myfield", &18.into(), &5_u32.to_le_bytes())?;
+        index.insert("myfield", &"stringvalue".into(), &2_u32.to_le_bytes())?;
+
+        let bv = index.load_field("myfield")?;
+        assert_eq!(&bv, bits![0, 0, 1, 0, 0, 1]);
+
+        let bv = index.load_field_value("myfield", &18_i64.into())?;
+        assert_eq!(&bv, bits![0, 0, 0, 0, 0, 1]);
 
         Ok(())
     }
