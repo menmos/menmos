@@ -32,6 +32,11 @@ tempfile = "3.3"
 anyhow = "1"
 
 [dependencies]
+axum = "0.4.6"
+tower-http = { version = "0.2.3", features = ["trace"] }
+tower-request-id = "0.2.0"
+hyper = "0.14.17"
+
 acme-lib = "0.8"
 anyhow = "1"
 async-trait = "0.1.42"

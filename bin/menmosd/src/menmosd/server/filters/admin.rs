@@ -15,18 +15,11 @@ const CONFIG_PATH: &str = "config";
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    health()
-        .or(rebuild(context.clone()))
+    rebuild(context.clone())
         .or(rebuild_complete(context.clone()))
         .or(flush(context.clone()))
         .or(version(context.clone()))
         .or(get_config(context))
-}
-
-fn health() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::get()
-        .and(warp::path(HEALTH_PATH))
-        .and_then(handlers::admin::health)
 }
 
 fn rebuild(
