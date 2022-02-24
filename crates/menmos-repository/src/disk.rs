@@ -83,7 +83,12 @@ impl Repository for DiskRepository {
         let (start, end) = (range.start, range.end);
         ensure!(start < end, "invalid range");
 
-        let old_length = file_path.metadata()?.len();
+        let old_length = if file_path.exists() {
+            file_path.metadata()?.len()
+        } else {
+            0
+        };
+
         let new_length = (start + end).max(old_length);
 
         tracing::trace!(old_length = old_length, new_length = new_length, offset = start, path = ?file_path, "begin writing to file");
@@ -92,6 +97,7 @@ impl Repository for DiskRepository {
             let mut f = OpenOptions::new()
                 .read(true)
                 .write(true)
+                .create(true)
                 .open(&file_path)
                 .await?;
             f.seek(SeekFrom::Start(start)).await?;

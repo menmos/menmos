@@ -221,12 +221,13 @@ impl StorageNode for Storage {
         // Write the diff
         let new_blob_size = self.repo.write(id.clone(), range, body).await?;
 
+        // Update the index.
         if let Some(mut info) = self.index.get(&id)? {
             info.meta.modified_at = Utc::now();
             info.meta.size = new_blob_size;
             self.index.insert(&id, &info)?;
 
-            // Update the config on the directory.
+            // Update the meta on the directory.
             self.directory
                 .index_blob(&id, info, &self.config.node.name)
                 .await?;

@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+use aws_sdk_s3::error::GetObjectErrorKind;
 use aws_sdk_s3::Client;
+use aws_smithy_http::result::SdkError;
 use futures::StreamExt;
 use lfan::preconfig::concurrent::{new_lru_cache, LruCache};
 use tokio::{fs, io::AsyncWriteExt};
@@ -52,30 +54,48 @@ impl FileCache {
     }
 
     async fn download_blob(&self, blob_id: &str) -> Result<PathBuf> {
-        let result = self
+        match self
             .client
             .get_object()
             .bucket(self.bucket.clone())
             .key(blob_id.to_string())
             .send()
-            .await?;
-        let mut bytestream = result.body;
+            .await
+        {
+            Ok(result) => {
+                let mut bytestream = result.body;
 
-        let file_path = self.root_path.join(blob_id);
+                let file_path = self.root_path.join(blob_id);
+                let mut f = fs::File::create(&file_path).await?;
 
-        let mut f = fs::File::create(&file_path).await?;
-
-        while let Some(chunk) = bytestream.next().await {
-            match chunk {
-                Ok(c) => f.write_all(c.as_ref()).await?,
-                Err(e) => {
-                    fs::remove_file(&file_path).await?;
-                    return Err(e.into());
+                while let Some(chunk) = bytestream.next().await {
+                    match chunk {
+                        Ok(c) => f.write_all(c.as_ref()).await?,
+                        Err(e) => {
+                            fs::remove_file(&file_path).await?;
+                            return Err(e.into());
+                        }
+                    }
+                }
+                tracing::debug!("pull successful",);
+                Ok(file_path)
+            }
+            Err(SdkError::ServiceError { err, raw: _ }) => {
+                if let GetObjectErrorKind::NoSuchKey(_) = err.kind {
+                    // Create the file - empty - in the file cache.
+                    let file_path = self.root_path.join(blob_id);
+                    fs::File::create(&file_path).await?;
+                    Ok(file_path)
+                } else {
+                    //Rethrow.
+                    Err(err.into())
                 }
             }
+            Err(e) => {
+                // Rethrow
+                Err(e.into())
+            }
         }
-        tracing::debug!("pull successful",);
-        Ok(file_path)
     }
 
     pub async fn get(&self, blob_id: &str) -> Result<PathBuf> {
