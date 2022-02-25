@@ -3,6 +3,7 @@ mod util;
 
 use anyhow::Result;
 use bytes::Bytes;
+use interface::Query;
 use menmos_client::Meta;
 use testing::fixtures::Menmos;
 use util::stream_to_bytes;
@@ -124,5 +125,49 @@ async fn meta_update_updates_datetime() -> Result<()> {
 
     cluster.stop_all().await?;
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn create_empty_blob_doesnt_create_file() -> Result<()> {
+    let mut cluster = Menmos::new().await?;
+    cluster.add_amphora("alpha").await?;
+
+    let blob_id = cluster
+        .client
+        .create_empty(Meta::new().with_field("name", "myfile.txt"))
+        .await?;
+
+    // We make sure the blob is queryable.
+    let results = cluster.client.query(Query::default()).await?;
+    assert_eq!(results.count, 1);
+
+    // Make sure the file isn't on disk.
+    assert!(!cluster
+        .root_directory
+        .as_ref()
+        .join("alpha-blobs")
+        .join(&blob_id)
+        .with_extension("blob")
+        .exists());
+
+    // Append to the file, make sure we don't crash.
+    cluster
+        .client
+        .write(&blob_id, 0, Bytes::from_static(b"bing bong"))
+        .await?;
+
+    cluster.flush().await?;
+
+    // The blob should be on disk now.
+    assert!(cluster
+        .root_directory
+        .as_ref()
+        .join("alpha-blobs")
+        .join(&blob_id)
+        .with_extension("blob")
+        .exists());
+
+    cluster.stop_all().await?;
     Ok(())
 }

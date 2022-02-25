@@ -72,9 +72,8 @@ pub async fn put<N: StorageNode>(
     let blob_size = blob_size.unwrap_or_default();
 
     if blob_size == 0 {
-        // TODO: Either change to None when doing MEN-94 or return an error if a stream is present.
         tracing::debug!("discarding a stream since we received a blob with a size of 0");
-        stream = Some(Box::new(futures::stream::empty()));
+        stream = None;
     }
 
     match node
