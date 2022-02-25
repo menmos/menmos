@@ -1,5 +1,12 @@
-use apikit::reject::{Forbidden, InternalServerError};
+use std::sync::Arc;
+
+use axum::Json;
+
+use apikit::reject::{Forbidden, HTTPError, InternalServerError};
+
 use menmos_auth::UserIdentity;
+
+use interface::DirectoryNode;
 
 use protocol::directory::auth::{LoginRequest, LoginResponse};
 
@@ -7,30 +14,30 @@ use warp::reply;
 
 use crate::server::Context;
 
-#[tracing::instrument(skip(context), fields(user = ? request.username))]
+#[tracing::instrument(skip(node, key), fields(user = ? request.username))]
 pub async fn login(
-    context: Context,
-    request: LoginRequest,
-) -> Result<reply::Response, warp::Rejection> {
-    if context
-        .node
+    node: Arc<dyn DirectoryNode + Send + Sync>,
+    key: String,
+    request: Json<LoginRequest>,
+) -> Result<Json<LoginResponse>, HTTPError> {
+    if node
         .user()
         .login(&request.username, &request.password)
         .await
-        .map_err(InternalServerError::from)?
+        .map_err(HTTPError::internal_server_error)?
     {
         let token = menmos_auth::make_token(
-            &context.config.node.encryption_key,
+            &key,
             UserIdentity {
-                username: request.username,
+                username: request.username.clone(),
                 admin: true, // TODO: We don't support privilege levels yet.
                 blobs_whitelist: None,
             },
         )
-        .map_err(InternalServerError::from)?;
+        .map_err(HTTPError::internal_server_error)?;
 
-        Ok(apikit::reply::json(&LoginResponse { token }))
+        Ok(Json(LoginResponse { token }))
     } else {
-        Err(Forbidden.into())
+        Err(HTTPError::Forbidden)
     }
 }

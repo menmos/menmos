@@ -11,18 +11,7 @@ const REGISTER_PATH: &str = "register";
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    login(context.clone()).or(register(context))
-}
-
-fn login(
-    context: Context,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::post()
-        .and(warp::path(AUTH_PATH))
-        .and(warp::path(LOGIN_PATH))
-        .and(with_context(context))
-        .and(warp::body::json())
-        .and_then(handlers::auth::login)
+    register(context)
 }
 
 fn register(

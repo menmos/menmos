@@ -18,7 +18,6 @@ pub fn all(
     rebuild(context.clone())
         .or(rebuild_complete(context.clone()))
         .or(flush(context.clone()))
-        .or(version(context.clone()))
         .or(get_config(context))
 }
 
@@ -54,15 +53,6 @@ fn flush(
         .and(warp::path(FLUSH_PATH))
         .and(warp::path::end())
         .and_then(handlers::admin::flush)
-}
-
-fn version(
-    context: Context,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::get()
-        .and(user(context.config.node.encryption_key.clone()))
-        .and(warp::path(VERSION_PATH))
-        .and_then(handlers::admin::version)
 }
 
 fn get_config(

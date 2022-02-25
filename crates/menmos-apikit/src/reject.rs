@@ -17,13 +17,14 @@ const MESSAGE_FORBIDDEN: &str = "forbidden";
 #[derive(Serialize)]
 #[serde(untagged)]
 pub enum HTTPError {
+    Forbidden,
     InternalServerError { error: String },
 }
 
-impl<T: ToString> From<T> for HTTPError {
-    fn from(e: T) -> Self {
+impl HTTPError {
+    pub fn internal_server_error<S: ToString>(s: S) -> Self {
         Self::InternalServerError {
-            error: e.to_string(),
+            error: s.to_string(),
         }
     }
 }
@@ -31,6 +32,7 @@ impl<T: ToString> From<T> for HTTPError {
 impl IntoResponse for HTTPError {
     fn into_response(self) -> Response {
         let status = match self {
+            Self::Forbidden => StatusCode::FORBIDDEN,
             Self::InternalServerError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
         };
 

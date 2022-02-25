@@ -45,15 +45,19 @@ impl Server {
 
         let (stop_tx, mut stop_rx) = mpsc::channel(1);
 
+        /*
         let server_context = Context {
             node: node.clone(),
             config,
             certificate_info: Arc::new(None),
         };
+         */
 
+        // TODO: Split in multiple sub-routes.
         let app = Router::new()
             .route("/health", get(handlers::admin::health))
             .route("/version", get(handlers::admin::version))
+            .route("/login", post(handlers::auth::login))
             .layer(TraceLayer::new_for_http().make_span_with(|r: &Request<_>| {
                 // We get the request id from the extensions
                 let request_id = r
@@ -70,7 +74,8 @@ impl Server {
                 )
             }))
             .layer(RequestIdLayer)
-            .layer(AddExtensionLayer::new(server_context));
+            .layer(AddExtensionLayer::new(config.node.encryption_key.clone()))
+            .layer(AddExtensionLayer::new(node.clone()));
 
         let node_cloned = node.clone();
         let join_handle = match cfg.server {

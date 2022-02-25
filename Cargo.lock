@@ -475,6 +475,7 @@ dependencies = [
  "bitflags",
  "bytes",
  "futures-util",
+ "headers",
  "http",
  "http-body",
  "hyper",
@@ -1688,6 +1689,8 @@ name = "menmos-auth"
 version = "0.1.1"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "axum",
  "bincode",
  "branca",
  "chrono",
