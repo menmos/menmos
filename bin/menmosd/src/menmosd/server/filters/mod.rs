@@ -1,7 +1,5 @@
 mod blob;
 mod blobmeta;
-mod routing;
-mod storage;
 mod util;
 
 mod webui;
@@ -16,10 +14,8 @@ use crate::server::Context;
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
-    storage::all(context.clone())
-        .or(blob::all(context.clone()))
+    blob::all(context.clone())
         .or(blobmeta::all(context.clone()))
-        .or(routing::all(context))
         .or(webui::serve_static())
         .recover(apikit::reject::recover)
         .with(warp::log::custom(
@@ -31,10 +27,8 @@ pub fn all(
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
-    storage::all(context.clone())
-        .or(blob::all(context.clone()))
+    blob::all(context.clone())
         .or(blobmeta::all(context.clone()))
-        .or(routing::all(context))
         .or(webui::serve_static())
         .with(
             warp::cors()

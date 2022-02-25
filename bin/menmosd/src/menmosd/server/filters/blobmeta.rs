@@ -12,26 +12,7 @@ const METADATA_PATH: &str = "metadata";
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    create(context.clone())
-        .or(update(context.clone()))
-        .or(get(context.clone()))
-        .or(list(context.clone()))
-        .or(delete(context))
-}
-
-fn create(
-    context: Context,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::post()
-        .and(menmos_auth::storage_node(
-            context.config.node.encryption_key.clone(),
-        ))
-        .and(with_context(context))
-        .and(warp::path(BLOBS_PATH))
-        .and(warp::path::param())
-        .and(warp::path(METADATA_PATH))
-        .and(warp::body::json())
-        .and_then(handlers::blobmeta::create)
+    update(context.clone()).or(list(context.clone()))
 }
 
 fn update(
@@ -48,18 +29,6 @@ fn update(
         .and_then(handlers::blobmeta::update)
 }
 
-fn get(
-    context: Context,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::get()
-        .and(user(context.config.node.encryption_key.clone()))
-        .and(with_context(context))
-        .and(warp::path(BLOBS_PATH))
-        .and(warp::path::param())
-        .and(warp::path(METADATA_PATH))
-        .and_then(handlers::blobmeta::get)
-}
-
 fn list(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -69,18 +38,4 @@ fn list(
         .and(warp::path(METADATA_PATH))
         .and(warp::body::json())
         .and_then(handlers::blobmeta::list)
-}
-
-fn delete(
-    context: Context,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::delete()
-        .and(menmos_auth::storage_node(
-            context.config.node.encryption_key.clone(),
-        ))
-        .and(with_context(context))
-        .and(warp::path(BLOBS_PATH))
-        .and(warp::path::param())
-        .and(warp::path(METADATA_PATH))
-        .and_then(handlers::blobmeta::delete)
 }

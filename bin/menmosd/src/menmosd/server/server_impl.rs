@@ -10,7 +10,7 @@ use axum::response::IntoResponse;
 use axum::routing::*;
 use axum::{AddExtensionLayer, Router};
 
-use interface::DirectoryNode;
+use interface::{CertificateInfo, DirectoryNode};
 
 use tokio::sync::mpsc;
 use tokio::task::{spawn, JoinHandle};
@@ -55,6 +55,8 @@ impl Server {
          */
 
         // TODO: Split in multiple sub-routes.
+        let certificate_info: Arc<Option<CertificateInfo>> = Arc::new(None);
+
         let app = Router::new()
             // Admin Routes
             .route("/health", get(handlers::admin::health))
@@ -71,6 +73,25 @@ impl Server {
             .route("/auth/register", post(handlers::auth::register))
             // Query routes
             .route("/query", post(handlers::query::query))
+            // Storage node routes
+            .route(
+                "/node/storage",
+                put(handlers::storage::put).get(handlers::storage::list),
+            )
+            // Routing config routes
+            .route(
+                "/routing",
+                get(handlers::routing::get)
+                    .post(handlers::routing::set)
+                    .delete(handlers::routing::delete),
+            )
+            // Blob meta routes
+            .route(
+                "/blob/:blob_id/metadata",
+                get(handlers::blobmeta::get)
+                    .post(handlers::blobmeta::create)
+                    .delete(handlers::blobmeta::delete),
+            )
             .layer(TraceLayer::new_for_http().make_span_with(|r: &Request<_>| {
                 // We get the request id from the extensions
                 let request_id = r
@@ -87,6 +108,7 @@ impl Server {
                 )
             })) // TODO: Add on-response callback to log calls at the info level
             .layer(RequestIdLayer)
+            .layer(AddExtensionLayer::new(certificate_info)) // TODO: Make this typing better
             .layer(AddExtensionLayer::new(config.node.encryption_key.clone())) // TODO: Make this typing better.
             .layer(AddExtensionLayer::new(config.clone()))
             .layer(AddExtensionLayer::new(node.clone()));
