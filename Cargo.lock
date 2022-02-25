@@ -496,6 +496,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "axum-client-ip"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f33c9433aed1ddf03771767129db4d125fb9ae009aac5ddb58f7ee4c2256e43a"
+dependencies = [
+ "axum",
+ "forwarded-header-value",
+]
+
+[[package]]
 name = "axum-core"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1051,6 +1061,16 @@ checksum = "5fc25a87fa4fd2094bffb06925852034d90a17f0d1e05197d4956d3555752191"
 dependencies = [
  "matches",
  "percent-encoding",
+]
+
+[[package]]
+name = "forwarded-header-value"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8835f84f38484cc86f110a805655697908257fb9a7af005234060891557198e9"
+dependencies = [
+ "nonempty",
+ "thiserror",
 ]
 
 [[package]]
@@ -1851,6 +1871,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "axum-client-ip",
  "base64",
  "bincode",
  "bitvec",
@@ -2038,6 +2059,12 @@ dependencies = [
  "minimal-lexical",
  "version_check",
 ]
+
+[[package]]
+name = "nonempty"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9e591e719385e6ebaeb5ce5d3887f7d5676fceca6411d1925ccc95745f3d6f7"
 
 [[package]]
 name = "ntapi"

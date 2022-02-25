@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -55,9 +56,21 @@ impl Server {
 
         // TODO: Split in multiple sub-routes.
         let app = Router::new()
+            // Admin Routes
             .route("/health", get(handlers::admin::health))
             .route("/version", get(handlers::admin::version))
-            .route("/login", post(handlers::auth::login))
+            .route("/rebuild", post(handlers::admin::rebuild))
+            .route(
+                "/rebuild/:storage_node_id",
+                delete(handlers::admin::rebuild_complete),
+            )
+            .route("/flush", post(handlers::admin::flush))
+            .route("/config", get(handlers::admin::get_config))
+            // Auth routes
+            .route("/auth/login", post(handlers::auth::login))
+            .route("/auth/register", post(handlers::auth::register))
+            // Query routes
+            .route("/query", post(handlers::query::query))
             .layer(TraceLayer::new_for_http().make_span_with(|r: &Request<_>| {
                 // We get the request id from the extensions
                 let request_id = r
@@ -72,9 +85,10 @@ impl Server {
                     method = %r.method(),
                     uri = %r.uri(),
                 )
-            }))
+            })) // TODO: Add on-response callback to log calls at the info level
             .layer(RequestIdLayer)
-            .layer(AddExtensionLayer::new(config.node.encryption_key.clone()))
+            .layer(AddExtensionLayer::new(config.node.encryption_key.clone())) // TODO: Make this typing better.
+            .layer(AddExtensionLayer::new(config.clone()))
             .layer(AddExtensionLayer::new(node.clone()));
 
         let node_cloned = node.clone();
@@ -83,7 +97,7 @@ impl Server {
                 tracing::debug!("starting http layer");
 
                 let srv = axum::Server::bind(&([0, 0, 0, 0], http_cfg.port).into())
-                    .serve(app.into_make_service())
+                    .serve(app.into_make_service_with_connect_info::<SocketAddr, _>())
                     .with_graceful_shutdown(async move {
                         stop_rx.recv().await;
                     });

@@ -1,28 +1,32 @@
 use std::convert::TryFrom;
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 
-use apikit::reject::{BadRequest, InternalServerError};
+use axum::extract::Extension;
+use axum::Json;
+use axum_client_ip::ClientIp;
 
-use interface::{Query, QueryResponse};
+use apikit::reject::HTTPError;
+
+use hyper::Uri;
+
+use interface::{DynDirectoryNode, Query, QueryResponse};
 
 use menmos_auth::UserIdentity;
 
 use protocol::directory::query::QueryRequest;
 
-use warp::http::Uri;
-use warp::reply;
-
-use crate::{network::get_storage_node_address, server::context::Context};
+use crate::{network::get_storage_node_address, Config};
 
 async fn get_blob_url<S: AsRef<str>>(
-    context: &Context,
+    node: &DynDirectoryNode,
+    config: &Arc<Config>,
     blob_id: S,
     request_ip: &IpAddr,
 ) -> Result<Uri> {
-    let storage_node = context
-        .node
+    let storage_node = node
         .indexer()
         .get_blob_storage_node(blob_id.as_ref())
         .await?
@@ -31,7 +35,7 @@ async fn get_blob_url<S: AsRef<str>>(
     let uri = get_storage_node_address(
         *request_ip,
         storage_node,
-        &context.config,
+        &config,
         &format!("blob/{}", blob_id.as_ref()),
     )?;
 
@@ -41,22 +45,22 @@ async fn get_blob_url<S: AsRef<str>>(
 async fn fetch_urls(
     signed: bool,
     results: &mut QueryResponse,
-    context: Context,
+    node: DynDirectoryNode,
+    config: Arc<Config>,
     request_ip: IpAddr,
     identity: UserIdentity,
 ) -> Result<()> {
     let mut new_hits = Vec::with_capacity(results.count);
 
     for hit in results.hits.iter_mut() {
-        match get_blob_url(&context, &hit.id, &request_ip).await {
+        match get_blob_url(&node, &config, &hit.id, &request_ip).await {
             Ok(uri) => {
                 let mut blob_uri = uri.to_string();
                 // Sign the URL if requested
                 if signed {
                     let mut identity = identity.clone();
                     identity.blobs_whitelist = Some(vec![hit.id.clone()]);
-                    let tok =
-                        menmos_auth::make_token(&context.config.node.encryption_key, &identity)?;
+                    let tok = menmos_auth::make_token(&config.node.encryption_key, &identity)?;
                     blob_uri += &format!("?signature={}", tok);
                 }
 
@@ -75,34 +79,33 @@ async fn fetch_urls(
     Ok(())
 }
 
-#[tracing::instrument(skip(context, addr, query_request))]
+#[tracing::instrument(skip(node, config, addr, query_request))]
 pub async fn query(
     user: UserIdentity,
-    context: Context,
-    addr: Option<SocketAddr>,
-    query_request: QueryRequest,
-) -> Result<reply::Response, warp::Rejection> {
-    let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
-
-    let query = Query::try_from(query_request).map_err(BadRequest::from)?;
+    Extension(node): Extension<DynDirectoryNode>,
+    Extension(config): Extension<Arc<Config>>,
+    ClientIp(addr): ClientIp,
+    Json(query_request): Json<QueryRequest>,
+) -> Result<Json<QueryResponse>, HTTPError> {
+    let query = Query::try_from(query_request).map_err(HTTPError::bad_request)?;
     tracing::debug!(query = ?query.expression, "query request");
 
-    let mut query_response = context
-        .node
+    let mut query_response = node
         .query()
         .query(&query, &user.username)
         .await
-        .map_err(InternalServerError::from)?;
+        .map_err(HTTPError::internal_server_error)?;
 
     fetch_urls(
         query.sign_urls,
         &mut query_response,
-        context,
-        socket_addr.ip(),
+        node,
+        config,
+        addr,
         user,
     )
     .await
-    .map_err(InternalServerError::from)?;
+    .map_err(HTTPError::internal_server_error)?;
 
-    Ok(apikit::reply::json(&query_response))
+    Ok(Json(query_response))
 }

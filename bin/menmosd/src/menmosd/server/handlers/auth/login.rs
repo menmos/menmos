@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use axum::extract::Extension;
 use axum::Json;
 
 use apikit::reject::{Forbidden, HTTPError, InternalServerError};
@@ -16,8 +17,8 @@ use crate::server::Context;
 
 #[tracing::instrument(skip(node, key), fields(user = ? request.username))]
 pub async fn login(
-    node: Arc<dyn DirectoryNode + Send + Sync>,
-    key: String,
+    Extension(node): Extension<Arc<dyn DirectoryNode + Send + Sync>>,
+    Extension(key): Extension<String>,
     request: Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, HTTPError> {
     if node

@@ -1,8 +1,5 @@
-mod admin;
-mod auth;
 mod blob;
 mod blobmeta;
-mod query;
 mod routing;
 mod storage;
 mod util;
@@ -22,9 +19,6 @@ pub fn all(
     storage::all(context.clone())
         .or(blob::all(context.clone()))
         .or(blobmeta::all(context.clone()))
-        .or(admin::all(context.clone()))
-        .or(query::all(context.clone()))
-        .or(auth::all(context.clone()))
         .or(routing::all(context))
         .or(webui::serve_static())
         .recover(apikit::reject::recover)
@@ -40,9 +34,6 @@ pub fn all(
     storage::all(context.clone())
         .or(blob::all(context.clone()))
         .or(blobmeta::all(context.clone()))
-        .or(admin::all(context.clone()))
-        .or(query::all(context.clone()))
-        .or(auth::all(context.clone()))
         .or(routing::all(context))
         .or(webui::serve_static())
         .with(

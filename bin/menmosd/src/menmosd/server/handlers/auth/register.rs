@@ -1,49 +1,51 @@
-use apikit::reject::{Forbidden, InternalServerError};
+use apikit::reject::{Forbidden, HTTPError, InternalServerError};
+use axum::extract::Extension;
+use axum::Json;
 use menmos_auth::UserIdentity;
+use std::sync::Arc;
 
 use protocol::directory::auth::{LoginResponse, RegisterRequest};
 
-use warp::reply;
+use interface::DynDirectoryNode;
 
 use crate::server::Context;
 
+#[tracing::instrument(skip(node, key), fields(user = ? request.username, caller = ? identity.username))]
 pub async fn register(
     identity: menmos_auth::UserIdentity,
-    context: Context,
-    request: RegisterRequest,
-) -> Result<reply::Response, warp::Rejection> {
+    Extension(node): Extension<DynDirectoryNode>,
+    Extension(key): Extension<String>,
+    request: Json<RegisterRequest>,
+) -> Result<Json<LoginResponse>, HTTPError> {
     tracing::debug!("identity: {:?}", identity);
     if !identity.admin {
-        return Err(Forbidden.into());
+        return Err(HTTPError::Forbidden);
     }
 
     // Don't allow duplicate username registration.
-    if context
-        .node
+    if node
         .user()
         .has_user(&request.username)
         .await
-        .map_err(InternalServerError::from)?
+        .map_err(HTTPError::internal_server_error)?
     {
-        return Err(Forbidden.into());
+        return Err(HTTPError::Forbidden);
     }
 
-    context
-        .node
-        .user()
+    node.user()
         .register(&request.username, &request.password)
         .await
-        .map_err(InternalServerError::from)?;
+        .map_err(HTTPError::internal_server_error)?;
 
     let token = menmos_auth::make_token(
-        &context.config.node.encryption_key,
+        &key,
         UserIdentity {
-            username: request.username,
+            username: request.0.username,
             admin: true, // TODO: We don't support privilege levels yet.
             blobs_whitelist: None,
         },
     )
-    .map_err(InternalServerError::from)?;
+    .map_err(HTTPError::internal_server_error)?;
 
-    Ok(apikit::reply::json(&LoginResponse { token }))
+    Ok(Json(LoginResponse { token }))
 }

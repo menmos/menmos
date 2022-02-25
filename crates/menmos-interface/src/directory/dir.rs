@@ -369,3 +369,5 @@ pub trait DirectoryNode {
 
     async fn flush(&self) -> Result<()>;
 }
+
+pub type DynDirectoryNode = Arc<dyn DirectoryNode + Send + Sync>;
