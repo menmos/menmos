@@ -30,7 +30,7 @@ async fn get_blob_url<S: AsRef<str>>(
         .indexer()
         .get_blob_storage_node(blob_id.as_ref())
         .await?
-        .ok_or_else(|| anyhow!("blob {} not found", blob_id.as_ref()))?;
+        .ok_or_else(|| anyhow!("blob not found"))?;
 
     let uri = get_storage_node_address(
         *request_ip,

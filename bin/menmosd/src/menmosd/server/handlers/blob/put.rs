@@ -1,63 +1,60 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
-use apikit::reject::{BadRequest, InternalServerError};
+use apikit::reject::{BadRequest, HTTPError, InternalServerError};
 
-use interface::{BlobInfoRequest, BlobMetaRequest};
+use axum::extract::{Extension, TypedHeader};
+use axum::response::Redirect;
+use axum_client_ip::ClientIp;
+
+use headers::Error;
+
+use interface::{BlobInfoRequest, BlobMetaRequest, DynDirectoryNode};
+
+use protocol::header::{BlobMetaHeader, BlobSizeHeader};
 
 use menmos_auth::UserIdentity;
 
-use warp::Reply;
-
 use crate::network::get_storage_node_address;
 use crate::server::Context;
+use crate::Config;
 
-/// Parse the blob metadata from a header value.
-fn parse_metadata(header_value: String) -> Result<BlobMetaRequest> {
-    let json_bytes = base64::decode(header_value.as_bytes())?;
-    let meta: BlobMetaRequest = serde_json::from_slice(&json_bytes)?;
-    Ok(meta)
-}
-
-#[tracing::instrument(skip(context, meta, addr))]
+#[tracing::instrument(skip(node, config, meta, addr))]
 pub async fn put(
     user: UserIdentity,
-    context: Context,
-    meta: String,
-    blob_size: Option<u64>,
-    addr: Option<SocketAddr>,
-) -> Result<warp::reply::Response, warp::Rejection> {
-    let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
-
-    let meta = parse_metadata(meta).map_err(BadRequest::from)?;
-
+    Extension(node): Extension<DynDirectoryNode>,
+    Extension(config): Extension<Arc<Config>>,
+    TypedHeader(BlobMetaHeader(meta)): TypedHeader<BlobMetaHeader>,
+    TypedHeader(BlobSizeHeader(size)): TypedHeader<BlobSizeHeader>,
+    ClientIp(addr): ClientIp,
+) -> Result<Redirect, HTTPError> {
     // Pick a storage node for our new blob.
     let new_blob_id = uuid::Uuid::new_v4().to_string();
 
     let blob_info_request = BlobInfoRequest {
         meta_request: meta,
-        size: blob_size.unwrap_or_default(),
+        size,
         owner: user.username,
     };
 
-    let targeted_storage_node = context
-        .node
+    let targeted_storage_node = node
         .indexer()
         .pick_node_for_blob(&new_blob_id, blob_info_request)
         .await
-        .map_err(InternalServerError::from)?;
+        .map_err(HTTPError::internal_server_error)?;
 
     // Redirect the uploader to the node's address.
     let node_address = get_storage_node_address(
-        socket_addr.ip(),
+        addr,
         targeted_storage_node,
-        &context.config,
+        &config,
         &format!("blob/{}", &new_blob_id),
     )
-    .map_err(InternalServerError::from)?;
+    .map_err(HTTPError::internal_server_error)?;
 
     tracing::debug!("redirecting to {}", &node_address);
 
-    Ok(warp::redirect::temporary(node_address).into_response())
+    Ok(Redirect::temporary(node_address))
 }

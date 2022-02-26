@@ -19,6 +19,7 @@ const MESSAGE_FORBIDDEN: &str = "forbidden";
 pub enum HTTPError {
     BadRequest { error: String },
     Forbidden,
+    NotFound,
     InternalServerError { error: String },
 }
 
@@ -41,7 +42,11 @@ impl IntoResponse for HTTPError {
         let status = match self {
             Self::BadRequest { .. } => StatusCode::BAD_REQUEST,
             Self::Forbidden => StatusCode::FORBIDDEN, // TODO: Actually put a message here.
-            Self::InternalServerError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::NotFound => StatusCode::NOT_FOUND,
+            Self::InternalServerError { ref error } => {
+                tracing::error!("{error}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
         };
 
         let body = Json(self);

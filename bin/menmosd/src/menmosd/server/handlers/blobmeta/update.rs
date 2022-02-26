@@ -1,40 +1,43 @@
+use axum::extract::{Extension, Path};
+use axum::response::Redirect;
+use axum::Json;
+use axum_client_ip::ClientIp;
 use std::net::SocketAddr;
 
-use apikit::reject::{InternalServerError, NotFound};
+use apikit::reject::{HTTPError, InternalServerError, NotFound};
 
 use menmos_auth::UserIdentity;
 
-use interface::BlobMetaRequest;
+use crate::Config;
+use interface::{BlobMetaRequest, DynDirectoryNode};
 use warp::Reply;
 
 use crate::network::get_storage_node_address;
 use crate::server::Context;
 
-#[tracing::instrument(skip(context, _meta, addr))]
+#[tracing::instrument(skip(node, _meta, config, addr))]
 pub async fn update(
     _user: UserIdentity,
-    context: Context,
-    blob_id: String,
-    _meta: BlobMetaRequest,
-    addr: Option<SocketAddr>,
-) -> Result<warp::reply::Response, warp::Rejection> {
-    let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
-
-    let storage_node = context
-        .node
+    Extension(node): Extension<DynDirectoryNode>,
+    Extension(config): Extension<Config>,
+    ClientIp(addr): ClientIp,
+    Path(blob_id): Path<String>,
+    _meta: Json<BlobMetaRequest>,
+) -> Result<Redirect, HTTPError> {
+    let storage_node = node
         .indexer()
         .get_blob_storage_node(&blob_id)
         .await
-        .map_err(InternalServerError::from)?
-        .ok_or(NotFound)?;
+        .map_err(HTTPError::internal_server_error)?
+        .ok_or(HTTPError::NotFound)?;
 
     let node_address = get_storage_node_address(
-        socket_addr.ip(),
+        addr,
         storage_node,
-        &context.config,
+        &config,
         &format!("blob/{}/metadata", &blob_id),
     )
-    .map_err(InternalServerError::from)?;
+    .map_err(HTTPError::internal_server_error)?;
 
-    Ok(warp::redirect::temporary(node_address).into_response())
+    Ok(Redirect::temporary(node_address))
 }

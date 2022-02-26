@@ -1,5 +1,4 @@
 mod blob;
-mod blobmeta;
 mod util;
 
 mod webui;
@@ -15,7 +14,6 @@ pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
     blob::all(context.clone())
-        .or(blobmeta::all(context.clone()))
         .or(webui::serve_static())
         .recover(apikit::reject::recover)
         .with(warp::log::custom(
@@ -28,7 +26,6 @@ pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
     blob::all(context.clone())
-        .or(blobmeta::all(context.clone()))
         .or(webui::serve_static())
         .with(
             warp::cors()

@@ -1791,9 +1791,14 @@ name = "menmos-protocol"
 version = "0.1.1"
 dependencies = [
  "anyhow",
+ "base64",
+ "headers",
  "menmos-interface",
+ "once_cell",
  "rapidquery",
  "serde 1.0.136",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

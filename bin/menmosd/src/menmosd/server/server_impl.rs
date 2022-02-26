@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 
@@ -14,6 +15,7 @@ use interface::{CertificateInfo, DirectoryNode};
 
 use tokio::sync::mpsc;
 use tokio::task::{spawn, JoinHandle};
+use tower_http::classify::ServerErrorsFailureClass;
 
 use tower_http::trace::TraceLayer;
 use tower_request_id::{RequestId, RequestIdLayer};
@@ -86,27 +88,36 @@ impl Server {
                     .delete(handlers::routing::delete),
             )
             // Blob meta routes
+            .route("/metadata", get(handlers::blobmeta::list))
             .route(
                 "/blob/:blob_id/metadata",
                 get(handlers::blobmeta::get)
                     .post(handlers::blobmeta::create)
+                    .put(handlers::blobmeta::update)
                     .delete(handlers::blobmeta::delete),
             )
-            .layer(TraceLayer::new_for_http().make_span_with(|r: &Request<_>| {
-                // We get the request id from the extensions
-                let request_id = r
-                    .extensions()
-                    .get::<RequestId>()
-                    .map(ToString::to_string)
-                    .unwrap_or_else(|| "unknown".into());
-                // And then we put it along with other information into the `request` span
-                info_span!(
-                    "request",
-                    id = %request_id,
-                    method = %r.method(),
-                    uri = %r.uri(),
-                )
-            })) // TODO: Add on-response callback to log calls at the info level
+            // Blob routes
+            .route("/blob", post(handlers::blob::put))
+            .route("/blob/:blob_id", post(handlers::blob::update))
+            .layer(
+                TraceLayer::new_for_http()
+                    .make_span_with(|r: &Request<_>| {
+                        // We get the request id from the extensions
+                        let request_id = r
+                            .extensions()
+                            .get::<RequestId>()
+                            .map(ToString::to_string)
+                            .unwrap_or_else(|| "unknown".into());
+                        // And then we put it along with other information into the `request` span
+                        info_span!(
+                            "request",
+                            id = %request_id,
+                            method = %r.method(),
+                            uri = %r.uri(),
+                        )
+                    })
+                    .on_request(|_r: &Request<_>, _s: &tracing::Span| {}), // We silence the on-request hook
+            ) // TODO: Add on-response callback to log calls at the info level
             .layer(RequestIdLayer)
             .layer(AddExtensionLayer::new(certificate_info)) // TODO: Make this typing better
             .layer(AddExtensionLayer::new(config.node.encryption_key.clone())) // TODO: Make this typing better.

@@ -14,44 +14,10 @@ const FSYNC_PATH: &str = "fsync";
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    put(context.clone())
-        .or(update(context.clone()))
-        .or(write(context.clone()))
+    write(context.clone())
         .or(get(context.clone()))
         .or(delete(context.clone()))
         .or(fsync(context))
-}
-
-// Create blob.
-fn put(
-    context: Context,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::post()
-        .and(user(context.config.node.encryption_key.clone()))
-        .and(warp::path(BLOBS_PATH))
-        .and(warp::path::end())
-        .and(with_context(context))
-        .and(warp::header::<String>("x-blob-meta"))
-        // We use X-Blob-Size because Content-Length is a liar sometimes.
-        // The content length includes the size of the multipart boundary times the number of parts,
-        // so it'll be higher than the real blob size.
-        .and(warp::header::optional::<u64>("x-blob-size"))
-        .and(warp::filters::addr::remote())
-        .and_then(handlers::blob::put)
-}
-
-// Full overwrite of a blob.
-fn update(
-    context: Context,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::post()
-        .and(user(context.config.node.encryption_key.clone()))
-        .and(with_context(context))
-        .and(warp::filters::addr::remote())
-        .and(warp::path(BLOBS_PATH))
-        .and(warp::path::param())
-        .and(warp::path::end())
-        .and_then(handlers::blob::update)
 }
 
 // Random write to a blob.
