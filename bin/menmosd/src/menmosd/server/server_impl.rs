@@ -101,7 +101,7 @@ pub(crate) fn build_router(
 
 pub struct Server {
     node: Arc<dyn DirectoryNode + Send + Sync>,
-    handle: JoinHandle<Result<(), hyper::Error>>,
+    handle: JoinHandle<()>,
     stop_tx: mpsc::Sender<()>,
 }
 
@@ -136,16 +136,26 @@ impl Server {
 
                 tracing::debug!("http layer started");
                 tracing::info!("menmosd is up");
-                spawn(srv)
-            }
-            ServerSetting::Https(https_cfg) => spawn(async move {
-                match use_tls(node.clone(), config, https_cfg, stop_rx).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        tracing::error!("async error: {}", e)
+                spawn(async move {
+                    match srv.await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            tracing::error!("http server error: {e}");
+                        }
                     }
-                }
-            }),
+                })
+            }
+            ServerSetting::Https(https_cfg) => {
+                let node = node.clone();
+                spawn(async move {
+                    match use_tls(node, config, https_cfg, stop_rx).await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            tracing::error!("https server error: {e}")
+                        }
+                    }
+                })
+            }
         };
 
         Ok(Server {
@@ -158,7 +168,7 @@ impl Server {
     pub async fn stop(self) -> Result<()> {
         tracing::info!("requesting to quit");
         self.stop_tx.send(()).await?;
-        self.handle.await??;
+        self.handle.await?;
         self.node.flush().await?;
         tracing::info!("exited");
 
