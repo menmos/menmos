@@ -1,7 +1,6 @@
 //! Commonly used rejections and recovery procedures.
 use std::convert::Infallible;
 
-use axum::body::{Body, Bytes, Full};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 
@@ -31,6 +30,7 @@ impl HTTPError {
     }
 
     pub fn internal_server_error<S: ToString>(s: S) -> Self {
+        tracing::error!("YAYEET");
         Self::InternalServerError {
             error: s.to_string(),
         }

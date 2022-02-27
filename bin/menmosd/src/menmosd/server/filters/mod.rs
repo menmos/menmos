@@ -1,4 +1,3 @@
-mod blob;
 mod util;
 
 mod webui;
@@ -13,8 +12,7 @@ use crate::server::Context;
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
-    blob::all(context.clone())
-        .or(webui::serve_static())
+    webui::serve_static()
         .recover(apikit::reject::recover)
         .with(warp::log::custom(
             |info| tracing::info!(status = ?info.status(), elapsed = ?info.elapsed(), "{} {}", info.method(), info.path()),
@@ -25,8 +23,7 @@ pub fn all(
 pub fn all(
     context: Context,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
-    blob::all(context.clone())
-        .or(webui::serve_static())
+    webui::serve_static()
         .with(
             warp::cors()
                 .allow_any_origin()

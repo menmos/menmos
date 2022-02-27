@@ -3,6 +3,7 @@ use axum::response::Redirect;
 use axum::Json;
 use axum_client_ip::ClientIp;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use apikit::reject::{HTTPError, InternalServerError, NotFound};
 
@@ -19,7 +20,7 @@ use crate::server::Context;
 pub async fn update(
     _user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,
-    Extension(config): Extension<Config>,
+    Extension(config): Extension<Arc<Config>>,
     ClientIp(addr): ClientIp,
     Path(blob_id): Path<String>,
     _meta: Json<BlobMetaRequest>,
