@@ -1,14 +1,23 @@
+use std::convert::Infallible;
 use std::io::BufReader;
+use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, str::FromStr};
 
 use anyhow::Result;
+use axum::extract::Path;
+use axum::http::{Request, Uri};
+use axum::response::Redirect;
+use axum::routing::any_service;
+use axum::Router;
+use axum_server::tls_rustls::RustlsConfig;
 
 use antidns::{Config as DnsConfig, Server as DnsServer};
 
 use futures::future::{AbortHandle, Abortable};
+use hyper::service::service_fn;
 
 use interface::{CertificateInfo, DirectoryNode};
 
@@ -22,6 +31,7 @@ use warp::Filter;
 
 use x509_parser::pem::Pem;
 
+use crate::server::server_impl::build_router;
 use crate::{
     config::{HttpsParameters, LetsEncryptUrl},
     server::{filters, Context},
@@ -162,19 +172,25 @@ pub async fn use_tls(
         let (tx80, rx80) = oneshot::channel();
         let http_handle = {
             let domain = cfg.dns.host_name.to_string();
-            let redirect = warp::path::tail().map(move |path: warp::path::Tail| {
-                tracing::debug!("redirect to https://{}/{}", domain, path.as_str());
-                warp::redirect::redirect(
-                    warp::http::Uri::from_str(&format!("https://{}/{}", &domain, path.as_str()))
-                        .expect("problem with uri"),
-                )
-            });
-            let http_srv = warp::serve(redirect)
-                .bind_with_graceful_shutdown(([0, 0, 0, 0], cfg.http_port), async {
+            let router = Router::new().route(
+                "/*path",
+                any_service(service_fn(
+                    |_: Request<_>, Path(path): Path<String>| async {
+                        tracing::debug!("redirect to https://{}/{}", domain, path.as_str());
+                        let target_uri =
+                            Uri::from_str(&format!("https://{}/{}", &domain, path.as_str()))
+                                .expect("problem with uri");
+                        Ok::<_, Infallible>(Redirect::permanent(target_uri))
+                    },
+                )),
+            );
+
+            let http_srv = axum::Server::bind(&([0, 0, 0, 0], cfg.http_port).into())
+                .serve(router.into_make_service_with_connect_info())
+                .with_graceful_shutdown(async move {
                     rx80.await.ok();
                     tracing::info!("redirect layer stop signal received");
-                })
-                .1;
+                });
 
             spawn(http_srv)
         };
@@ -186,11 +202,19 @@ pub async fn use_tls(
             let key_name = key_name.clone();
             let pem_name = pem_name.clone();
 
-            let context = Context {
-                node: n.clone(),
-                config: node_cfg.clone(),
-                certificate_info: Arc::from(Some(certificate_info)),
-            };
+            let router = build_router(
+                node_cfg.clone(),
+                n.clone(),
+                Arc::from(Some(certificate_info)),
+            );
+
+            let config = RustlsConfig::from_pem_file(pem_name, key_name)
+                .await
+                .unwrap();
+
+            let https_srv = axum_server::bind_rustls(([0, 0, 0, 0], cfg.https_port).into(), config)
+                .serve(router.into_make_service_with_connect_info::<SocketAddr, _>());
+
             let https_srv = warp::serve(filters::all(context))
                 .tls()
                 .cert_path(&pem_name)
