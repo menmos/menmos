@@ -28,6 +28,7 @@ pub struct IDMap {
 }
 
 impl IDMap {
+    #[tracing::instrument(name = "id_map_init", skip(db))]
     pub fn new(db: &sled::Db, name: &str) -> Result<Self> {
         let fwd_map = db.open_tree(format!("idmap-{}-fwd", name))?;
         let rev_map = db.open_tree(format!("idmap-{}-rev", name))?;
@@ -37,6 +38,8 @@ impl IDMap {
             Some((k, _)) => k.as_ref().read_u32::<BigEndian>()? + 1,
             None => 0,
         };
+
+        tracing::trace!(next_id = next_id, "init complete");
 
         Ok(Self {
             fwd_map,

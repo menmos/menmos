@@ -4,13 +4,14 @@ mod ssl;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 
 use axum::http::Request;
+use axum::response::Response;
 use axum::routing::*;
 use axum::{AddExtensionLayer, Router};
-use hyper::service::service_fn;
 
 use interface::{CertificateInfo, DirectoryNode, DynDirectoryNode};
 
@@ -95,8 +96,13 @@ pub(crate) fn build_router(
                         uri = %r.uri(),
                     )
                 })
-                .on_request(|_r: &Request<_>, _s: &tracing::Span| {}), // We silence the on-request hook
-        ) // TODO: Add on-response callback to log calls at the info level
+                .on_request(|_r: &Request<_>, _s: &tracing::Span| {}) // We silence the on-request hook
+                .on_response(
+                    |response: &Response, latency: Duration, _span: &tracing::Span| {
+                        tracing::info!(status = ?response.status(), elapsed = ?latency, "complete");
+                    },
+                ),
+        )
         .layer(RequestIdLayer)
         .layer(AddExtensionLayer::new(certificate_info)) // TODO: Make this typing better
         .layer(AddExtensionLayer::new(config.node.encryption_key.clone())) // TODO: Make this typing better.

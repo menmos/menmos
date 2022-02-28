@@ -32,11 +32,14 @@ pub struct SledMetadataStore {
 }
 
 impl SledMetadataStore {
+    #[tracing::instrument(name = "meta_store_init", skip(db))]
     pub fn new(db: &sled::Db) -> Result<Self> {
         let meta_map = db.open_tree(META_MAP)?;
 
         let tag_map = BitvecTree::new(db, TAG_MAP)?;
+
         let field_index = FieldsIndex::new(db)?;
+
         let user_mask_map = BitvecTree::new(db, USER_MASK_MAP)?;
 
         Ok(Self {
