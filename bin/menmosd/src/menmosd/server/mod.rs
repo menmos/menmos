@@ -1,4 +1,3 @@
-mod filters;
 mod handlers;
 mod ssl;
 

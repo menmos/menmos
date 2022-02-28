@@ -1943,7 +1943,6 @@ dependencies = [
  "tower-request-id",
  "tracing",
  "uuid",
- "warp",
  "x509-parser",
 ]
 
