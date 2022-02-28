@@ -1,4 +1,4 @@
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -7,7 +7,7 @@ use axum::extract::Extension;
 use axum::Json;
 use axum_client_ip::ClientIp;
 
-use apikit::reject::{Forbidden, HTTPError, InternalServerError};
+use apikit::reject::HTTPError;
 
 use interface::{CertificateInfo, DynDirectoryNode, MoveInformation, StorageNodeInfo};
 
@@ -16,7 +16,6 @@ use menmos_auth::StorageNodeIdentity;
 use protocol::directory::storage::{MoveRequest, RegisterResponse};
 
 use crate::network::get_storage_node_address;
-use crate::server::context::Context;
 use crate::Config;
 
 const MESSAGE_REGISTRATION_SUCCESSFUL: &str = "storage node registered";

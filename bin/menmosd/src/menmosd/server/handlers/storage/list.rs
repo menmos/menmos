@@ -1,4 +1,4 @@
-use apikit::reject::{HTTPError, InternalServerError};
+use apikit::reject::HTTPError;
 
 use axum::extract::Extension;
 use axum::Json;
@@ -8,8 +8,6 @@ use menmos_auth::UserIdentity;
 use interface::DynDirectoryNode;
 
 use protocol::directory::storage::ListStorageNodesResponse;
-
-use crate::server::context::Context;
 
 #[tracing::instrument(skip(node))]
 pub async fn list(

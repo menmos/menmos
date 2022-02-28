@@ -1,46 +1,38 @@
-use std::cell::RefCell;
 use std::convert::Infallible;
 use std::io::BufReader;
 use std::net::SocketAddr;
 use std::path::Path as StdPath;
-use std::rc::Rc;
-use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::{fs, str::FromStr};
 
+use antidns::{Config as DnsConfig, Server as DnsServer};
+
 use anyhow::Result;
-use axum::extract::Path;
+
 use axum::http::{Request, Uri};
 use axum::response::{IntoResponse, Redirect};
 use axum::routing::any_service;
 use axum::Router;
+
 use axum_server::tls_rustls::RustlsConfig;
 use axum_server::Handle;
 
-use antidns::{Config as DnsConfig, Server as DnsServer};
-
 use futures::future::{AbortHandle, Abortable};
+
 use hyper::service::service_fn;
 
 use interface::{CertificateInfo, DirectoryNode};
 
-use tokio::task::spawn;
 use tokio::{
     sync::{mpsc, oneshot},
-    task::JoinHandle,
+    task::{spawn, JoinHandle},
 };
-
-use warp::Filter;
 
 use x509_parser::pem::Pem;
 
-use crate::server::server_impl::build_router;
-use crate::{
-    config::{HttpsParameters, LetsEncryptUrl},
-    server::{filters, Context},
-    Config,
-};
+use crate::config::{Config, HttpsParameters, LetsEncryptUrl};
+use crate::server::build_router;
 
 async fn graceful_shutdown(handle: Handle, rx: oneshot::Receiver<()>) {
     rx.await.ok();
@@ -149,7 +141,7 @@ pub async fn use_tls(
         if time_to_exp.filter(|&t| t > TMIN).is_none() {
             // TODO: Don't do a new order with every boot.
             tracing::debug!("sending an ACME order for a new certificate");
-            let mut new_order = account.new_order(&format!("*.{}", cfg.dns.root_domain), &[])?;
+            let new_order = account.new_order(&format!("*.{}", cfg.dns.root_domain), &[])?;
 
             // TODO: Review this, not sure we _need_ Arc + Mutex but didn't find anything better.
             let order_sync = Arc::new(Mutex::new(new_order));

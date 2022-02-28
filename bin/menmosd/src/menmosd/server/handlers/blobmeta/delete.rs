@@ -1,13 +1,13 @@
-use apikit::reject::{HTTPError, InternalServerError};
+use apikit::reject::HTTPError;
+
 use axum::extract::{Extension, Path};
 use axum::Json;
-use menmos_auth::StorageNodeIdentity;
 
 use apikit::payload::MessageResponse;
-use interface::DynDirectoryNode;
-use warp::reply;
 
-use crate::server::Context;
+use interface::DynDirectoryNode;
+
+use menmos_auth::StorageNodeIdentity;
 
 #[tracing::instrument(skip(node))]
 pub async fn delete(

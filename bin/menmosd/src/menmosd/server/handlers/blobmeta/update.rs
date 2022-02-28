@@ -1,20 +1,18 @@
+use std::sync::Arc;
+
+use apikit::reject::HTTPError;
+
 use axum::extract::{Extension, Path};
 use axum::response::Redirect;
 use axum::Json;
 use axum_client_ip::ClientIp;
-use std::net::SocketAddr;
-use std::sync::Arc;
 
-use apikit::reject::{HTTPError, InternalServerError, NotFound};
+use interface::{BlobMetaRequest, DynDirectoryNode};
 
 use menmos_auth::UserIdentity;
 
-use crate::Config;
-use interface::{BlobMetaRequest, DynDirectoryNode};
-use warp::Reply;
-
 use crate::network::get_storage_node_address;
-use crate::server::Context;
+use crate::Config;
 
 #[tracing::instrument(skip(node, _meta, config, addr))]
 pub async fn update(

@@ -30,7 +30,6 @@ impl HTTPError {
     }
 
     pub fn internal_server_error<S: ToString>(s: S) -> Self {
-        tracing::error!("YAYEET");
         Self::InternalServerError {
             error: s.to_string(),
         }

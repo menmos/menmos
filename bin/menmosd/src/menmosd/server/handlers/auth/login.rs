@@ -1,19 +1,15 @@
 use std::sync::Arc;
 
+use apikit::reject::HTTPError;
+
 use axum::extract::Extension;
 use axum::Json;
 
-use apikit::reject::{Forbidden, HTTPError, InternalServerError};
+use interface::DirectoryNode;
 
 use menmos_auth::UserIdentity;
 
-use interface::DirectoryNode;
-
 use protocol::directory::auth::{LoginRequest, LoginResponse};
-
-use warp::reply;
-
-use crate::server::Context;
 
 #[tracing::instrument(skip(node, key), fields(user = ? request.username))]
 pub async fn login(

@@ -1,4 +1,4 @@
-use apikit::reject::{HTTPError, InternalServerError};
+use apikit::reject::HTTPError;
 
 use axum::extract::Extension;
 use axum::Json;
@@ -8,8 +8,6 @@ use interface::DynDirectoryNode;
 use menmos_auth::UserIdentity;
 
 use protocol::directory::routing::GetRoutingConfigResponse;
-
-use crate::server::context::Context;
 
 #[tracing::instrument(skip(node))]
 pub async fn get(

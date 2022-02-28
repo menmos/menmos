@@ -1,14 +1,13 @@
-use apikit::reject::{Forbidden, HTTPError, InternalServerError};
+use apikit::reject::HTTPError;
+
 use axum::extract::Extension;
 use axum::Json;
-use menmos_auth::UserIdentity;
-use std::sync::Arc;
-
-use protocol::directory::auth::{LoginResponse, RegisterRequest};
 
 use interface::DynDirectoryNode;
 
-use crate::server::Context;
+use menmos_auth::UserIdentity;
+
+use protocol::directory::auth::{LoginResponse, RegisterRequest};
 
 #[tracing::instrument(skip(node, key), fields(user = ? request.username, caller = ? identity.username))]
 pub async fn register(

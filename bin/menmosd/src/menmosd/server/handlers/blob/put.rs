@@ -1,24 +1,20 @@
-use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
-use apikit::reject::{BadRequest, HTTPError, InternalServerError};
+use apikit::reject::HTTPError;
 
 use axum::extract::{Extension, TypedHeader};
 use axum::response::Redirect;
 use axum_client_ip::ClientIp;
 
-use headers::Error;
-
-use interface::{BlobInfoRequest, BlobMetaRequest, DynDirectoryNode};
-
-use protocol::header::{BlobMetaHeader, BlobSizeHeader};
+use interface::{BlobInfoRequest, DynDirectoryNode};
 
 use menmos_auth::UserIdentity;
 
+use protocol::header::{BlobMetaHeader, BlobSizeHeader};
+
 use crate::network::get_storage_node_address;
-use crate::server::Context;
 use crate::Config;
 
 #[tracing::instrument(skip(node, config, meta, addr))]

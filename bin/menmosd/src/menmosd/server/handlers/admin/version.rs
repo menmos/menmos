@@ -1,11 +1,10 @@
-use axum::extract::FromRequest;
+use apikit::reject::HTTPError;
+
 use axum::Json;
 
 use menmos_auth::UserIdentity;
 
 use protocol::VersionResponse;
-
-use apikit::reject::HTTPError;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
