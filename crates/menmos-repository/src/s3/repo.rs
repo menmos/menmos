@@ -295,6 +295,8 @@ impl Repository for S3Repository {
             let f = fs::File::open(&path).await?;
             let file_length = path.metadata()?.len();
 
+            // TODO: Do this multipart?
+
             let _result = self
                 .client
                 .put_object()
