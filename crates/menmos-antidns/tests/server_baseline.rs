@@ -23,6 +23,7 @@ async fn get_server() -> Result<(Server, TokioAsyncResolver)> {
 
     let mut resolver_cfg = ResolverConfig::new();
     resolver_cfg.add_name_server(NameServerConfig {
+        bind_addr: None,
         socket_addr: SocketAddr::new(IpAddr::from([127, 0, 0, 1]), socket_port),
         protocol: trust_dns_resolver::config::Protocol::Udp,
         tls_dns_name: None,
@@ -54,7 +55,7 @@ async fn dns_resolution_of_magic_domain_names() -> Result<()> {
 
     assert_eq!(result.len(), 1);
 
-    if let RData::A(ip) = result[0].rdata() {
+    if let Some(RData::A(ip)) = result[0].data() {
         assert_eq!(ip, &Ipv4Addr::from([192, 168, 2, 100]));
     } else {
         return Err(anyhow!("missing A record"));
