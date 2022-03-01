@@ -14,10 +14,10 @@ pub mod blobmeta {
     #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
     #[serde(deny_unknown_fields)]
     pub struct ListMetadataRequest {
-        /// Optionally filter which tags to return (defaults to all).
+        /// Optionally filters which tags to return (defaults to all).
         pub tags: Option<Vec<String>>,
 
-        /// Optionally filter which fields to return (defaults to all). [e.g. "filetype"]
+        /// Optionally filters which fields to return (defaults to all). [e.g. "filetype"]
         pub fields: Option<Vec<String>>,
     }
 

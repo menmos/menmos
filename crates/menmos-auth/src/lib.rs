@@ -77,15 +77,13 @@ impl<B: Send> FromRequest<B> for StorageNodeIdentity {
         {
             tracing::debug!("got a bearer token from authorization header");
             Some(bearer.token().to_string())
-        } else {
-            if let Ok(Query(q)) = Query::<Signature>::from_request(req).await {
-                if q.signature.is_some() {
-                    tracing::debug!("got a signature from query params");
-                }
-                q.signature
-            } else {
-                None
+        } else if let Ok(Query(q)) = Query::<Signature>::from_request(req).await {
+            if q.signature.is_some() {
+                tracing::debug!("got a signature from query params");
             }
+            q.signature
+        } else {
+            None
         };
 
         let token = tok_maybe.ok_or_else(|| {
@@ -144,15 +142,13 @@ impl<B: Send> FromRequest<B> for UserIdentity {
         {
             tracing::trace!("got a bearer token from authorization header");
             Some(bearer.token().to_string())
-        } else {
-            if let Ok(Query(q)) = Query::<Signature>::from_request(req).await {
-                if q.signature.is_some() {
-                    tracing::trace!("got a signature from query params");
-                }
-                q.signature
-            } else {
-                None
+        } else if let Ok(Query(q)) = Query::<Signature>::from_request(req).await {
+            if q.signature.is_some() {
+                tracing::trace!("got a signature from query params");
             }
+            q.signature
+        } else {
+            None
         };
 
         let token = tok_maybe.ok_or_else(|| {
@@ -246,9 +242,9 @@ async fn validate_user_tokens(
     extract_token(&key, &token)
 }
 
-/// Warp filter to extract a user identity from the request. Use this when a route should be user-accessible.
+/// Warp filters to extract a user identity from the request. Use this when a route should be user-accessible.
 ///
-/// This filter first looks for a bearer token in the `Authorization` header. Failing to find it,
+/// This filters first looks for a bearer token in the `Authorization` header. Failing to find it,
 /// it falls back on the `signature` query string parameter. The signature parameter is used by the system
 /// to send pre-signed URLs to guests.
 ///
@@ -261,7 +257,7 @@ async fn validate_user_tokens(
 ///
 /// let encryption_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 32 characters.
 ///
-/// let filter = warp::path("ping")
+/// let filters = warp::path("ping")
 ///                 .and(user(encryption_key.into()))
 ///                 .map(|user_identity: UserIdentity| reply::message(format!("Hello, {}", user_identity.username)));
 /// ```
@@ -283,11 +279,11 @@ async fn validate_storage_node_token(
     extract_token(&key, token)
 }
 
-/// Warp filter to extract a storage node identity from the request.
+/// Warp filters to extract a storage node identity from the request.
 ///
 /// Use this when a route should be storage node-accessible.
 ///
-/// This filter only looks for an bearer token in the `Authorization` header, because pre-signed URLs are not supported
+/// This filters only looks for an bearer token in the `Authorization` header, because pre-signed URLs are not supported
 /// for storage node calls.
 ///
 /// # Examples
@@ -299,7 +295,7 @@ async fn validate_storage_node_token(
 ///
 /// let encryption_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 32 characters.
 ///
-/// let filter = warp::path("ping")
+/// let filters = warp::path("ping")
 ///                 .and(storage_node(encryption_key.into()))
 ///                 .map(|storage_identity: StorageNodeIdentity| {
 ///                     reply::message(format!("Storage node name: {}", storage_identity.id))

@@ -28,7 +28,7 @@ fn get_request_from_move_info(
     let node_address = get_storage_node_address(
         ip_addr,
         move_info.destination_node,
-        &config,
+        config,
         &format!("blob/{}", &move_info.blob_id),
     )?;
 

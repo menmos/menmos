@@ -19,7 +19,7 @@ impl Header for BlobMetaHeader {
         Self: Sized,
         I: Iterator<Item = &'i HeaderValue>,
     {
-        let first_value = values.next().ok_or_else(|| Error::invalid())?;
+        let first_value = values.next().ok_or_else(Error::invalid)?;
         let json_bytes = base64::decode(first_value.as_bytes()).map_err(|e| {
             tracing::debug!("failed to b64 decode blob meta: {e}");
             Error::invalid()
@@ -29,7 +29,7 @@ impl Header for BlobMetaHeader {
             Error::invalid()
         })?;
 
-        if let Some(_) = values.next() {
+        if values.next().is_some() {
             tracing::debug!("x-blob-meta doesn't support multiple assignment");
             return Err(Error::invalid());
         }

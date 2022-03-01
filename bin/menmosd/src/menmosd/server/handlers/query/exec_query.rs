@@ -35,7 +35,7 @@ async fn get_blob_url<S: AsRef<str>>(
     let uri = get_storage_node_address(
         *request_ip,
         storage_node,
-        &config,
+        config,
         &format!("blob/{}", blob_id.as_ref()),
     )?;
 

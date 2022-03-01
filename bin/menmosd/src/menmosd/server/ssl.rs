@@ -66,10 +66,7 @@ async fn join_with_timeout<E>(dur: Duration, handle: JoinHandle<Result<(), E>>) 
         abort_handle.abort();
     });
 
-    match future.await {
-        Ok(Ok(Ok(_))) => true,
-        _ => false,
-    }
+    matches!(future.await, Ok(Ok(Ok(_))))
 }
 
 async fn wait_for_server_stop(

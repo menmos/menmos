@@ -16,11 +16,11 @@ impl Header for BlobSizeHeader {
         Self: Sized,
         I: Iterator<Item = &'i HeaderValue>,
     {
-        let first_value = values.next().ok_or_else(|| Error::invalid())?;
+        let first_value = values.next().ok_or_else(Error::invalid)?;
         let value_str = first_value.to_str().map_err(|_| Error::invalid())?;
         let size = value_str.parse::<u64>().map_err(|_| Error::invalid())?;
 
-        if let Some(_) = values.next() {
+        if values.next().is_some() {
             tracing::trace!("x-blob-size doesn't support multiple assignment");
             return Err(Error::invalid());
         }

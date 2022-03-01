@@ -1,24 +1,19 @@
 mod handlers;
+mod layer;
+mod router;
 mod ssl;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::Result;
 
-use axum::http::Request;
-use axum::response::Response;
-use axum::routing::*;
-use axum::{AddExtensionLayer, Router};
+use axum::Router;
 
 use interface::{CertificateInfo, DirectoryNode, DynDirectoryNode};
 
 use tokio::sync::mpsc;
 use tokio::task::{spawn, JoinHandle};
-
-use tower_http::trace::TraceLayer;
-use tower_request_id::{RequestId, RequestIdLayer};
 
 use crate::config::{Config, ServerSetting};
 
@@ -27,88 +22,7 @@ pub(crate) fn build_router(
     node: DynDirectoryNode,
     certificate_info: Arc<Option<CertificateInfo>>,
 ) -> Router {
-    Router::new()
-        // Admin Routes
-        .route("/health", get(handlers::admin::health))
-        .route("/version", get(handlers::admin::version))
-        .route("/rebuild", post(handlers::admin::rebuild))
-        .route(
-            "/rebuild/:storage_node_id",
-            delete(handlers::admin::rebuild_complete),
-        )
-        .route("/flush", post(handlers::admin::flush))
-        .route("/config", get(handlers::admin::get_config))
-        // Auth routes
-        .route("/auth/login", post(handlers::auth::login))
-        .route("/auth/register", post(handlers::auth::register))
-        // Query routes
-        .route("/query", post(handlers::query::query))
-        // Storage node routes
-        .route(
-            "/node/storage",
-            put(handlers::storage::put).get(handlers::storage::list),
-        )
-        // Routing config routes
-        .route(
-            "/routing",
-            get(handlers::routing::get)
-                .put(handlers::routing::set)
-                .delete(handlers::routing::delete),
-        )
-        // Blob meta routes
-        .route("/metadata", get(handlers::blobmeta::list))
-        .route(
-            "/blob/:blob_id/metadata",
-            get(handlers::blobmeta::get)
-                .post(handlers::blobmeta::create)
-                .put(handlers::blobmeta::update)
-                .delete(handlers::blobmeta::delete),
-        )
-        // Blob routes
-        .route("/blob", post(handlers::blob::put))
-        .route(
-            "/blob/:blob_id",
-            get(handlers::blob::get)
-                .post(handlers::blob::update)
-                .put(handlers::blob::write)
-                .delete(handlers::blob::delete),
-        )
-        .route("/blob/:blob_id/fsync", post(handlers::blob::fsync))
-        .nest(
-            "/web",
-            Router::new().route("/*path", get(handlers::webui::serve_static)),
-        )
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(|r: &Request<_>| {
-                    // We get the request id from the extensions
-                    let request_id = r
-                        .extensions()
-                        .get::<RequestId>()
-                        .map(ToString::to_string)
-                        .unwrap_or_else(|| "unknown".into());
-                    // And then we put it along with other information into the `request` span
-                    tracing::info_span!(
-                        "request",
-                        id = %request_id,
-                        method = %r.method(),
-                        uri = %r.uri(),
-                    )
-                })
-                .on_request(|_r: &Request<_>, _s: &tracing::Span| {}) // We silence the on-request hook
-                .on_response(
-                    |response: &Response, latency: Duration, _span: &tracing::Span| {
-                        tracing::info!(status = ?response.status(), elapsed = ?latency, "complete");
-                    },
-                ),
-        )
-        .layer(RequestIdLayer)
-        .layer(AddExtensionLayer::new(certificate_info))
-        .layer(AddExtensionLayer::new(menmos_auth::EncryptionKey {
-            key: config.node.encryption_key.clone(),
-        }))
-        .layer(AddExtensionLayer::new(config.clone()))
-        .layer(AddExtensionLayer::new(node.clone()))
+    layer::wrap(router::new(), config, node, certificate_info)
 }
 
 pub struct Server {
