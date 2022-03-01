@@ -18,6 +18,15 @@ use warp::{filters::BoxedFilter, Filter};
 
 const TOKEN_TTL_SECONDS: u32 = 60 * 60 * 6; // 6 hours.
 
+/// The encryption key format that is expected by menmos_auth.
+///
+/// For the axum handlers, menmos_auth gets this structure from an extension layer that must be
+/// set manually in your axum router.
+#[derive(Clone, PartialEq, Eq)]
+pub struct EncryptionKey {
+    pub key: String,
+}
+
 /// Generate a signed token from an encryption key and a serializable payload.
 ///
 /// The generated token will be valid for six hours.
@@ -84,12 +93,12 @@ impl<B: Send> FromRequest<B> for StorageNodeIdentity {
             HTTPError::Forbidden
         })?;
 
-        // TODO: This typing isn't super solid, maybe have a type for storing the encryption key in
-        //       the extension layer?.
-        let Extension(key) = Extension::<String>::from_request(req).await.map_err(|e| {
-            tracing::warn!("no encryption key in extension layer: {}", e);
-            HTTPError::Forbidden
-        })?;
+        let Extension(EncryptionKey { key }) = Extension::<EncryptionKey>::from_request(req)
+            .await
+            .map_err(|e| {
+                tracing::warn!("no encryption key in extension layer: {}", e);
+                HTTPError::Forbidden
+            })?;
 
         let token_decoder = Branca::new(key.as_bytes()).map_err(|e| {
             tracing::warn!("invalid encryption key: {}", e);
@@ -151,12 +160,12 @@ impl<B: Send> FromRequest<B> for UserIdentity {
             HTTPError::Forbidden
         })?;
 
-        // TODO: This typing isn't super solid, maybe have a type for storing the encryption key in
-        //       the extension layer?.
-        let Extension(key) = Extension::<String>::from_request(req).await.map_err(|e| {
-            tracing::warn!("no encryption key in extension layer: {}", e);
-            HTTPError::Forbidden
-        })?;
+        let Extension(EncryptionKey { key }) = Extension::<EncryptionKey>::from_request(req)
+            .await
+            .map_err(|e| {
+                tracing::warn!("no encryption key in extension layer: {}", e);
+                HTTPError::Forbidden
+            })?;
 
         let token_decoder = Branca::new(key.as_bytes()).map_err(|e| {
             tracing::warn!("invalid encryption key: {}", e);

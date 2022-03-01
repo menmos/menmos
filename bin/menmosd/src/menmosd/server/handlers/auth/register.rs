@@ -5,7 +5,7 @@ use axum::Json;
 
 use interface::DynDirectoryNode;
 
-use menmos_auth::UserIdentity;
+use menmos_auth::{EncryptionKey, UserIdentity};
 
 use protocol::directory::auth::{LoginResponse, RegisterRequest};
 
@@ -13,10 +13,9 @@ use protocol::directory::auth::{LoginResponse, RegisterRequest};
 pub async fn register(
     identity: menmos_auth::UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,
-    Extension(key): Extension<String>,
+    Extension(EncryptionKey { key }): Extension<EncryptionKey>,
     request: Json<RegisterRequest>,
 ) -> Result<Json<LoginResponse>, HTTPError> {
-    tracing::debug!("identity: {:?}", identity);
     if !identity.admin {
         return Err(HTTPError::Forbidden);
     }

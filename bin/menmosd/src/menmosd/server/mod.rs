@@ -103,8 +103,10 @@ pub(crate) fn build_router(
                 ),
         )
         .layer(RequestIdLayer)
-        .layer(AddExtensionLayer::new(certificate_info)) // TODO: Make this typing better
-        .layer(AddExtensionLayer::new(config.node.encryption_key.clone())) // TODO: Make this typing better.
+        .layer(AddExtensionLayer::new(certificate_info))
+        .layer(AddExtensionLayer::new(menmos_auth::EncryptionKey {
+            key: config.node.encryption_key.clone(),
+        }))
         .layer(AddExtensionLayer::new(config.clone()))
         .layer(AddExtensionLayer::new(node.clone()))
 }

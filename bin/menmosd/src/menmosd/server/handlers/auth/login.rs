@@ -7,14 +7,14 @@ use axum::Json;
 
 use interface::DirectoryNode;
 
-use menmos_auth::UserIdentity;
+use menmos_auth::{EncryptionKey, UserIdentity};
 
 use protocol::directory::auth::{LoginRequest, LoginResponse};
 
 #[tracing::instrument(skip(node, key), fields(user = ? request.username))]
 pub async fn login(
     Extension(node): Extension<Arc<dyn DirectoryNode + Send + Sync>>,
-    Extension(key): Extension<String>,
+    Extension(EncryptionKey { key }): Extension<EncryptionKey>,
     request: Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, HTTPError> {
     if node
