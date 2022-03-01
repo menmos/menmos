@@ -5,10 +5,10 @@ on:
     branches:
       - master
   pull_request:
-    types: [opened, synchronize]
+    types: [ opened, synchronize ]
 
 jobs:
-  unit:
+  validate:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -43,41 +43,3 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --lib
-
-  integration:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-          - os: macos-latest
-          - os: windows-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Install OpenSSL
-        if: matrix.os == 'windows-latest'
-        run: |
-          git clone https://github.com/microsoft/vcpkg
-          .\vcpkg\bootstrap-vcpkg.bat
-          .\vcpkg\vcpkg integrate install
-          .\vcpkg\vcpkg install openssl:x64-windows-static-md
-        shell: pwsh
-
-      - uses: Swatinem/rust-cache@v1
-
-      - name: Increase file handle limit
-        if: matrix.os == 'macos-latest'
-        run: |
-          ulimit -n 10240
-
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          arg: --test '*'
