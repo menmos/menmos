@@ -294,6 +294,7 @@ impl Client {
             .post(&url)
             .bearer_auth(&self.token)
             .header(HeaderName::from_static("x-blob-meta"), meta_b64.clone())
+            .header(HeaderName::from_static("x-blob-size"), 0)
             .build()
             .context(RequestBuildSnafu)?;
 

@@ -21,7 +21,7 @@ const DEFAULT_TRACKED_CRATES: &[&str] = &[
     "betterstreams",
     "repository",
     "menmos-std",
-    "warp::filters::trace",
+    "tower_http",
 ];
 
 #[cfg(debug_assertions)]

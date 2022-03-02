@@ -22,11 +22,7 @@ pub struct Hit {
 
 impl Hit {
     pub fn new(id: String, meta: BlobMeta, url: String) -> Self {
-        Self {
-            id,
-            meta: meta,
-            url,
-        }
+        Self { id, meta, url }
     }
 }
 
@@ -369,3 +365,5 @@ pub trait DirectoryNode {
 
     async fn flush(&self) -> Result<()>;
 }
+
+pub type DynDirectoryNode = Arc<dyn DirectoryNode + Send + Sync>;

@@ -1,32 +1,44 @@
+use std::convert::Infallible;
 use std::io::BufReader;
-use std::path::Path;
-use std::sync::Arc;
+use std::net::SocketAddr;
+use std::path::Path as StdPath;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::{fs, str::FromStr};
 
+use antidns::{Config as DnsConfig, Server as DnsServer};
+
 use anyhow::Result;
 
-use antidns::{Config as DnsConfig, Server as DnsServer};
+use axum::http::{Request, Uri};
+use axum::response::{IntoResponse, Redirect};
+use axum::routing::any_service;
+use axum::Router;
+
+use axum_server::tls_rustls::RustlsConfig;
+use axum_server::Handle;
 
 use futures::future::{AbortHandle, Abortable};
 
+use hyper::service::service_fn;
+
 use interface::{CertificateInfo, DirectoryNode};
 
-use tokio::task::spawn;
 use tokio::{
     sync::{mpsc, oneshot},
-    task::JoinHandle,
+    task::{spawn, JoinHandle},
 };
-
-use warp::Filter;
 
 use x509_parser::pem::Pem;
 
-use crate::{
-    config::{HttpsParameters, LetsEncryptUrl},
-    server::{filters, Context},
-    Config,
-};
+use crate::config::{Config, HttpsParameters, LetsEncryptUrl};
+use crate::server::build_router;
+
+async fn graceful_shutdown(handle: Handle, rx: oneshot::Receiver<()>) {
+    rx.await.ok();
+    tracing::info!("https layer stop signal received");
+    handle.graceful_shutdown(None)
+}
 
 async fn interruptible_delay(dur: Duration, stop_rx: &mut mpsc::Receiver<()>) -> bool {
     let delay = tokio::time::sleep(dur);
@@ -45,7 +57,7 @@ async fn interruptible_delay(dur: Duration, stop_rx: &mut mpsc::Receiver<()>) ->
     }
 }
 
-async fn join_with_timeout(dur: Duration, handle: JoinHandle<()>) -> bool {
+async fn join_with_timeout<E>(dur: Duration, handle: JoinHandle<Result<(), E>>) -> bool {
     let (abort_handle, abort_registration) = AbortHandle::new_pair();
     let future = Abortable::new(handle, abort_registration);
 
@@ -54,10 +66,13 @@ async fn join_with_timeout(dur: Duration, handle: JoinHandle<()>) -> bool {
         abort_handle.abort();
     });
 
-    future.await.is_ok()
+    matches!(future.await, Ok(Ok(Ok(_))))
 }
 
-async fn wait_for_server_stop(http_handle: JoinHandle<()>, https_handle: JoinHandle<()>) {
+async fn wait_for_server_stop(
+    http_handle: JoinHandle<hyper::Result<()>>,
+    https_handle: JoinHandle<std::io::Result<()>>,
+) {
     let join_http = join_with_timeout(Duration::from_secs(5), http_handle);
     let join_https = join_with_timeout(Duration::from_secs(5), https_handle);
 
@@ -123,24 +138,36 @@ pub async fn use_tls(
         if time_to_exp.filter(|&t| t > TMIN).is_none() {
             // TODO: Don't do a new order with every boot.
             tracing::debug!("sending an ACME order for a new certificate");
-            let mut new_order = account.new_order(&format!("*.{}", cfg.dns.root_domain), &[])?;
-            let ord_csr = loop {
-                if let Some(ord_csr) = new_order.confirm_validations() {
-                    break ord_csr;
-                }
+            let new_order = account.new_order(&format!("*.{}", cfg.dns.root_domain), &[])?;
 
-                let auths = new_order.authorizations()?;
-                assert_eq!(auths.len(), 1);
+            // TODO: Review this, not sure we _need_ Arc + Mutex but didn't find anything better.
+            let order_sync = Arc::new(Mutex::new(new_order));
+            let ord_csr = loop {
+                let auths = {
+                    let order = order_sync.lock().expect("poisoned mutex");
+                    if let Some(ord_csr) = order.confirm_validations() {
+                        break ord_csr;
+                    }
+
+                    let auths = order.authorizations()?;
+                    assert_eq!(auths.len(), 1);
+
+                    auths
+                };
 
                 // Since we have only one domain we'll have only one authorization
                 let challenge = auths[0].dns_challenge();
                 dns_server.set_dns_challenge(&challenge.dns_proof()).await?;
 
-                // TODO: Make this async because this can cause tokio task starvation
-                // when using a low core count.
-                challenge.validate(5000)?;
-
-                new_order.refresh()?;
+                let order_sync = order_sync.clone();
+                let handle: JoinHandle<anyhow::Result<()>> =
+                    tokio::task::spawn_blocking(move || {
+                        let mut order = order_sync.lock().expect("poisoned mutex");
+                        challenge.validate(5000)?;
+                        order.refresh()?;
+                        Ok(())
+                    });
+                handle.await??;
             };
 
             // Ownership is proven. Create a private/public key pair for the
@@ -162,19 +189,26 @@ pub async fn use_tls(
         let (tx80, rx80) = oneshot::channel();
         let http_handle = {
             let domain = cfg.dns.host_name.to_string();
-            let redirect = warp::path::tail().map(move |path: warp::path::Tail| {
-                tracing::debug!("redirect to https://{}/{}", domain, path.as_str());
-                warp::redirect::redirect(
-                    warp::http::Uri::from_str(&format!("https://{}/{}", &domain, path.as_str()))
-                        .expect("problem with uri"),
-                )
-            });
-            let http_srv = warp::serve(redirect)
-                .bind_with_graceful_shutdown(([0, 0, 0, 0], cfg.http_port), async {
+            let router = Router::new().route(
+                "/*path",
+                any_service(service_fn(move |r: Request<_>| {
+                    let domain = domain.clone();
+                    async move {
+                        let path = r.uri().path();
+                        tracing::debug!("redirect to https://{}/{}", &domain, path);
+                        let target_uri = Uri::from_str(&format!("https://{}/{}", &domain, path))
+                            .expect("problem with uri");
+                        Ok::<_, Infallible>(Redirect::permanent(target_uri).into_response())
+                    }
+                })),
+            );
+
+            let http_srv = axum::Server::bind(&([0, 0, 0, 0], cfg.http_port).into())
+                .serve(router.into_make_service_with_connect_info::<SocketAddr, _>())
+                .with_graceful_shutdown(async move {
                     rx80.await.ok();
                     tracing::info!("redirect layer stop signal received");
-                })
-                .1;
+                });
 
             spawn(http_srv)
         };
@@ -186,20 +220,22 @@ pub async fn use_tls(
             let key_name = key_name.clone();
             let pem_name = pem_name.clone();
 
-            let context = Context {
-                node: n.clone(),
-                config: node_cfg.clone(),
-                certificate_info: Arc::from(Some(certificate_info)),
-            };
-            let https_srv = warp::serve(filters::all(context))
-                .tls()
-                .cert_path(&pem_name)
-                .key_path(&key_name)
-                .bind_with_graceful_shutdown(([0, 0, 0, 0], cfg.https_port), async {
-                    rx.await.ok();
-                    tracing::info!("https layer stop signal received");
-                })
-                .1;
+            let router = build_router(
+                node_cfg.clone(),
+                n.clone(),
+                Arc::from(Some(certificate_info)),
+            );
+
+            let config = RustlsConfig::from_pem_file(pem_name, key_name)
+                .await
+                .unwrap();
+
+            let interrupt_handle = Handle::new();
+            tokio::spawn(graceful_shutdown(interrupt_handle.clone(), rx));
+
+            let https_srv = axum_server::bind_rustls(([0, 0, 0, 0], cfg.https_port).into(), config)
+                .handle(interrupt_handle)
+                .serve(router.into_make_service_with_connect_info::<SocketAddr, _>());
             spawn(https_srv)
         };
 
@@ -236,7 +272,7 @@ pub async fn use_tls(
     }
 }
 
-fn time_to_expiration<P: AsRef<Path>>(p: P) -> Option<Duration> {
+fn time_to_expiration<P: AsRef<StdPath>>(p: P) -> Option<Duration> {
     let file = fs::File::open(p).ok()?;
     Pem::read(BufReader::new(file))
         .ok()?

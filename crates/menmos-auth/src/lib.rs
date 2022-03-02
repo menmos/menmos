@@ -3,14 +3,29 @@ use std::fmt::Debug;
 
 use apikit::reject;
 
+use axum::extract::{Extension, FromRequest, Query, RequestParts, TypedHeader};
+use axum::headers;
+use axum::headers::authorization::Bearer;
+use axum::headers::Authorization;
+
 use branca::Branca;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use apikit::reject::HTTPError;
 use warp::{filters::BoxedFilter, Filter};
 
 const TOKEN_TTL_SECONDS: u32 = 60 * 60 * 6; // 6 hours.
+
+/// The encryption key format that is expected by menmos_auth.
+///
+/// For the axum handlers, menmos_auth gets this structure from an extension layer that must be
+/// set manually in your axum router.
+#[derive(Clone, PartialEq, Eq)]
+pub struct EncryptionKey {
+    pub key: String,
+}
 
 /// Generate a signed token from an encryption key and a serializable payload.
 ///
@@ -52,6 +67,55 @@ pub struct StorageNodeIdentity {
     pub id: String,
 }
 
+#[async_trait::async_trait]
+impl<B: Send> FromRequest<B> for StorageNodeIdentity {
+    type Rejection = HTTPError;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let tok_maybe = if let Ok(TypedHeader(headers::Authorization(bearer))) =
+            TypedHeader::<Authorization<Bearer>>::from_request(req).await
+        {
+            tracing::debug!("got a bearer token from authorization header");
+            Some(bearer.token().to_string())
+        } else if let Ok(Query(q)) = Query::<Signature>::from_request(req).await {
+            if q.signature.is_some() {
+                tracing::debug!("got a signature from query params");
+            }
+            q.signature
+        } else {
+            None
+        };
+
+        let token = tok_maybe.ok_or_else(|| {
+            tracing::debug!("no token found");
+            HTTPError::Forbidden
+        })?;
+
+        let Extension(EncryptionKey { key }) = Extension::<EncryptionKey>::from_request(req)
+            .await
+            .map_err(|e| {
+                tracing::warn!("no encryption key in extension layer: {}", e);
+                HTTPError::Forbidden
+            })?;
+
+        let token_decoder = Branca::new(key.as_bytes()).map_err(|e| {
+            tracing::warn!("invalid encryption key: {}", e);
+            HTTPError::Forbidden
+        })?;
+        let decoded = token_decoder
+            .decode(&token, TOKEN_TTL_SECONDS)
+            .map_err(|e| {
+                tracing::warn!("invalid branca token: {}", e);
+                HTTPError::Forbidden
+            })?;
+
+        Ok(bincode::deserialize(&decoded).map_err(|e| {
+            tracing::debug!("token deserialize error: {}", e);
+            HTTPError::Forbidden
+        })?)
+    }
+}
+
 impl Debug for StorageNodeIdentity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "storage({})", &self.id)
@@ -66,6 +130,55 @@ pub struct UserIdentity {
     pub username: String,
     pub admin: bool,
     pub blobs_whitelist: Option<Vec<String>>, // If none, all blobs are allowed.
+}
+
+#[async_trait::async_trait]
+impl<B: Send> FromRequest<B> for UserIdentity {
+    type Rejection = HTTPError;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let tok_maybe = if let Ok(TypedHeader(headers::Authorization(bearer))) =
+            TypedHeader::<Authorization<Bearer>>::from_request(req).await
+        {
+            tracing::trace!("got a bearer token from authorization header");
+            Some(bearer.token().to_string())
+        } else if let Ok(Query(q)) = Query::<Signature>::from_request(req).await {
+            if q.signature.is_some() {
+                tracing::trace!("got a signature from query params");
+            }
+            q.signature
+        } else {
+            None
+        };
+
+        let token = tok_maybe.ok_or_else(|| {
+            tracing::debug!("no token found");
+            HTTPError::Forbidden
+        })?;
+
+        let Extension(EncryptionKey { key }) = Extension::<EncryptionKey>::from_request(req)
+            .await
+            .map_err(|e| {
+                tracing::warn!("no encryption key in extension layer: {}", e);
+                HTTPError::Forbidden
+            })?;
+
+        let token_decoder = Branca::new(key.as_bytes()).map_err(|e| {
+            tracing::warn!("invalid encryption key: {}", e);
+            HTTPError::Forbidden
+        })?;
+        let decoded = token_decoder
+            .decode(&token, TOKEN_TTL_SECONDS)
+            .map_err(|e| {
+                tracing::warn!("invalid branca token: {}", e);
+                HTTPError::Forbidden
+            })?;
+
+        Ok(bincode::deserialize(&decoded).map_err(|e| {
+            tracing::debug!("token deserialize error: {}", e);
+            HTTPError::Forbidden
+        })?)
+    }
 }
 
 impl Debug for UserIdentity {
@@ -129,9 +242,9 @@ async fn validate_user_tokens(
     extract_token(&key, &token)
 }
 
-/// Warp filter to extract a user identity from the request. Use this when a route should be user-accessible.
+/// Warp filters to extract a user identity from the request. Use this when a route should be user-accessible.
 ///
-/// This filter first looks for a bearer token in the `Authorization` header. Failing to find it,
+/// This filters first looks for a bearer token in the `Authorization` header. Failing to find it,
 /// it falls back on the `signature` query string parameter. The signature parameter is used by the system
 /// to send pre-signed URLs to guests.
 ///
@@ -144,7 +257,7 @@ async fn validate_user_tokens(
 ///
 /// let encryption_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 32 characters.
 ///
-/// let filter = warp::path("ping")
+/// let filters = warp::path("ping")
 ///                 .and(user(encryption_key.into()))
 ///                 .map(|user_identity: UserIdentity| reply::message(format!("Hello, {}", user_identity.username)));
 /// ```
@@ -166,11 +279,11 @@ async fn validate_storage_node_token(
     extract_token(&key, token)
 }
 
-/// Warp filter to extract a storage node identity from the request.
+/// Warp filters to extract a storage node identity from the request.
 ///
 /// Use this when a route should be storage node-accessible.
 ///
-/// This filter only looks for an bearer token in the `Authorization` header, because pre-signed URLs are not supported
+/// This filters only looks for an bearer token in the `Authorization` header, because pre-signed URLs are not supported
 /// for storage node calls.
 ///
 /// # Examples
@@ -182,7 +295,7 @@ async fn validate_storage_node_token(
 ///
 /// let encryption_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 32 characters.
 ///
-/// let filter = warp::path("ping")
+/// let filters = warp::path("ping")
 ///                 .and(storage_node(encryption_key.into()))
 ///                 .map(|storage_identity: StorageNodeIdentity| {
 ///                     reply::message(format!("Storage node name: {}", storage_identity.id))

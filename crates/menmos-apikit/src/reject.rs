@@ -1,12 +1,58 @@
 //! Commonly used rejections and recovery procedures.
 use std::convert::Infallible;
 
+use axum::response::{IntoResponse, Response};
+use axum::Json;
+
+use serde::Serialize;
+
 use warp::{hyper::StatusCode, reject};
 
 use crate::reply;
 
 const MESSAGE_BAD_REQUEST: &str = "bad request";
 const MESSAGE_FORBIDDEN: &str = "forbidden";
+
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum HTTPError {
+    BadRequest { error: String },
+    Forbidden,
+    NotFound,
+    InternalServerError { error: String },
+}
+
+impl HTTPError {
+    pub fn bad_request<S: ToString>(s: S) -> Self {
+        Self::BadRequest {
+            error: s.to_string(),
+        }
+    }
+
+    pub fn internal_server_error<S: ToString>(s: S) -> Self {
+        Self::InternalServerError {
+            error: s.to_string(),
+        }
+    }
+}
+
+impl IntoResponse for HTTPError {
+    fn into_response(self) -> Response {
+        let status = match self {
+            Self::BadRequest { .. } => StatusCode::BAD_REQUEST,
+            Self::Forbidden => StatusCode::FORBIDDEN, // TODO: Actually put a message here.
+            Self::NotFound => StatusCode::NOT_FOUND,
+            Self::InternalServerError { ref error } => {
+                tracing::error!("{error}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        };
+
+        let body = Json(self);
+
+        (status, body).into_response()
+    }
+}
 
 /// Maps to an HTTP 403.
 #[derive(Debug)]

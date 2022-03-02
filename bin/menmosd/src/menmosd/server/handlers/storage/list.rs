@@ -1,26 +1,24 @@
-use apikit::reject::InternalServerError;
+use apikit::reject::HTTPError;
+
+use axum::extract::Extension;
+use axum::Json;
 
 use menmos_auth::UserIdentity;
 
+use interface::DynDirectoryNode;
+
 use protocol::directory::storage::ListStorageNodesResponse;
 
-use warp::reply;
-
-use crate::server::context::Context;
-
-#[tracing::instrument(skip(context))]
+#[tracing::instrument(skip(node))]
 pub async fn list(
     _user: UserIdentity,
-    context: Context,
-) -> Result<reply::Response, warp::Rejection> {
-    let storage_nodes = context
-        .node
+    Extension(node): Extension<DynDirectoryNode>,
+) -> Result<Json<ListStorageNodesResponse>, HTTPError> {
+    let storage_nodes = node
         .admin()
         .list_storage_nodes()
         .await
-        .map_err(InternalServerError::from)?;
+        .map_err(HTTPError::internal_server_error)?;
 
-    Ok(apikit::reply::json(&ListStorageNodesResponse {
-        storage_nodes,
-    }))
+    Ok(Json(ListStorageNodesResponse { storage_nodes }))
 }

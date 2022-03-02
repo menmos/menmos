@@ -1,16 +1,21 @@
-use apikit::reject::Forbidden;
+use std::sync::Arc;
+
+use apikit::reject::HTTPError;
+
+use axum::extract::Extension;
+use axum::Json;
 
 use menmos_auth::UserIdentity;
 
-use crate::server::Context;
+use crate::Config;
 
-#[tracing::instrument(skip(context))]
+#[tracing::instrument(skip(config))]
 pub async fn get_config(
     user: UserIdentity,
-    context: Context,
-) -> Result<impl warp::Reply, warp::Rejection> {
+    Extension(config): Extension<Arc<Config>>,
+) -> Result<Json<Config>, HTTPError> {
     if !user.admin {
-        return Err(Forbidden.into());
+        return Err(HTTPError::Forbidden);
     }
-    Ok(apikit::reply::json(&*context.config))
+    Ok(Json((*config).clone()))
 }

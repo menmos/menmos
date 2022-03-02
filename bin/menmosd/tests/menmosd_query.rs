@@ -127,7 +127,7 @@ async fn query_bad_request() -> Result<()> {
         .send()
         .await?;
 
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     cluster.stop_all().await?;
 

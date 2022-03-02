@@ -194,6 +194,7 @@ async fn permissions_update_meta() -> Result<()> {
     let blob_id = cluster.push_document("bing bong", meta.clone()).await?;
 
     // Update the meta as owner.
+    tracing::info!("updating metadata as owner");
     cluster
         .client
         .update_meta(&blob_id, meta.clone().with_tag("world"))

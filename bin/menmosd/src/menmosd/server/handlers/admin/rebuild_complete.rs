@@ -1,26 +1,27 @@
-use apikit::reject::{Forbidden, InternalServerError};
+use apikit::payload::MessageResponse;
+use apikit::reject::HTTPError;
+
+use axum::extract::{Extension, Path};
+use axum::Json;
+
+use interface::DynDirectoryNode;
+
 use menmos_auth::StorageNodeIdentity;
 
-use warp::reply;
-
-use crate::server::Context;
-
-#[tracing::instrument(skip(context))]
+#[tracing::instrument(skip(node))]
 pub async fn rebuild_complete(
     identity: StorageNodeIdentity,
-    context: Context,
-    storage_node_id: String,
-) -> Result<reply::Response, warp::Rejection> {
+    Extension(node): Extension<DynDirectoryNode>,
+    Path(storage_node_id): Path<String>,
+) -> Result<Json<MessageResponse>, HTTPError> {
     if identity.id != storage_node_id {
-        return Err(Forbidden.into());
+        return Err(HTTPError::Forbidden);
     }
 
-    context
-        .node
-        .admin()
+    node.admin()
         .rebuild_complete(&storage_node_id)
         .await
-        .map_err(InternalServerError::from)?;
+        .map_err(HTTPError::internal_server_error)?;
 
-    Ok(apikit::reply::message("OK"))
+    Ok(Json(MessageResponse::new("OK")))
 }

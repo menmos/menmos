@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::path::Path;
 
 mod node_impl;
 mod routing;
@@ -21,15 +22,28 @@ use self::{
     },
 };
 use std::sync::Arc;
+use tokio::time::Instant;
 
+#[tracing::instrument]
+fn init_sled(path: &Path) -> Result<sled::Db> {
+    let start = Instant::now();
+    let db = sled::open(path)?;
+    let load_duration = Instant::now().duration_since(start);
+    tracing::debug!(time=?load_duration, "complete");
+    Ok(db)
+}
+
+#[tracing::instrument(skip(c))]
 pub fn make_node(c: &Config) -> Result<Directory> {
-    let db = sled::open(&c.node.db_path)?;
+    tracing::debug!("begin node init");
+    let db = init_sled(&c.node.db_path)?;
 
     let router = Arc::from(NodeRouter::new(c.node.routing_algorithm));
 
     // Init the indices
     let documents_idx: Arc<DynDocumentIDStore> =
         Arc::new(Box::from(SledDocumentIdStore::new(&db)?));
+
     let metadata_idx: Arc<DynMetadataStore> = Arc::new(Box::from(SledMetadataStore::new(&db)?));
     let storage_idx: Arc<DynStorageMappingStore> =
         Arc::new(Box::from(SledStorageMappingStore::new(&db)?));
@@ -73,6 +87,8 @@ pub fn make_node(c: &Config) -> Result<Directory> {
         users_service,
         query_service,
     );
+
+    tracing::debug!("node init complete");
 
     Ok(node)
 }

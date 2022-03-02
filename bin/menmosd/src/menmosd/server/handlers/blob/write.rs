@@ -1,43 +1,36 @@
-use std::net::SocketAddr;
+use std::sync::Arc;
 
-use apikit::reject::{InternalServerError, NotFound};
+use axum::extract::{Extension, Path};
+use axum::response::Redirect;
+use axum_client_ip::ClientIp;
 
-use bytes::Buf;
+use apikit::reject::HTTPError;
 
-use futures::Stream;
+use interface::DynDirectoryNode;
 
 use menmos_auth::UserIdentity;
 
-use warp::{reply, Reply};
-
 use crate::network::get_storage_node_address;
-use crate::server::Context;
+use crate::Config;
 
-#[tracing::instrument(skip(context, addr, _body))]
+#[tracing::instrument(skip(node, config, addr))]
 pub async fn write(
     _user: UserIdentity,
-    context: Context,
-    addr: Option<SocketAddr>,
-    blob_id: String,
-    _body: impl Stream<Item = Result<impl Buf, warp::Error>> + Send + Sync + Unpin + 'static,
-) -> Result<reply::Response, warp::Rejection> {
-    let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
-
-    let storage_node = context
-        .node
+    Extension(node): Extension<DynDirectoryNode>,
+    Extension(config): Extension<Arc<Config>>,
+    ClientIp(addr): ClientIp,
+    Path(blob_id): Path<String>,
+) -> Result<Redirect, HTTPError> {
+    let storage_node = node
         .indexer()
         .get_blob_storage_node(&blob_id)
         .await
-        .map_err(InternalServerError::from)?
-        .ok_or(NotFound)?;
+        .map_err(HTTPError::internal_server_error)?
+        .ok_or(HTTPError::NotFound)?;
 
-    let node_address = get_storage_node_address(
-        socket_addr.ip(),
-        storage_node,
-        &context.config,
-        &format!("blob/{}", &blob_id),
-    )
-    .map_err(InternalServerError::from)?;
+    let node_address =
+        get_storage_node_address(addr, storage_node, &config, &format!("blob/{}", &blob_id))
+            .map_err(HTTPError::internal_server_error)?;
 
-    Ok(warp::redirect::temporary(node_address).into_response())
+    Ok(Redirect::temporary(node_address))
 }

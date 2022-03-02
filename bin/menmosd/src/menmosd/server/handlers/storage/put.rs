@@ -1,29 +1,34 @@
-use std::net::SocketAddr;
+use std::net::IpAddr;
+use std::sync::Arc;
 
 use anyhow::Result;
 
-use apikit::reject::{Forbidden, InternalServerError};
+use axum::extract::Extension;
+use axum::Json;
+use axum_client_ip::ClientIp;
 
-use interface::{MoveInformation, StorageNodeInfo};
+use apikit::reject::HTTPError;
+
+use interface::{CertificateInfo, DynDirectoryNode, MoveInformation, StorageNodeInfo};
+
+use menmos_auth::StorageNodeIdentity;
 
 use protocol::directory::storage::{MoveRequest, RegisterResponse};
 
-use warp::reply;
-
 use crate::network::get_storage_node_address;
-use crate::server::context::Context;
+use crate::Config;
 
 const MESSAGE_REGISTRATION_SUCCESSFUL: &str = "storage node registered";
 
 fn get_request_from_move_info(
     move_info: MoveInformation,
-    socket_addr: &SocketAddr,
-    context: &Context,
+    ip_addr: IpAddr,
+    config: &Config,
 ) -> Result<MoveRequest> {
     let node_address = get_storage_node_address(
-        socket_addr.ip(),
+        ip_addr,
         move_info.destination_node,
-        &context.config,
+        config,
         &format!("blob/{}", &move_info.blob_id),
     )?;
 
@@ -34,40 +39,38 @@ fn get_request_from_move_info(
     })
 }
 
-#[tracing::instrument(skip(context, addr, info))]
+#[tracing::instrument(skip(config, node, addr, info, certificate_info))]
 pub async fn put(
-    identity: menmos_auth::StorageNodeIdentity,
-    context: Context,
-    info: StorageNodeInfo,
-    addr: Option<SocketAddr>,
-) -> Result<reply::Response, warp::Rejection> {
+    identity: StorageNodeIdentity,
+    Extension(certificate_info): Extension<Arc<Option<CertificateInfo>>>,
+    Extension(config): Extension<Arc<Config>>,
+    Extension(node): Extension<DynDirectoryNode>,
+    ClientIp(addr): ClientIp,
+    Json(info): Json<StorageNodeInfo>,
+) -> Result<Json<RegisterResponse>, HTTPError> {
     if identity.id != info.id {
-        return Err(Forbidden.into());
+        return Err(HTTPError::Forbidden);
     }
 
-    let socket_addr = addr.ok_or_else(|| InternalServerError::from("missing socket address"))?;
-
-    let node_resp = context
-        .node
+    let node_resp = node
         .admin()
         .register_storage_node(info)
         .await
-        .map_err(InternalServerError::from)?;
+        .map_err(HTTPError::internal_server_error)?;
 
-    let certificates = (*context.certificate_info).clone();
+    let certificates = (*certificate_info).clone();
 
-    let move_requests: Vec<MoveRequest> = context
-        .node
+    let move_requests: Vec<MoveRequest> = node
         .routing()
         .get_move_requests(&identity.id)
         .await
-        .map_err(InternalServerError::from)?
+        .map_err(HTTPError::internal_server_error)?
         .into_iter()
-        .map(|info| get_request_from_move_info(info, &socket_addr, &context))
+        .map(|info| get_request_from_move_info(info, addr, &config))
         .collect::<Result<Vec<MoveRequest>>>()
-        .map_err(InternalServerError::from)?;
+        .map_err(HTTPError::internal_server_error)?;
 
-    Ok(apikit::reply::json(&RegisterResponse {
+    Ok(Json(RegisterResponse {
         message: MESSAGE_REGISTRATION_SUCCESSFUL.to_string(),
         certificates,
         rebuild_requested: node_resp.rebuild_requested,

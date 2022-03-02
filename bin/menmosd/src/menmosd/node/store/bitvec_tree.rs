@@ -43,9 +43,13 @@ pub struct BitvecTree {
 }
 
 impl BitvecTree {
+    #[tracing::instrument(name = "bv_tree_init", skip(db))]
     pub fn new(db: &sled::Db, name: &str) -> Result<Self> {
-        let tree = db.open_tree(format!("{}-bv-tree", name))?;
+        let tree_name = format!("{}-bv-tree", name);
+        let tree = db.open_tree(&tree_name)?;
         tree.set_merge_operator(concatenate_merge);
+
+        tracing::trace!("tree loaded successfully");
 
         Ok(Self {
             tree,

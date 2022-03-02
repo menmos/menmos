@@ -1,30 +1,30 @@
-use apikit::reject::InternalServerError;
+use apikit::reject::HTTPError;
+
+use axum::extract::Extension;
+use axum::Json;
 
 use menmos_auth::UserIdentity;
 
+use interface::{DynDirectoryNode, MetadataList};
+
 use protocol::directory::blobmeta::ListMetadataRequest;
 
-use warp::reply;
-
-use crate::server::Context;
-
-#[tracing::instrument(skip(context, req))]
+#[tracing::instrument(skip(node, req))]
 pub async fn list(
     user: UserIdentity,
-    context: Context,
-    req: ListMetadataRequest,
-) -> Result<reply::Response, warp::Rejection> {
+    Extension(node): Extension<DynDirectoryNode>,
+    Json(req): Json<ListMetadataRequest>,
+) -> Result<Json<MetadataList>, HTTPError> {
     tracing::trace!(
         tags = %&req.tags.clone().unwrap_or_default().join(","),
         keys = %&req.fields.clone().unwrap_or_default().join(","),
         "list metadata request"
     );
-    let response = context
-        .node
+    let response = node
         .query()
         .list_metadata(req.tags, req.fields, &user.username)
         .await
-        .map_err(InternalServerError::from)?;
+        .map_err(HTTPError::internal_server_error)?;
 
-    Ok(apikit::reply::json(&response))
+    Ok(Json(response))
 }
