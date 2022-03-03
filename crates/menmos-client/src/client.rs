@@ -174,7 +174,8 @@ impl Client {
             .post(url)
             .bearer_auth(&self.token)
             .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta)
-            .header(header::HeaderName::from_static("x-request-id"), request_id);
+            .header(header::HeaderName::from_static("x-request-id"), request_id)
+            .header(HeaderName::from_static("x-blob-size"), file_length);
 
         if path.as_ref().is_file() {
             let file = tokio::fs::File::open(path.as_ref()).await.unwrap();

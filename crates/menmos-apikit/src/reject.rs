@@ -3,9 +3,8 @@ use axum::http::StatusCode;
 
 use axum::response::{IntoResponse, Response};
 
-use serde::Serialize;
-
 use crate::reply;
+use serde::Serialize;
 
 const MESSAGE_NOT_FOUND: &str = "not found";
 const MESSAGE_FORBIDDEN: &str = "forbidden";
