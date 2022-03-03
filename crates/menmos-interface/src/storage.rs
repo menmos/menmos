@@ -3,6 +3,7 @@ use std::fmt::Formatter;
 use std::io;
 use std::ops::Bound;
 use std::path::Path;
+use std::sync::Arc;
 use std::{fmt, fs};
 
 use anyhow::Result;
@@ -355,3 +356,5 @@ pub trait StorageNode {
 
     async fn flush(&self) -> Result<()>;
 }
+
+pub type DynStorageNode = Arc<dyn StorageNode + Send + Sync>;

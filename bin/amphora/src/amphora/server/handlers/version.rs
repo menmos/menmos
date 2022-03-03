@@ -1,10 +1,12 @@
+use axum::Json;
+
 use protocol::VersionResponse;
 
-use warp::reply;
+use apikit::reject::HTTPError;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tracing::instrument]
-pub async fn version() -> Result<reply::Response, warp::Rejection> {
-    Ok(apikit::reply::json(&VersionResponse::new(VERSION)))
+pub async fn version() -> Result<Json<VersionResponse>, HTTPError> {
+    Ok(Json(VersionResponse::new(VERSION)))
 }

@@ -33,6 +33,9 @@ version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
+ "axum",
+ "axum-client-ip",
+ "axum-server",
  "base64",
  "bincode",
  "bytes",
@@ -43,6 +46,7 @@ dependencies = [
  "futures",
  "headers",
  "http",
+ "hyper",
  "local_ipaddress",
  "machine-uid",
  "menmos-apikit",
@@ -63,6 +67,8 @@ dependencies = [
  "sled",
  "tempfile",
  "tokio",
+ "tower-http",
+ "tower-request-id",
  "tracing",
  "warp",
 ]
@@ -1809,12 +1815,12 @@ dependencies = [
  "menmos-apikit",
  "menmos-interface",
  "menmos-protocol",
- "mpart-async",
  "reqwest",
  "serde 1.0.136",
  "serde_json",
  "snafu",
  "tokio",
+ "tokio-util 0.7.0",
  "tracing",
 ]
 

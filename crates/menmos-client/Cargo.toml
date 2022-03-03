@@ -13,13 +13,13 @@ base64 = "0.13"
 bytes = "1"
 futures = "0.3"
 hyper = "0.14"
-menmos-apikit = {version = "^0.1.0"}
-menmos-interface = {version = "^0.1.0"}
-menmos-protocol = {version = "^0.1.0"}
-mpart-async = "0.5"
-reqwest = {version = "0.11", features = ["json"]}
-serde = {version = "1", features = ["derive"]}
+menmos-apikit = { version = "^0.1.0" }
+menmos-interface = { version = "^0.1.0" }
+menmos-protocol = { version = "^0.1.0" }
+reqwest = { version = "0.11", features = ["json", "stream"] }
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 snafu = "0.7"
-tokio = {version = "1.16", features = ["full"]}
-tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_debug"]}
+tokio = { version = "1.16", features = ["full"] }
+tokio-util = { version = "0.7.0", features = ["codec"] }
+tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_debug"] }

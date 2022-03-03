@@ -1,22 +1,22 @@
-use std::sync::Arc;
+use apikit::payload::MessageResponse;
 
-use apikit::reject::InternalServerError;
+use axum::extract::{Extension, Path};
+use axum::Json;
 
-use interface::StorageNode;
+use apikit::reject::{HTTPError, InternalServerError};
+
+use interface::{DynStorageNode, StorageNode};
 
 use menmos_auth::UserIdentity;
 
-use warp::reply;
-
 #[tracing::instrument(skip(node))]
-pub async fn fsync<N: StorageNode>(
+pub async fn fsync(
     user: UserIdentity,
-    node: Arc<N>,
-    blob_id: String,
-) -> Result<reply::Response, warp::Rejection> {
+    Extension(node): Extension<DynStorageNode>,
+    Path(blob_id): Path<String>,
+) -> Result<Json<MessageResponse>, HTTPError> {
     node.fsync(blob_id, &user.username)
         .await
-        .map_err(InternalServerError::from)?;
-
-    Ok(apikit::reply::message("OK"))
+        .map_err(HTTPError::internal_server_error)?;
+    Ok(Json(MessageResponse::new("ok")))
 }

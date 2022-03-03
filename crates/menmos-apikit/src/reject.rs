@@ -6,6 +6,7 @@ use axum::Json;
 
 use serde::Serialize;
 
+use crate::payload::ErrorResponse;
 use warp::{hyper::StatusCode, reject};
 
 use crate::reply;
@@ -38,19 +39,35 @@ impl HTTPError {
 
 impl IntoResponse for HTTPError {
     fn into_response(self) -> Response {
-        let status = match self {
-            Self::BadRequest { .. } => StatusCode::BAD_REQUEST,
-            Self::Forbidden => StatusCode::FORBIDDEN, // TODO: Actually put a message here.
-            Self::NotFound => StatusCode::NOT_FOUND,
+        match self {
+            Self::BadRequest { error } => {
+                (StatusCode::BAD_REQUEST, Json(ErrorResponse { error })).into_response()
+            }
+            Self::Forbidden => (
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse {
+                    error: String::from("forbidden"),
+                }),
+            )
+                .into_response(),
+            Self::NotFound => (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: String::from("not found"),
+                }),
+            )
+                .into_response(),
             Self::InternalServerError { ref error } => {
                 tracing::error!("{error}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: String::from("internal server error"),
+                    }),
+                )
+                    .into_response()
             }
-        };
-
-        let body = Json(self);
-
-        (status, body).into_response()
+        }
     }
 }
 

@@ -80,6 +80,7 @@ async fn direct_get_permissions() -> Result<()> {
     cluster.add_user("john", "bingbong").await?;
     let john_client = Client::new(&cluster.directory_url, "john", "bingbong").await?;
     if let Err(e) = john_client.get_file(&blob_id).await {
+        println!("Error: {}", e.to_string());
         assert!(e.to_string().contains("forbidden"));
     } else {
         panic!("expected forbidden");
