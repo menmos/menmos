@@ -1,14 +1,13 @@
 use anyhow::Result;
 
-use apikit::payload::MessageResponse;
 use apikit::reject::HTTPError;
 
 use axum::body::Bytes;
 use axum::extract::{Extension, Path, TypedHeader};
 use axum::headers::Range as RangeHeader;
-use axum::Json;
+use axum::response::Response;
 
-use interface::{DynStorageNode, StorageNode};
+use interface::DynStorageNode;
 
 use menmos_auth::UserIdentity;
 
@@ -19,7 +18,7 @@ pub async fn write(
     TypedHeader(range_header): TypedHeader<RangeHeader>,
     Path(blob_id): Path<String>,
     body: Bytes,
-) -> Result<Json<MessageResponse>, HTTPError> {
+) -> Result<Response, HTTPError> {
     // Fetch the request content range from the header.
     let mut range_it = range_header.iter();
     let range = range_it
@@ -36,5 +35,5 @@ pub async fn write(
         .await
         .map_err(HTTPError::internal_server_error)?;
 
-    Ok(Json(MessageResponse::new("ok")))
+    Ok(apikit::reply::message("ok"))
 }

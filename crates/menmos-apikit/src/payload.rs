@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// Standard message response.
 ///
-/// Use when returning a single piece of unstructured information from your warp route. (e.g. "Upload Complete")
+/// Use when returning a single piece of unstructured information from your axum route. (e.g. "Upload Complete")
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct MessageResponse {

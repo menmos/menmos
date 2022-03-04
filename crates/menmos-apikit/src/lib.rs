@@ -1,4 +1,4 @@
-//! An opinionated warp extension library.
+//! An opinionated axum extension library.
 
 pub mod payload;
 pub mod reject;

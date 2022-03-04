@@ -21,21 +21,22 @@ pub fn wrap(router: Router, node: DynStorageNode, config: &Config) -> Router {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|r: &Request<_>| {
-                    /* TODO: Make menmosd add a header/queryparam to the request.
-                    // We get the request id from the extensions
-                    let request_id = r
-                        .extensions()
-                        .get::<RequestId>()
-                        .map(ToString::to_string)
-                        .unwrap_or_else(|| "unknown".into());
-                    // And then we put it along with other information into the `request` span
-                    */
-                    tracing::info_span!(
-                        "request",
-                        //id = %request_id,
-                        method = %r.method(),
-                        uri = %r.uri(),
-                    )
+                    if let Some(request_id) = r.headers().get("x-request-id") {
+                        // Safe because a header value is always ascii as per http spec.
+                        let request_id = String::from_utf8(request_id.as_bytes().to_vec()).unwrap();
+                        tracing::info_span!(
+                            "request",
+                            id = %request_id,
+                            method = %r.method(),
+                            uri = %r.uri(),
+                        )
+                    } else {
+                        tracing::info_span!(
+                            "request",
+                            method = %r.method(),
+                            uri = %r.uri(),
+                        )
+                    }
                 })
                 .on_request(|_r: &Request<_>, _s: &tracing::Span| {}) // We silence the on-request hook
                 .on_response(

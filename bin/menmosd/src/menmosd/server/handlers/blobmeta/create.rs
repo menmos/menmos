@@ -1,7 +1,7 @@
-use apikit::payload::MessageResponse;
 use apikit::reject::HTTPError;
 
 use axum::extract::{Extension, Path};
+use axum::response::Response;
 use axum::Json;
 
 use interface::{BlobInfo, DynDirectoryNode};
@@ -14,11 +14,11 @@ pub async fn create(
     Path(blob_id): Path<String>,
     Extension(node): Extension<DynDirectoryNode>,
     Json(blob_info): Json<BlobInfo>,
-) -> Result<Json<MessageResponse>, HTTPError> {
+) -> Result<Response, HTTPError> {
     node.indexer()
         .index_blob(&blob_id, blob_info, &identity.id)
         .await
         .map_err(HTTPError::internal_server_error)?;
 
-    Ok(Json(MessageResponse::new("ok")))
+    Ok(apikit::reply::message("ok"))
 }

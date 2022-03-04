@@ -68,6 +68,9 @@ pub enum ClientError {
     #[snafu(display("did not get a redirect when expected"))]
     MissingRedirect,
 
+    #[snafu(display("did not receive a request id when expected"))]
+    MissingRequestId,
+
     #[snafu(display("too many retries"))]
     TooManyRetries,
 
@@ -101,6 +104,11 @@ async fn extract<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> 
     } else {
         Err(extract_error(response).await)
     }
+}
+
+struct RedirectResponse {
+    pub location: String,
+    pub request_id: String,
 }
 
 /// The client, used for interacting witn a Menmos cluster.
@@ -156,6 +164,7 @@ impl Client {
     async fn prepare_push_request<P: AsRef<Path>>(
         &self,
         url: &str,
+        request_id: &str,
         path: P,
         encoded_meta: &str,
         file_length: u64,
@@ -165,18 +174,22 @@ impl Client {
             .post(url)
             .bearer_auth(&self.token)
             .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta)
-            .header(HeaderName::from_static("x-blob-size"), file_length);
+            .header(header::HeaderName::from_static("x-request-id"), request_id);
 
         if path.as_ref().is_file() {
             let file = tokio::fs::File::open(path.as_ref()).await.unwrap();
             let stream = FramedRead::new(file, BytesCodec::new());
-            request_builder = request_builder.body(Body::wrap_stream(stream));
+            request_builder = request_builder
+                .body(Body::wrap_stream(stream))
+                .header(HeaderName::from_static("x-blob-size"), file_length);
+        } else {
+            request_builder = request_builder.header(HeaderName::from_static("x-blob-size"), 0_u64);
         }
 
         request_builder.build().context(RequestBuildSnafu)
     }
 
-    async fn request_with_redirect(&self, request: Request) -> Result<String> {
+    async fn request_with_redirect(&self, request: Request) -> Result<RedirectResponse> {
         let response = self
             .client
             .execute(request)
@@ -193,9 +206,18 @@ impl Client {
             .get(header::LOCATION)
             .ok_or(ClientError::MissingRedirect)?;
 
+        let request_id = response
+            .headers()
+            .get("x-request-id")
+            .ok_or(ClientError::MissingRequestId)?;
+
         let new_url = String::from_utf8_lossy(new_location.as_bytes());
         tracing::debug!("redirect to {}", new_url);
-        Ok(new_url.to_string())
+
+        Ok(RedirectResponse {
+            location: new_url.to_string(),
+            request_id: String::from_utf8(request_id.as_bytes().to_vec()).unwrap(), // We know request id is ASCII, so it is also unicode.
+        })
     }
 
     async fn login(
@@ -256,14 +278,18 @@ impl Client {
             .build()
             .context(RequestBuildSnafu)?;
 
-        let redirect_location = self.request_with_redirect(redirect_req).await?;
+        let RedirectResponse {
+            location,
+            request_id,
+        } = self.request_with_redirect(redirect_req).await?;
 
         let response = self
             .client
-            .post(&redirect_location)
+            .post(&location)
             .bearer_auth(&self.token)
             .header(HeaderName::from_static("x-blob-meta"), &meta_b64)
             .header(HeaderName::from_static("x-blob-size"), 0_u64)
+            .header(HeaderName::from_static("x-request-id"), &request_id)
             .send()
             .await
             .context(RequestExecutionSnafu)?;
@@ -285,7 +311,7 @@ impl Client {
             }
         );
 
-        let mut url = base_url;
+        let url = base_url;
         let meta_b64 = encode_metadata(meta)?;
 
         let file_length = path
@@ -308,10 +334,19 @@ impl Client {
             .build()
             .context(RequestBuildSnafu)?;
 
-        url = self.request_with_redirect(initial_redirect_request).await?;
+        let RedirectResponse {
+            location,
+            request_id,
+        } = self.request_with_redirect(initial_redirect_request).await?;
 
         let request = self
-            .prepare_push_request(&url, path.as_ref(), &meta_b64, file_length)
+            .prepare_push_request(
+                &location,
+                &request_id,
+                path.as_ref(),
+                &meta_b64,
+                file_length,
+            )
             .await?;
 
         let response = self
@@ -421,12 +456,16 @@ impl Client {
             .build()
             .context(RequestBuildSnafu)?;
 
-        let redirect_location = self.request_with_redirect(request).await?;
+        let RedirectResponse {
+            location,
+            request_id,
+        } = self.request_with_redirect(request).await?;
 
         let response = self
             .client
-            .put(&redirect_location)
+            .put(&location)
             .bearer_auth(&self.token)
+            .header(HeaderName::from_static("x-request-id"), request_id)
             .json(&meta)
             .send()
             .await
@@ -452,12 +491,16 @@ impl Client {
             .build()
             .context(RequestBuildSnafu)?;
 
-        let redirect_location = self.request_with_redirect(request).await?;
+        let RedirectResponse {
+            location,
+            request_id,
+        } = self.request_with_redirect(request).await?;
 
         let response = self
             .client
-            .post(&redirect_location)
+            .post(&location)
             .bearer_auth(&self.token)
+            .header(HeaderName::from_static("x-request-id"), request_id)
             .send()
             .await
             .context(RequestBuildSnafu)?;
@@ -484,16 +527,20 @@ impl Client {
             .build()
             .context(RequestBuildSnafu)?;
 
-        let redirect_location = self.request_with_redirect(request).await?;
+        let RedirectResponse {
+            location,
+            request_id,
+        } = self.request_with_redirect(request).await?;
 
         let response = self
             .client
-            .put(&redirect_location)
+            .put(&location)
             .bearer_auth(&self.token)
             .header(
                 header::RANGE,
                 &format!("bytes={}-{}", offset, offset + (buffer.len() - 1) as u64),
             )
+            .header(HeaderName::from_static("x-request-id"), request_id)
             .body(buffer.clone())
             .send()
             .await
@@ -537,12 +584,16 @@ impl Client {
             .build()
             .context(RequestBuildSnafu)?;
 
-        let redirect_location = self.request_with_redirect(redirect_request).await?;
+        let RedirectResponse {
+            location,
+            request_id,
+        } = self.request_with_redirect(redirect_request).await?;
 
         let response = self
             .client
-            .get(&redirect_location)
+            .get(&location)
             .bearer_auth(&self.token)
+            .header(HeaderName::from_static("x-request-id"), request_id)
             .send()
             .await
             .context(RequestExecutionSnafu)?;
@@ -576,12 +627,16 @@ impl Client {
             .build()
             .context(RequestBuildSnafu)?;
 
-        let redirect_location = self.request_with_redirect(request).await?;
+        let RedirectResponse {
+            location,
+            request_id,
+        } = self.request_with_redirect(request).await?;
 
         let response = self
             .client
-            .get(&redirect_location)
+            .get(&location)
             .header(header::RANGE, &format!("bytes={}-{}", range.0, range.1))
+            .header(HeaderName::from_static("x-request-id"), request_id)
             .bearer_auth(&self.token)
             .send()
             .await
@@ -622,12 +677,16 @@ impl Client {
             .build()
             .context(RequestBuildSnafu)?;
 
-        let redirect_location = self.request_with_redirect(request).await?;
+        let RedirectResponse {
+            location,
+            request_id,
+        } = self.request_with_redirect(request).await?;
 
         let response = self
             .client
-            .delete(&redirect_location)
+            .delete(&location)
             .bearer_auth(&self.token)
+            .header(HeaderName::from_static("x-request-id"), request_id)
             .send()
             .await
             .context(RequestExecutionSnafu)?;

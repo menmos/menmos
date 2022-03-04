@@ -1,10 +1,10 @@
-use axum::extract::{Extension, Path};
-use axum::Json;
-
-use apikit::payload::MessageResponse;
 use apikit::reject::HTTPError;
 
-use interface::{BlobInfoRequest, BlobMetaRequest, DynStorageNode, StorageNode};
+use axum::extract::{Extension, Path};
+use axum::response::Response;
+use axum::Json;
+
+use interface::{BlobInfoRequest, BlobMetaRequest, DynStorageNode};
 
 use menmos_auth::UserIdentity;
 
@@ -14,7 +14,7 @@ pub async fn update_meta(
     Extension(node): Extension<DynStorageNode>,
     Path(blob_id): Path<String>,
     Json(meta_request): Json<BlobMetaRequest>,
-) -> Result<Json<MessageResponse>, HTTPError> {
+) -> Result<Response, HTTPError> {
     node.update_meta(
         blob_id,
         BlobInfoRequest {
@@ -25,6 +25,5 @@ pub async fn update_meta(
     )
     .await
     .map_err(HTTPError::internal_server_error)?;
-
-    Ok(Json(MessageResponse::new("ok")))
+    Ok(apikit::reply::message("ok"))
 }

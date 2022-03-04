@@ -2,13 +2,16 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::http::Request;
-use axum::response::Response;
+use axum::middleware::Next;
+use axum::response::{IntoResponse, Response};
 use axum::{AddExtensionLayer, Router};
+use headers::HeaderValue;
 
-use crate::Config;
 use interface::{CertificateInfo, DynDirectoryNode};
 use tower_http::trace::TraceLayer;
 use tower_request_id::{RequestId, RequestIdLayer};
+
+use crate::Config;
 
 /// Wraps a router in a logging layer.
 fn wrap_trace_layer(router: Router) -> Router {
@@ -38,6 +41,17 @@ fn wrap_trace_layer(router: Router) -> Router {
     )
 }
 
+async fn redirect_request_id<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
+    let request_id = req.extensions().get::<RequestId>().unwrap().to_string(); // Mandatory.
+
+    let mut resp = next.run(req).await;
+
+    resp.headers_mut()
+        .insert("x-request-id", HeaderValue::from_str(&request_id).unwrap()); // We know our request IDs are ASCII, so this unwrap is safe.
+
+    resp
+}
+
 /// Wraps a router with our extension layers.
 fn wrap_extension_layers(
     router: Router,
@@ -52,6 +66,7 @@ fn wrap_extension_layers(
         }))
         .layer(AddExtensionLayer::new(config.clone()))
         .layer(AddExtensionLayer::new(node.clone()))
+        .layer(axum::middleware::from_fn(redirect_request_id))
 }
 
 pub fn wrap(

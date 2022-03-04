@@ -1,8 +1,7 @@
-use apikit::payload::MessageResponse;
 use apikit::reject::HTTPError;
 
 use axum::extract::{Extension, Path};
-use axum::Json;
+use axum::response::Response;
 
 use interface::DynStorageNode;
 
@@ -13,9 +12,9 @@ pub async fn delete(
     user: UserIdentity,
     Extension(node): Extension<DynStorageNode>,
     Path(blob_id): Path<String>,
-) -> Result<Json<MessageResponse>, HTTPError> {
+) -> Result<Response, HTTPError> {
     node.delete(blob_id, &user.username)
         .await
         .map_err(HTTPError::internal_server_error)?;
-    Ok(Json(MessageResponse::new("ok")))
+    Ok(apikit::reply::message("ok"))
 }

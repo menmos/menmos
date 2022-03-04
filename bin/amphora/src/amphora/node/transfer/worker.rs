@@ -5,7 +5,6 @@ use std::time::Duration;
 use anyhow::{anyhow, ensure, Result};
 use http::header;
 use interface::BlobMetaRequest;
-use mpart_async::client::MultipartRequest;
 use protocol::{directory::storage::MoveRequest, storage::PutResponse};
 use tokio::sync::mpsc;
 
@@ -83,27 +82,24 @@ impl TransferWorker {
 
         let (encoded_meta, size) = self.encode_metadata(&request.blob_id)?;
 
-        let mut mpart = MultipartRequest::default();
-        let pinned_stream = Pin::from(stream_info.stream);
-        mpart.add_stream("src", "upload.bin", "something?", pinned_stream);
-
         let url = reqwest::Url::parse(&request.destination_url)?;
 
         // Generate a token on behalf of the blob owner.
         let token = self.get_token(&request.owner_username, &request.blob_id)?;
 
-        let req = self
+        let mut req_builder = self
             .client
             .post(url)
             .bearer_auth(token)
-            .header(
-                header::CONTENT_TYPE,
-                format!("multipart/form-data; boundary={}", mpart.get_boundary()),
-            )
             .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta)
-            .header(header::HeaderName::from_static("x-blob-size"), size)
-            .body(reqwest::Body::wrap_stream(mpart))
-            .build()?;
+            .header(header::HeaderName::from_static("x-blob-size"), size);
+
+        if size > 0 {
+            let stream = Pin::from(stream_info.stream);
+            req_builder = req_builder.body(reqwest::Body::wrap_stream(stream));
+        }
+
+        let req = req_builder.build()?;
 
         let response = self.client.execute(req).await?;
         let response_bytes = response.bytes().await?;

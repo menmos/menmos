@@ -10,13 +10,13 @@ use anyhow::Result;
 
 use async_trait::async_trait;
 
+use bytes::Bytes;
+
 use chrono::{DateTime, Utc};
 
 use futures::Stream;
 
 use serde::{Deserialize, Serialize};
-
-use warp::hyper::body::Bytes;
 
 fn file_to_base64<P: AsRef<Path>>(path: P) -> Result<String> {
     Ok(base64::encode(fs::read(path.as_ref())?))

@@ -1,5 +1,4 @@
 mod certpath;
-mod filters;
 mod handlers;
 mod layer;
 mod reboot;

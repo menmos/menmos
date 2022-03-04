@@ -4,6 +4,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use anyhow::{anyhow, Result};
 use interface::{BlobInfo, TaggedBlobInfo};
 
+use sled::Mode;
+
 pub struct Index {
     db: sled::Db,
     size: AtomicU64,
@@ -11,7 +13,10 @@ pub struct Index {
 
 impl Index {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let db = sled::open(path.as_ref())?;
+        let db = sled::Config::default()
+            .mode(Mode::HighThroughput)
+            .path(path.as_ref())
+            .open()?;
         let size = db
             .iter()
             .filter_map(|result| match result {
