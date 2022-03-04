@@ -34,7 +34,6 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
- "axum-client-ip",
  "axum-server",
  "base64",
  "bincode",
@@ -66,7 +65,6 @@ dependencies = [
  "tempfile",
  "tokio",
  "tower-http",
- "tower-request-id",
  "tracing",
 ]
 
