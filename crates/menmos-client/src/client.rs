@@ -212,7 +212,9 @@ impl Client {
             .get("x-request-id")
             .ok_or(ClientError::MissingRequestId)?;
 
-        let new_url = String::from_utf8_lossy(new_location.as_bytes());
+        let new_url = new_location
+            .to_str()
+            .expect("redirect location is not UTF-8");
         tracing::debug!("redirect to {}", new_url);
 
         Ok(RedirectResponse {

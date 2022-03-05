@@ -59,7 +59,7 @@ impl UserStore for SledUserStore {
 
     fn authenticate(&self, username: &str, password: &str) -> Result<bool> {
         if let Some(value) = self.map.get(username.as_bytes())? {
-            let pw_hash = String::from_utf8_lossy(value.as_ref());
+            let pw_hash = String::from_utf8(value.to_vec()).expect("password hash is not UTF-8");
             Ok(argon2::verify_encoded(&pw_hash, password.as_bytes())?)
         } else {
             Ok(false)
@@ -75,7 +75,9 @@ impl UserStore for SledUserStore {
     fn iter(&self) -> DynIter<'static, Result<String>> {
         DynIter::new(self.map.iter().map(|pair_result| {
             pair_result
-                .map(|(key_ivec, _val_ivec)| String::from_utf8_lossy(&key_ivec).to_string())
+                .map(|(key_ivec, _val_ivec)| {
+                    String::from_utf8(key_ivec.to_vec()).expect("username is not UTF-8")
+                })
                 .map_err(|e| e.into())
         }))
     }

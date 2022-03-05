@@ -12,6 +12,7 @@ pub trait StorageMappingStore: Flush {
 }
 
 const DISPATCH_TREE: &str = "dispatch";
+
 pub struct SledStorageMappingStore {
     tree: sled::Tree,
 }
@@ -36,7 +37,7 @@ impl StorageMappingStore for SledStorageMappingStore {
         Ok(self
             .tree
             .get(blob_id.as_bytes())?
-            .map(|ivec| String::from_utf8_lossy(ivec.as_ref()).to_string()))
+            .map(|ivec| String::from_utf8(ivec.to_vec()).expect("node ID is not UTF-8")))
     }
 
     fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()> {
@@ -45,10 +46,11 @@ impl StorageMappingStore for SledStorageMappingStore {
     }
 
     fn delete_blob(&self, blob_id: &str) -> Result<Option<String>> {
-        Ok(self
-            .tree
-            .remove(blob_id.as_bytes())?
-            .map(|ivec| String::from_utf8_lossy(ivec.as_ref()).to_string()))
+        Ok(self.tree.remove(blob_id.as_bytes())?.map(|ivec| {
+            String::from_utf8(ivec.to_vec())
+                .expect("node ID is not UTF-8")
+                .to_string()
+        }))
     }
 
     fn clear(&self) -> Result<()> {

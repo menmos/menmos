@@ -1,4 +1,5 @@
-use snafu::{ensure, Snafu};
+use snafu::{ensure, ResultExt, Snafu};
+use std::string::FromUtf8Error;
 
 const MAX_JUMP_INSTRUCTIONS: i32 = 5;
 
@@ -8,10 +9,16 @@ pub enum BufferError {
     EndOfBuffer,
 
     #[snafu(display("limit of {} jumps exceeded", limit))]
-    TooManyJumps { limit: i32 },
+    TooManyJumps {
+        limit: i32,
+    },
 
     #[snafu(display("single label exceeds 63 characters in length"))]
     LabelTooLong,
+
+    UnicodeError {
+        source: FromUtf8Error,
+    },
 }
 
 type Result<T> = std::result::Result<T, BufferError>;
@@ -123,7 +130,11 @@ impl BytePacketBuffer {
             outstr.push_str(delim);
 
             let str_buffer = self.get_range(pos, len as usize)?;
-            outstr.push_str(&String::from_utf8_lossy(str_buffer).to_lowercase());
+            outstr.push_str(
+                &String::from_utf8(str_buffer.to_vec())
+                    .context(UnicodeSnafu)?
+                    .to_lowercase(),
+            );
 
             delim = ".";
 

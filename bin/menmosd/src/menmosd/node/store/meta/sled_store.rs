@@ -171,7 +171,7 @@ impl MetadataStore for SledMetadataStore {
         for r in self.tag_map.tree().iter() {
             let (tag, vector) = r?;
 
-            let tag_str = String::from_utf8_lossy(tag.as_ref()).to_string();
+            let tag_str = String::from_utf8(tag.to_vec()).expect("tag is not UTF-8");
             let mut bv: BitVec = bincode::deserialize(vector.as_ref())?;
 
             if let Some(user_bitvec) = mask {

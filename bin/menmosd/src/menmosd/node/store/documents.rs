@@ -52,10 +52,9 @@ impl DocumentIdStore for SledDocumentIdStore {
     }
 
     fn lookup(&self, doc_idx: u32) -> Result<Option<String>> {
-        Ok(self
-            .doc_id_map
-            .lookup(doc_idx)?
-            .map(|doc_id_bytes| String::from_utf8_lossy(doc_id_bytes.as_ref()).to_string()))
+        Ok(self.doc_id_map.lookup(doc_idx)?.map(|doc_id_bytes| {
+            String::from_utf8(doc_id_bytes.to_vec()).expect("document ID is not UTF-8")
+        }))
     }
 
     fn delete(&self, doc_id: &str) -> Result<Option<u32>> {
