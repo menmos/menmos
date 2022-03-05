@@ -3,15 +3,21 @@ use std::ops::Bound;
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, ensure, Result};
+
 use async_trait::async_trait;
+
 use betterstreams::ChunkedStreamInfo;
+
 use bytes::Bytes;
+
 use futures::prelude::*;
+
+use parking_lot::Mutex;
+
 use sysinfo::{DiskExt, System, SystemExt};
+
 use tokio::fs::{self, OpenOptions};
-use tokio::io::AsyncSeekExt;
-use tokio::io::AsyncWriteExt;
-use tokio::sync::Mutex;
+use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 
 use super::iface::Repository;
 use crate::util;
@@ -143,7 +149,7 @@ impl Repository for DiskRepository {
     }
 
     async fn available_space(&self) -> Result<Option<u64>> {
-        let mut sys = self.system.lock().await;
+        let mut sys = self.system.lock();
         sys.refresh_disks_list();
         sys.refresh_disks();
 

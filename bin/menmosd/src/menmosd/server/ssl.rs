@@ -2,7 +2,7 @@ use std::convert::Infallible;
 use std::io::BufReader;
 use std::net::SocketAddr;
 use std::path::Path as StdPath;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, str::FromStr};
 
@@ -23,6 +23,8 @@ use futures::future::{AbortHandle, Abortable};
 use hyper::service::service_fn;
 
 use interface::{CertificateInfo, DirectoryNode};
+
+use parking_lot::Mutex;
 
 use tokio::{
     sync::{mpsc, oneshot},
@@ -144,7 +146,7 @@ pub async fn use_tls(
             let order_sync = Arc::new(Mutex::new(new_order));
             let ord_csr = loop {
                 let auths = {
-                    let order = order_sync.lock().expect("poisoned mutex");
+                    let order = order_sync.lock();
                     if let Some(ord_csr) = order.confirm_validations() {
                         break ord_csr;
                     }
@@ -162,7 +164,7 @@ pub async fn use_tls(
                 let order_sync = order_sync.clone();
                 let handle: JoinHandle<anyhow::Result<()>> =
                     tokio::task::spawn_blocking(move || {
-                        let mut order = order_sync.lock().expect("poisoned mutex");
+                        let mut order = order_sync.lock();
                         challenge.validate(5000)?;
                         order.refresh()?;
                         Ok(())

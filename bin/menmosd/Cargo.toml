@@ -62,6 +62,7 @@ menmos-interface = { version = "^0.1.1" }
 menmos-protocol = { version = "^0.1.1" }
 menmos-std = { version = "^0.1.1" }
 menmos-xecute = { version = "^0.1.1" }
+parking_lot = "0.12.0"
 rapidquery = { version = "^0.1.1", features = ["bitvec_size"] }
 ring = "0.16"
 rust-argon2 = "1.0"

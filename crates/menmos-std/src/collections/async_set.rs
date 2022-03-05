@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::hash::Hash;
 
-use tokio::sync::RwLock;
+use parking_lot::RwLock;
 
 #[derive(Default)]
 pub struct AsyncSet<T>
@@ -22,48 +22,46 @@ where
         }
     }
 
-    pub async fn reserve(&self, additional: usize) {
-        let mut guard = self.data.write().await;
+    pub fn reserve(&self, additional: usize) {
+        let mut guard = self.data.write();
         guard.reserve(additional);
     }
 
-    // Clippy complains because the is_empty method is async, as if we had a choice.
-    #[allow(clippy::len_without_is_empty)]
-    pub async fn len(&self) -> usize {
-        let guard = self.data.read().await;
+    pub fn len(&self) -> usize {
+        let guard = self.data.read();
         guard.len()
     }
 
-    pub async fn is_empty(&self) -> bool {
-        let guard = self.data.read().await;
+    pub fn is_empty(&self) -> bool {
+        let guard = self.data.read();
         guard.is_empty()
     }
 
-    pub async fn clear(&self) {
-        let mut guard = self.data.write().await;
+    pub fn clear(&self) {
+        let mut guard = self.data.write();
         guard.clear();
     }
 
-    pub async fn insert(&self, value: T) -> bool {
-        let mut guard = self.data.write().await;
+    pub fn insert(&self, value: T) -> bool {
+        let mut guard = self.data.write();
         guard.insert(value)
     }
 
-    pub async fn contains<Q: ?Sized>(&self, value: &Q) -> bool
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let guard = self.data.read().await;
+        let guard = self.data.read();
         guard.contains(value)
     }
 
-    pub async fn remove<Q: ?Sized>(&self, value: &Q) -> bool
+    pub fn remove<Q: ?Sized>(&self, value: &Q) -> bool
     where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let mut guard = self.data.write().await;
+        let mut guard = self.data.write();
         guard.remove(value)
     }
 }

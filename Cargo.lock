@@ -56,6 +56,7 @@ dependencies = [
  "menmos-repository",
  "menmos-std",
  "menmos-xecute",
+ "parking_lot 0.12.0",
  "portpicker",
  "public-ip",
  "reqwest",
@@ -1700,6 +1701,7 @@ version = "0.1.1"
 dependencies = [
  "anyhow",
  "nom 7.1.0",
+ "parking_lot 0.12.0",
  "portpicker",
  "serde 1.0.136",
  "snafu",
@@ -1827,6 +1829,7 @@ dependencies = [
  "lfan",
  "menmos-betterstreams",
  "menmos-interface",
+ "parking_lot 0.12.0",
  "sysinfo",
  "tokio",
  "tracing",
@@ -1837,6 +1840,7 @@ name = "menmos-std"
 version = "0.1.1"
 dependencies = [
  "once_cell",
+ "parking_lot 0.12.0",
  "serde_json",
  "tokio",
 ]
@@ -1914,6 +1918,7 @@ dependencies = [
  "menmos-std",
  "menmos-testing",
  "menmos-xecute",
+ "parking_lot 0.12.0",
  "portpicker",
  "rapidquery",
  "reqwest",
