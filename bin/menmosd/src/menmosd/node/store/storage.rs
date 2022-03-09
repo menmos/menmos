@@ -49,7 +49,6 @@ impl StorageMappingStore for SledStorageMappingStore {
         Ok(self.tree.remove(blob_id.as_bytes())?.map(|ivec| {
             String::from_utf8(ivec.to_vec())
                 .expect("node ID is not UTF-8")
-                .to_string()
         }))
     }
 
