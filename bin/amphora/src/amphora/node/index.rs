@@ -53,11 +53,13 @@ impl Index {
             .transpose()
     }
 
-    pub fn get_all_keys(&self) -> Vec<String> {
+    pub fn get_all_keys(&self) -> Result<Vec<String>> {
         self.db
             .iter()
-            .filter_map(|r| r.ok())
-            .map(|(k, _v)| String::from_utf8_lossy(k.as_ref()).to_string())
+            .map(|r| {
+                r.map_err(|e| e.into())
+                    .map(|(k, _v)| String::from_utf8(k.to_vec()).expect("key is not UTF-8"))
+            })
             .collect()
     }
 
@@ -159,7 +161,7 @@ mod tests {
             },
         )?;
 
-        let keys = idx.get_all_keys();
+        let keys = idx.get_all_keys()?;
         assert_eq!(keys.as_slice(), &[String::from("a"), String::from("b")]);
 
         Ok(())

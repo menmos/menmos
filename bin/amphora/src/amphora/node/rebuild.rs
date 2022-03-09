@@ -15,7 +15,7 @@ pub async fn execute(parameters: Params, proxy: Arc<DirectoryProxy>, db: Arc<Ind
     tracing::info!("starting node rebuild");
 
     // Step 1 - Get a set of keys to push (so we dont re-push documents that are indexed during the rebuild).
-    let keys = db.get_all_keys();
+    let keys = db.get_all_keys()?;
 
     // Step 2 - Push all those keys (and their meta) back to the directory.
     let puts = futures::stream::iter(keys.into_iter().map(|key| {
