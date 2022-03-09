@@ -85,6 +85,7 @@ fn encode_metadata(meta: Meta) -> Result<String> {
 
 async fn extract_body<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> {
     let body_bytes = response.bytes().await.context(FetchBodySnafu)?;
+    tracing::debug!("body: {}", String::from_utf8_lossy(&body_bytes));
     serde_json::from_slice(body_bytes.as_ref()).context(ResponseDeserializationSnafu)
 }
 
@@ -174,8 +175,7 @@ impl Client {
             .post(url)
             .bearer_auth(&self.token)
             .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta)
-            .header(header::HeaderName::from_static("x-request-id"), request_id)
-            .header(HeaderName::from_static("x-blob-size"), file_length);
+            .header(header::HeaderName::from_static("x-request-id"), request_id);
 
         if path.as_ref().is_file() {
             let file = tokio::fs::File::open(path.as_ref()).await.unwrap();

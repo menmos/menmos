@@ -1,8 +1,9 @@
 use std::time::Duration;
 
+use axum::extract::Extension;
 use axum::http::Request;
 use axum::response::Response;
-use axum::{AddExtensionLayer, Router};
+use axum::Router;
 
 use tower_http::trace::TraceLayer;
 
@@ -14,8 +15,8 @@ use crate::Config;
 
 pub fn wrap(router: Router, node: DynStorageNode, config: &Config) -> Router {
     router
-        .layer(AddExtensionLayer::new(node))
-        .layer(AddExtensionLayer::new(EncryptionKey {
+        .layer(Extension(node))
+        .layer(Extension(EncryptionKey {
             key: config.node.encryption_key.clone(),
         }))
         .layer(

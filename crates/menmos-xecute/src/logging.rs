@@ -18,6 +18,7 @@ const DEFAULT_TRACKED_CRATES: &[&str] = &[
     "apikit",
     "menmos_auth",
     "menmos_client",
+    "menmos_protocol",
     "betterstreams",
     "repository",
     "menmos-std",

@@ -1,10 +1,12 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use axum::extract::Extension;
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
-use axum::{AddExtensionLayer, Router};
+use axum::Router;
+
 use headers::HeaderValue;
 
 use interface::{CertificateInfo, DynDirectoryNode};
@@ -60,12 +62,12 @@ fn wrap_extension_layers(
     certificate_info: Arc<Option<CertificateInfo>>,
 ) -> Router {
     router
-        .layer(AddExtensionLayer::new(certificate_info))
-        .layer(AddExtensionLayer::new(menmos_auth::EncryptionKey {
+        .layer(Extension(certificate_info))
+        .layer(Extension(menmos_auth::EncryptionKey {
             key: config.node.encryption_key.clone(),
         }))
-        .layer(AddExtensionLayer::new(config.clone()))
-        .layer(AddExtensionLayer::new(node.clone()))
+        .layer(Extension(config.clone()))
+        .layer(Extension(node.clone()))
         .layer(axum::middleware::from_fn(redirect_request_id))
 }
 
