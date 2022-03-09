@@ -1,8 +1,8 @@
-use std::sync::Arc;
+use apikit::reject::HTTPError;
 
-use interface::StorageNode;
+use axum::response::Response;
 
-#[tracing::instrument(skip(_node))]
-pub async fn health<N: StorageNode>(_node: Arc<N>) -> Result<impl warp::Reply, warp::Rejection> {
+#[tracing::instrument]
+pub async fn health() -> Result<Response, HTTPError> {
     Ok(apikit::reply::message("healthy"))
 }

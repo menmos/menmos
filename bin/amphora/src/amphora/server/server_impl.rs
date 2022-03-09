@@ -1,58 +1,88 @@
-use std::sync::Arc;
+use std::net::SocketAddr;
 
 use anyhow::{ensure, Result};
 
-use interface::StorageNode;
+use axum::Router;
+use axum_server::tls_rustls::RustlsConfig;
+use axum_server::Handle;
+
+use interface::DynStorageNode;
 
 use tokio::sync::oneshot;
 use tokio::task::{spawn, JoinHandle};
 
 use crate::{CertPath, Config};
 
-use super::filters;
+fn build_router(node: DynStorageNode, config: &Config) -> Router {
+    super::layer::wrap(super::router::new(), node, config)
+}
 
 struct ServerProcess {
     pub join_handle: JoinHandle<()>,
     pub tx_stop: oneshot::Sender<()>,
 }
 
-pub struct NodeServer<N: StorageNode> {
-    _node: Arc<N>,
+pub struct NodeServer {
+    _node: DynStorageNode,
     handle: ServerProcess,
 }
 
-impl<N> NodeServer<N>
-where
-    N: StorageNode + Send + Sync + 'static,
-{
-    pub fn new(node: Arc<N>, config: Config, cert_paths: Option<CertPath>) -> Self {
+impl NodeServer {
+    pub async fn new(node: DynStorageNode, config: Config, cert_paths: Option<CertPath>) -> Self {
         let (tx_stop, rx) = oneshot::channel();
 
-        let warp_server = warp::serve(filters::all(node.clone(), config.clone()));
+        let router = build_router(node.clone(), &config);
 
         let join_handle = if let Some(certs) = cert_paths {
             tracing::debug!("starting https layer");
-            let h = spawn(
-                warp_server
-                    .tls()
-                    .cert_path(&certs.certificate)
-                    .key_path(&certs.private_key)
-                    .bind_with_graceful_shutdown(([0, 0, 0, 0], config.server.port), async {
-                        rx.await.ok();
-                    })
-                    .1,
-            );
+            let rustls_config = RustlsConfig::from_pem_file(certs.certificate, certs.private_key)
+                .await
+                .unwrap(); // TODO: Fix Unwrap?
+
+            let interrupt_handle = Handle::new();
+
+            {
+                let handle = interrupt_handle.clone();
+                tokio::spawn(async move {
+                    rx.await.ok();
+                    tracing::info!("https layer stop signal received");
+                    handle.graceful_shutdown(None)
+                });
+            }
+
+            let https_srv =
+                axum_server::bind_rustls(([0, 0, 0, 0], config.server.port).into(), rustls_config)
+                    .handle(interrupt_handle)
+                    .serve(router.into_make_service_with_connect_info::<SocketAddr, _>());
+
+            let h = spawn(async move {
+                match https_srv.await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        tracing::error!("https server error: {e}");
+                    }
+                }
+            });
+
             tracing::debug!("https layer started");
             h
         } else {
             tracing::debug!("starting http layer");
-            let h = spawn(
-                warp_server
-                    .bind_with_graceful_shutdown(([0, 0, 0, 0], config.server.port), async {
-                        rx.await.ok();
-                    })
-                    .1,
-            );
+            let srv = axum::Server::bind(&([0, 0, 0, 0], config.server.port).into())
+                .serve(router.into_make_service_with_connect_info::<SocketAddr, _>())
+                .with_graceful_shutdown(async move {
+                    rx.await.ok();
+                });
+
+            let h = spawn(async move {
+                match srv.await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        tracing::error!("http server error: {e}")
+                    }
+                }
+            });
+
             tracing::debug!("http layer started");
             h
         };

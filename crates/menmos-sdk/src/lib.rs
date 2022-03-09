@@ -172,8 +172,6 @@ impl Menmos {
 pub struct MenmosBuilder {
     profile: String,
     request_timeout: Option<time::Duration>,
-    max_retry_count: Option<usize>,
-    retry_interval: Option<time::Duration>,
 }
 
 impl MenmosBuilder {
@@ -181,26 +179,12 @@ impl MenmosBuilder {
         Self {
             profile,
             request_timeout: None,
-            max_retry_count: None,
-            retry_interval: None,
         }
     }
 
     #[must_use]
     pub fn with_request_timeout(mut self, request_timeout: time::Duration) -> Self {
         self.request_timeout = Some(request_timeout);
-        self
-    }
-
-    #[must_use]
-    pub fn with_max_retry_count(mut self, max_retry_count: usize) -> Self {
-        self.max_retry_count = Some(max_retry_count);
-        self
-    }
-
-    #[must_use]
-    pub fn with_retry_interval(mut self, retry_interval: time::Duration) -> Self {
-        self.retry_interval = Some(retry_interval);
         self
     }
 
@@ -213,14 +197,6 @@ impl MenmosBuilder {
 
         if let Some(request_timeout) = self.request_timeout {
             builder = builder.with_request_timeout(request_timeout);
-        }
-
-        if let Some(max_retry_count) = self.max_retry_count {
-            builder = builder.with_max_retry_count(max_retry_count);
-        }
-
-        if let Some(retry_interval) = self.retry_interval {
-            builder = builder.with_retry_interval(retry_interval);
         }
 
         let client = builder.build().await.context(ClientBuildSnafu)?;

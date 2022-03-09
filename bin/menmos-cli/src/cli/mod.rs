@@ -27,10 +27,6 @@ pub struct Root {
     )]
     profile: String,
 
-    /// The max number of retries for a given request..
-    #[clap(short = 'r', long = "retries")]
-    max_retry_count: Option<usize>,
-
     #[clap(subcommand)]
     command: Command,
 }
@@ -40,12 +36,7 @@ impl Root {
         let cli = OutputManager::new(self.verbose);
 
         service::config::load_or_create(cli.clone())?;
-        let mut client_builder = Menmos::builder(&self.profile);
-
-        if let Some(max_retry_count) = self.max_retry_count {
-            client_builder = client_builder.with_max_retry_count(max_retry_count);
-        }
-
+        let client_builder = Menmos::builder(&self.profile);
         let client = client_builder.build().await.map_err(|e| anyhow!("{e}"))?;
 
         match self.command {

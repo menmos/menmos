@@ -116,7 +116,7 @@ impl RebootableServer {
             None
         };
 
-        let s = NodeServer::new(storage_node.clone(), cfg.clone(), cert_paths);
+        let s = NodeServer::new(storage_node.clone(), cfg.clone(), cert_paths).await;
 
         let cert_change_validator = block_until_cert_change(storage_node.clone(), certs);
         let stop_signal = stop_rx.recv();

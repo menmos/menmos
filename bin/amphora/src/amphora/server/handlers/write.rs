@@ -1,39 +1,39 @@
-use std::ops::Bound;
-use std::sync::Arc;
+use anyhow::Result;
 
-use anyhow::{ensure, Result};
-use apikit::reject::{BadRequest, InternalServerError};
-use bytes::Bytes;
-use headers::{Header, HeaderValue};
-use interface::StorageNode;
+use apikit::reject::HTTPError;
+
+use axum::body::Bytes;
+use axum::extract::{Extension, Path, TypedHeader};
+use axum::headers::Range as RangeHeader;
+use axum::response::Response;
+
+use interface::DynStorageNode;
+
 use menmos_auth::UserIdentity;
-use warp::reply;
-
-fn parse_range_header(value: HeaderValue) -> Result<(Bound<u64>, Bound<u64>)> {
-    // Decode the range string sent in the header value.
-    let requested_ranges = headers::Range::decode(&mut vec![value].iter())?;
-
-    // Convert the decoded range struct into a vectro of tuples of bounds.
-    let ranges: Vec<(Bound<u64>, Bound<u64>)> = requested_ranges.iter().collect();
-    ensure!(ranges.len() == 1, "multipart ranges not supported");
-
-    Ok(ranges[0])
-}
 
 #[tracing::instrument(skip(node, body))]
-pub async fn write<N: StorageNode>(
+pub async fn write(
     user: UserIdentity,
-    node: Arc<N>,
-    range_header: HeaderValue,
-    blob_id: String,
+    Extension(node): Extension<DynStorageNode>,
+    TypedHeader(range_header): TypedHeader<RangeHeader>,
+    Path(blob_id): Path<String>,
     body: Bytes,
-) -> Result<reply::Response, warp::Rejection> {
+) -> Result<Response, HTTPError> {
     // Fetch the request content range from the header.
-    let range = parse_range_header(range_header).map_err(BadRequest::from)?;
+    let mut range_it = range_header.iter();
+    let range = range_it
+        .next()
+        .ok_or_else(|| HTTPError::bad_request("missing range"))?;
+
+    if range_it.next().is_some() {
+        return Err(HTTPError::bad_request(
+            "multi-range requests are not supported, stick to a single range per request",
+        ));
+    }
 
     node.write(blob_id, range, body, &user.username)
         .await
-        .map_err(InternalServerError::from)?;
+        .map_err(HTTPError::internal_server_error)?;
 
-    Ok(apikit::reply::message("OK"))
+    Ok(apikit::reply::message("ok"))
 }

@@ -8,6 +8,8 @@ mod store;
 
 pub use node_impl::Directory;
 
+use std::sync::Arc;
+
 use crate::Config;
 
 use self::{
@@ -21,13 +23,17 @@ use self::{
         },
     },
 };
-use std::sync::Arc;
+use sled::Mode;
+
 use tokio::time::Instant;
 
 #[tracing::instrument]
 fn init_sled(path: &Path) -> Result<sled::Db> {
     let start = Instant::now();
-    let db = sled::open(path)?;
+    let db = sled::Config::default()
+        .mode(Mode::HighThroughput)
+        .path(path)
+        .open()?;
     let load_duration = Instant::now().duration_since(start);
     tracing::debug!(time=?load_duration, "complete");
     Ok(db)

@@ -17,7 +17,7 @@ const DEFAULT_TRACKED_CRATES: &[&str] = &[
     "lfan",
     "apikit",
     "menmos_auth",
-    "menmos-client",
+    "menmos_client",
     "betterstreams",
     "repository",
     "menmos-std",

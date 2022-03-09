@@ -1,23 +1,24 @@
-use std::sync::Arc;
+use apikit::reject::HTTPError;
 
-use apikit::reject::{Forbidden, InternalServerError};
+use axum::extract::Extension;
+use axum::response::Response;
 
-use interface::StorageNode;
+use interface::DynStorageNode;
 
 use menmos_auth::UserIdentity;
 
-use warp::reply;
-
 #[tracing::instrument(skip(node))]
-pub async fn flush<N: StorageNode>(
+pub async fn flush(
     user: UserIdentity,
-    node: Arc<N>,
-) -> Result<reply::Response, warp::Rejection> {
+    Extension(node): Extension<DynStorageNode>,
+) -> Result<Response, HTTPError> {
     if !user.admin {
-        return Err(Forbidden.into());
+        return Err(HTTPError::Forbidden);
     }
 
-    node.flush().await.map_err(InternalServerError::from)?;
+    node.flush()
+        .await
+        .map_err(HTTPError::internal_server_error)?;
 
-    Ok(apikit::reply::message("OK"))
+    Ok(apikit::reply::message("ok"))
 }

@@ -33,7 +33,7 @@ pub async fn serve_static(Path(path): Path<String>) -> Result<http::Response<Bod
         STATIC_FILE_DIR.get_file("index.html").unwrap()
     });
 
-    let mut resp = Response::builder();
+    let mut resp = http::Response::builder();
 
     if let Some(mimetype) = menmos_std::fs::mimetype(memory_file.path()) {
         tracing::trace!("got mime: {mimetype}");

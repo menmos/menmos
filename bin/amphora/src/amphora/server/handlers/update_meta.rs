@@ -1,18 +1,20 @@
-use std::sync::Arc;
+use apikit::reject::HTTPError;
 
-use apikit::reject::InternalServerError;
+use axum::extract::{Extension, Path};
+use axum::response::Response;
+use axum::Json;
 
-use interface::{BlobInfoRequest, BlobMetaRequest, StorageNode};
+use interface::{BlobInfoRequest, BlobMetaRequest, DynStorageNode};
 
 use menmos_auth::UserIdentity;
 
 #[tracing::instrument(skip(node, meta_request))]
-pub async fn update_meta<N: StorageNode>(
+pub async fn update_meta(
     user: UserIdentity,
-    node: Arc<N>,
-    blob_id: String,
-    meta_request: BlobMetaRequest,
-) -> Result<warp::reply::Response, warp::Rejection> {
+    Extension(node): Extension<DynStorageNode>,
+    Path(blob_id): Path<String>,
+    Json(meta_request): Json<BlobMetaRequest>,
+) -> Result<Response, HTTPError> {
     node.update_meta(
         blob_id,
         BlobInfoRequest {
@@ -22,7 +24,6 @@ pub async fn update_meta<N: StorageNode>(
         },
     )
     .await
-    .map_err(InternalServerError::from)?;
-
-    Ok(apikit::reply::message("OK"))
+    .map_err(HTTPError::internal_server_error)?;
+    Ok(apikit::reply::message("ok"))
 }

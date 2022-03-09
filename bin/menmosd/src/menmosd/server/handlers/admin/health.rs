@@ -1,7 +1,7 @@
 use apikit::reject::HTTPError;
 
-use axum::Json;
+use axum::response::Response;
 
-pub async fn health() -> Result<Json<apikit::payload::MessageResponse>, HTTPError> {
-    Ok(Json(apikit::payload::MessageResponse::new("healthy")))
+pub async fn health() -> Result<Response, HTTPError> {
+    Ok(apikit::reply::message("healthy"))
 }
