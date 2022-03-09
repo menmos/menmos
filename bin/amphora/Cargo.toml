@@ -47,6 +47,7 @@ menmos-protocol = { version = "^0.1.1" }
 menmos-repository = { version = "^0.1.1" }
 menmos-std = { version = "^0.1.1" }
 menmos-xecute = { version = "^0.1.1" }
+parking_lot = "0.12.0"
 public-ip = { git = "https://github.com/avitex/rust-public-ip", rev = "09c3c33" } # TODO: Update to v0.2
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }

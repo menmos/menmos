@@ -85,6 +85,7 @@ fn encode_metadata(meta: Meta) -> Result<String> {
 
 async fn extract_body<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> {
     let body_bytes = response.bytes().await.context(FetchBodySnafu)?;
+    tracing::debug!("body: {}", String::from_utf8_lossy(&body_bytes));
     serde_json::from_slice(body_bytes.as_ref()).context(ResponseDeserializationSnafu)
 }
 

@@ -3,12 +3,16 @@ use std::time::Instant;
 use std::{net::SocketAddr, sync::Arc};
 
 use mpsc::{UnboundedReceiver, UnboundedSender};
+
+use parking_lot::Mutex;
+
 use resolver::ResolveError;
+
 use snafu::{ResultExt, Snafu};
 
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 
 use crate::{
@@ -27,7 +31,6 @@ pub enum ServerError {
     ResolutionError { source: ResolveError },
 
     JoinError,
-    PoisonedMutex,
 }
 
 type Result<T> = std::result::Result<T, ServerError>;
@@ -71,7 +74,7 @@ impl Server {
     }
 
     pub async fn set_dns_challenge(&self, challenge: &str) -> Result<()> {
-        let mut guard = self.txt_challenge.lock().await;
+        let mut guard = self.txt_challenge.lock();
         *guard = challenge.to_string();
         tracing::info!("set acme challenge: {}", &*guard);
         Ok(())
@@ -98,7 +101,7 @@ impl Server {
             // Handle the special case of a TXT query on our handled domain.
 
             if question.qtype == QueryType::TXT && question.name.ends_with(&cfg.root_domain) {
-                let guard = challenge.lock().await;
+                let guard = challenge.lock();
                 let chall = &*guard.clone();
                 if !chall.is_empty() {
                     tracing::info!("query is an ACME challenge");

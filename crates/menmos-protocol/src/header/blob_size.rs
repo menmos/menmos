@@ -21,7 +21,7 @@ impl Header for BlobSizeHeader {
         let size = value_str.parse::<u64>().map_err(|_| Error::invalid())?;
 
         if values.next().is_some() {
-            tracing::trace!("x-blob-size doesn't support multiple assignment");
+            tracing::debug!("x-blob-size doesn't support multiple assignment");
             return Err(Error::invalid());
         }
 

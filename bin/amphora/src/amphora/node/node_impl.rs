@@ -4,13 +4,22 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, ensure, Result};
+
 use async_trait::async_trait;
+
 use bytes::Bytes;
+
 use chrono::Utc;
+
 use futures::{stream::empty, Stream};
+
 use interface::{Blob, BlobInfo, BlobInfoRequest, CertificateInfo, StorageNode, StorageNodeInfo};
+
+use parking_lot::Mutex;
+
 use repository::{Repository, StreamInfo};
-use tokio::sync::Mutex;
+
+use tokio::sync::Mutex as AsyncMutex;
 
 use super::{
     directory_proxy::DirectoryProxy, index::Index, node_info::get_redirect_info, rebuild,
@@ -31,7 +40,7 @@ pub struct Storage {
     index: Arc<Index>,
     repo: Arc<ConcurrentRepository>,
 
-    transfer_manager: Arc<Mutex<Option<TransferManager>>>,
+    transfer_manager: Arc<AsyncMutex<Option<TransferManager>>>,
 }
 
 impl Storage {
@@ -63,7 +72,7 @@ impl Storage {
             index,
             repo,
             certificates,
-            transfer_manager: Arc::new(Mutex::new(Some(transfer_manager))),
+            transfer_manager: Arc::new(AsyncMutex::new(Some(transfer_manager))),
         };
 
         Ok(s)
@@ -109,7 +118,7 @@ impl Storage {
 
         // Update the certificate info.
         {
-            let mut cert_info_guard = self.certificates.lock().await;
+            let mut cert_info_guard = self.certificates.lock();
             *cert_info_guard = response.certificate_info;
         }
 
@@ -301,7 +310,7 @@ impl StorageNode for Storage {
     }
 
     async fn get_certificates(&self) -> Option<CertificateInfo> {
-        let guard = self.certificates.lock().await;
+        let guard = self.certificates.lock();
         (*guard).clone()
     }
 

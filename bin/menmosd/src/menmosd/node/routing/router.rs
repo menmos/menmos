@@ -4,14 +4,14 @@ use chrono::{DateTime, Duration, Utc};
 
 use interface::{BlobMetaRequest, RoutingAlgorithm, RoutingConfig, StorageNodeInfo};
 
-use menmos_std::collections::AsyncHashMap;
+use menmos_std::collections::ConcurrentHashMap;
 
 use super::algorithm::{MinSizePolicy, RoundRobinPolicy, RoutingPolicy};
 
 const NODE_FORGET_DURATION_SECONDS: i64 = 60;
 
 pub struct NodeRouter {
-    storage_nodes: AsyncHashMap<String, (StorageNodeInfo, DateTime<Utc>)>,
+    storage_nodes: ConcurrentHashMap<String, (StorageNodeInfo, DateTime<Utc>)>,
     routing_policy: Box<dyn RoutingPolicy + Send + Sync>,
 
     node_forget_duration: Duration,
@@ -25,7 +25,7 @@ impl NodeRouter {
         };
 
         Self {
-            storage_nodes: AsyncHashMap::new(),
+            storage_nodes: ConcurrentHashMap::new(),
             routing_policy,
             node_forget_duration: Duration::seconds(NODE_FORGET_DURATION_SECONDS),
         }
@@ -33,14 +33,14 @@ impl NodeRouter {
 
     async fn prune_last_node(&self) {
         if let Some(node_id) = self.routing_policy.prune_last().await {
-            self.storage_nodes.remove(&node_id).await;
+            self.storage_nodes.remove(&node_id);
         } else {
             tracing::warn!("called pruned_last_node with an empty node list");
         }
     }
 
     async fn get_node_if_fresh(&self, node_id: &str) -> Option<StorageNodeInfo> {
-        if let Some((node_info, seen_at)) = self.storage_nodes.get(node_id).await {
+        if let Some((node_info, seen_at)) = self.storage_nodes.get(node_id) {
             if Utc::now() - seen_at > self.node_forget_duration {
                 // Node is expired.
                 None
@@ -60,7 +60,6 @@ impl NodeRouter {
                 storage_node.id.clone(),
                 (storage_node.clone(), chrono::Utc::now()),
             )
-            .await
             .is_some();
 
         if !already_existed {
@@ -75,7 +74,6 @@ impl NodeRouter {
     pub async fn list_nodes(&self) -> Vec<StorageNodeInfo> {
         self.storage_nodes
             .get_all()
-            .await
             .into_iter()
             .map(|(_k, (node_info, _last_seen))| node_info)
             .collect()

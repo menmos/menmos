@@ -1,16 +1,19 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use anyhow::{ensure, Result};
 
 use async_trait::async_trait;
 
 use bitvec::prelude::*;
+
 use interface::{
     BlobIndexer, BlobInfo, FieldValue, NodeAdminController, QueryExecutor, RoutingAlgorithm,
     RoutingConfigManager, RoutingConfigState, UserManagement,
 };
+
+use parking_lot::Mutex;
 
 use crate::node::{
     service::{IndexerService, NodeAdminService, QueryService},
@@ -51,24 +54,24 @@ impl Flush for MockUserStore {
 
 impl UserStore for MockUserStore {
     fn authenticate(&self, username: &str, password: &str) -> Result<bool> {
-        let guard = self.users.lock().unwrap();
+        let guard = self.users.lock();
         Ok(guard.get(username).cloned().unwrap_or_default() == password)
     }
 
     fn add_user(&self, username: &str, password: &str) -> Result<()> {
-        let mut guard = self.users.lock().unwrap();
+        let mut guard = self.users.lock();
         guard.insert(username.to_string(), password.to_string());
         Ok(())
     }
 
     fn has_user(&self, username: &str) -> Result<bool> {
-        let guard = self.users.lock().unwrap();
+        let guard = self.users.lock();
         Ok(guard.contains_key(username))
     }
 
     fn iter(&self) -> DynIter<'static, Result<String>> {
         // Returning an iterator on something protected by a mutex = cursed.
-        let guard = self.users.lock().unwrap();
+        let guard = self.users.lock();
 
         let users = guard
             .iter()
@@ -100,9 +103,9 @@ impl DocumentIdStore for MockDocumentIDStore {
     }
 
     fn insert(&self, doc_id: &str) -> Result<u32> {
-        let mut fwd_guard = self.forward_map.lock().unwrap();
-        let mut rwd_guard = self.backward_map.lock().unwrap();
-        let mut recycled_guard = self.recycled_ids.lock().unwrap();
+        let mut fwd_guard = self.forward_map.lock();
+        let mut rwd_guard = self.backward_map.lock();
+        let mut recycled_guard = self.recycled_ids.lock();
 
         let fwd_map = &mut *fwd_guard;
         let rwd_map = &mut *rwd_guard;
@@ -123,7 +126,7 @@ impl DocumentIdStore for MockDocumentIDStore {
     }
 
     fn lookup(&self, doc_idx: u32) -> Result<Option<String>> {
-        let rwd_guard = self.backward_map.lock().unwrap();
+        let rwd_guard = self.backward_map.lock();
         let rwd_map = &*rwd_guard;
 
         if let Some(d) = rwd_map.get(&doc_idx) {
@@ -134,9 +137,9 @@ impl DocumentIdStore for MockDocumentIDStore {
     }
 
     fn delete(&self, doc_id: &str) -> Result<Option<u32>> {
-        let mut fwd_guard = self.forward_map.lock().unwrap();
-        let mut rwd_guard = self.backward_map.lock().unwrap();
-        let mut recycled_guard = self.recycled_ids.lock().unwrap();
+        let mut fwd_guard = self.forward_map.lock();
+        let mut rwd_guard = self.backward_map.lock();
+        let mut recycled_guard = self.recycled_ids.lock();
 
         let fwd_map = &mut *fwd_guard;
         let rwd_map = &mut *rwd_guard;
@@ -152,7 +155,7 @@ impl DocumentIdStore for MockDocumentIDStore {
     }
 
     fn get_all_documents_mask(&self) -> Result<BitVec> {
-        let recycled_guard = self.recycled_ids.lock().unwrap();
+        let recycled_guard = self.recycled_ids.lock();
         let recycled = &*recycled_guard;
 
         // Initialize our bitvector with 1.
@@ -166,14 +169,14 @@ impl DocumentIdStore for MockDocumentIDStore {
     }
 
     fn get(&self, doc_id: &str) -> Result<Option<u32>> {
-        let fwd_guard = self.forward_map.lock().unwrap();
+        let fwd_guard = self.forward_map.lock();
         Ok((*fwd_guard).get(doc_id).cloned())
     }
 
     fn clear(&self) -> Result<()> {
-        let mut fwd_guard = self.forward_map.lock().unwrap();
-        let mut rwd_guard = self.backward_map.lock().unwrap();
-        let mut recycled_guard = self.recycled_ids.lock().unwrap();
+        let mut fwd_guard = self.forward_map.lock();
+        let mut rwd_guard = self.backward_map.lock();
+        let mut recycled_guard = self.recycled_ids.lock();
         fwd_guard.clear();
         rwd_guard.clear();
         recycled_guard.clear();
@@ -197,15 +200,15 @@ impl Flush for MockMetadataStore {
 
 impl MetadataStore for MockMetadataStore {
     fn get(&self, idx: u32) -> Result<Option<BlobInfo>> {
-        let guard = self.meta_map.lock().unwrap();
+        let guard = self.meta_map.lock();
         let map = &*guard;
         Ok(map.get(&idx).cloned())
     }
 
     fn insert(&self, id: u32, info: &BlobInfo) -> Result<()> {
-        let mut meta_guard = self.meta_map.lock().unwrap();
-        let mut tag_guard = self.tag_map.lock().unwrap();
-        let mut users_guard = self.users_map.lock().unwrap();
+        let mut meta_guard = self.meta_map.lock();
+        let mut tag_guard = self.tag_map.lock();
+        let mut users_guard = self.users_map.lock();
         let meta_map = &mut *meta_guard;
         let tag_map = &mut *tag_guard;
         let users_map = &mut *users_guard;
@@ -245,12 +248,12 @@ impl MetadataStore for MockMetadataStore {
     }
 
     fn load_user_mask(&self, username: &str) -> Result<BitVec> {
-        let users_guard = self.users_map.lock().unwrap();
+        let users_guard = self.users_map.lock();
         Ok(users_guard.get(username).cloned().unwrap_or_default())
     }
 
     fn load_tag(&self, tag: &str) -> Result<BitVec> {
-        let tag_guard = self.tag_map.lock().unwrap();
+        let tag_guard = self.tag_map.lock();
         let tag_map = &*tag_guard;
 
         if let Some(s) = tag_map.get(tag) {
@@ -265,7 +268,7 @@ impl MetadataStore for MockMetadataStore {
     }
 
     fn load_key(&self, k: &str) -> Result<BitVec> {
-        let tag_guard = self.tag_map.lock().unwrap();
+        let tag_guard = self.tag_map.lock();
         let tag_map = &*tag_guard;
 
         let mut bv = BitVec::default();
@@ -283,7 +286,7 @@ impl MetadataStore for MockMetadataStore {
     }
 
     fn list_all_tags(&self, user_bv: Option<&BitVec>) -> Result<HashMap<String, usize>> {
-        let tag_guard = self.tag_map.lock().unwrap();
+        let tag_guard = self.tag_map.lock();
         let tag_map = &*tag_guard;
 
         let mut hsh = HashMap::with_capacity(tag_map.len());
@@ -307,7 +310,7 @@ impl MetadataStore for MockMetadataStore {
         key_filter: &Option<Vec<String>>,
         user_bv: Option<&BitVec>,
     ) -> Result<HashMap<String, HashMap<FieldValue, usize>>> {
-        let tag_guard = self.tag_map.lock().unwrap();
+        let tag_guard = self.tag_map.lock();
         let tag_map = &*tag_guard;
 
         let mut hsh = HashMap::new();
@@ -351,7 +354,7 @@ impl MetadataStore for MockMetadataStore {
     }
 
     fn purge(&self, idx: u32) -> Result<()> {
-        let mut tag_guard = self.tag_map.lock().unwrap();
+        let mut tag_guard = self.tag_map.lock();
         let tag_map = &mut *tag_guard;
         for bitvec in tag_map.iter_mut().map(|v| v.1) {
             bitvec.set(idx as usize, false);
@@ -361,8 +364,8 @@ impl MetadataStore for MockMetadataStore {
     }
 
     fn clear(&self) -> Result<()> {
-        let mut meta_guard = self.meta_map.lock().unwrap();
-        let mut tag_guard = self.tag_map.lock().unwrap();
+        let mut meta_guard = self.meta_map.lock();
+        let mut tag_guard = self.tag_map.lock();
         meta_guard.clear();
         tag_guard.clear();
         Ok(())
@@ -383,26 +386,26 @@ impl Flush for MockStorageStore {
 
 impl StorageMappingStore for MockStorageStore {
     fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>> {
-        let guard = self.m.lock().unwrap();
+        let guard = self.m.lock();
         let map = &*guard;
         Ok(map.get(blob_id).cloned())
     }
 
     fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()> {
-        let mut guard = self.m.lock().unwrap();
+        let mut guard = self.m.lock();
         let map = &mut *guard;
         map.insert(String::from(blob_id), node_id);
         Ok(())
     }
 
     fn delete_blob(&self, blob_id: &str) -> Result<Option<String>> {
-        let mut guard = self.m.lock().unwrap();
+        let mut guard = self.m.lock();
         let map = &mut *guard;
         Ok(map.remove(blob_id))
     }
 
     fn clear(&self) -> Result<()> {
-        let mut guard = self.m.lock().unwrap();
+        let mut guard = self.m.lock();
         guard.clear();
         Ok(())
     }
@@ -415,7 +418,7 @@ pub struct MockRoutingStore {
 
 impl RoutingStore for MockRoutingStore {
     fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfigState>> {
-        let guard = self.m.lock().unwrap();
+        let guard = self.m.lock();
         Ok(guard.get(username).cloned())
     }
 
@@ -424,13 +427,13 @@ impl RoutingStore for MockRoutingStore {
         username: &str,
         routing_config: &RoutingConfigState,
     ) -> Result<()> {
-        let mut guard = self.m.lock().unwrap();
+        let mut guard = self.m.lock();
         guard.insert(String::from(username), routing_config.clone());
         Ok(())
     }
 
     fn delete_routing_config(&self, username: &str) -> Result<()> {
-        let mut guard = self.m.lock().unwrap();
+        let mut guard = self.m.lock();
         guard.remove(username);
         Ok(())
     }

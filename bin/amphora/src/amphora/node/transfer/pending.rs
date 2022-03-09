@@ -1,7 +1,9 @@
 use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
+
+use parking_lot::Mutex;
 
 pub struct TransferGuard {
     blob_id: String,
@@ -10,11 +12,8 @@ pub struct TransferGuard {
 
 impl Drop for TransferGuard {
     fn drop(&mut self) {
-        if let Ok(mut guard) = self.pending_transfers.lock() {
-            guard.remove(&self.blob_id);
-        } else {
-            tracing::error!("error during drop: poisoned mutex");
-        }
+        let mut guard = self.pending_transfers.lock();
+        guard.remove(&self.blob_id);
     }
 }
 
@@ -25,7 +24,7 @@ pub struct PendingTransfers {
 
 impl PendingTransfers {
     pub fn start(&self, blob_id: &str) -> Result<Option<TransferGuard>> {
-        let mut guard = self.data.lock().map_err(|e| anyhow!("{}", e.to_string()))?;
+        let mut guard = self.data.lock();
 
         if guard.contains(blob_id) {
             return Ok(None);

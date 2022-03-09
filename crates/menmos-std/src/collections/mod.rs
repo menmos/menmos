@@ -1,7 +1,7 @@
-mod async_list;
-mod async_map;
 mod async_set;
+mod concurrent_list;
+mod concurrent_map;
 
-pub use async_list::AsyncList;
-pub use async_map::AsyncHashMap;
 pub use async_set::AsyncSet;
+pub use concurrent_list::ConcurrentList;
+pub use concurrent_map::ConcurrentHashMap;

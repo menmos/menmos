@@ -1,10 +1,12 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use async_trait::async_trait;
 
 use interface::{StorageNodeInfo, StorageNodeResponseData};
+
+use parking_lot::Mutex;
 
 use crate::node::routing::NodeRouter;
 
@@ -32,7 +34,7 @@ impl NodeAdminService {
 impl interface::NodeAdminController for NodeAdminService {
     async fn register_storage_node(&self, def: StorageNodeInfo) -> Result<StorageNodeResponseData> {
         let rebuild_requested = {
-            let rebuild_queue_guard = self.rebuild_queue.lock().map_err(|e| anyhow!("{}", e))?;
+            let rebuild_queue_guard = self.rebuild_queue.lock();
 
             if let Some(storage_node) = rebuild_queue_guard.last() {
                 storage_node.id == def.id
@@ -57,14 +59,14 @@ impl interface::NodeAdminController for NodeAdminService {
         tracing::debug!("nuking the whole index");
         self.indexer_service.clear().await?;
 
-        let mut rebuild_queue_guard = self.rebuild_queue.lock().map_err(|e| anyhow!("{}", e))?;
+        let mut rebuild_queue_guard = self.rebuild_queue.lock();
         (*rebuild_queue_guard).extend(storage_nodes.into_iter());
 
         Ok(())
     }
 
     async fn rebuild_complete(&self, storage_node_id: &str) -> Result<()> {
-        let mut rebuild_queue_guard = self.rebuild_queue.lock().map_err(|e| anyhow!("{}", e))?;
+        let mut rebuild_queue_guard = self.rebuild_queue.lock();
         rebuild_queue_guard.retain(|item| item.id != storage_node_id);
         tracing::info!("finished rebuild for node id={}", storage_node_id);
         Ok(())
