@@ -23,7 +23,7 @@ tempfile = "3.3"
 [dependencies]
 axum = "0.4.6"
 axum-server = { version = "0.3.3", features = ["tls-rustls"] }
-tower-http = { version = "0.2.3", features = ["trace"] }
+tower-http = { version = "0.2.5", features = ["trace"] }
 hyper = "0.14.17"
 
 anyhow = "1"
