@@ -8,7 +8,7 @@ use menmos_client::Meta;
 use testing::fixtures::Menmos;
 use util::stream_to_bytes;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn write_blob_basic() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -32,7 +32,7 @@ async fn write_blob_basic() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn extend_blob() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -57,7 +57,7 @@ async fn extend_blob() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn write_updates_datetime() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -95,7 +95,7 @@ async fn write_updates_datetime() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn meta_update_updates_datetime() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -128,7 +128,7 @@ async fn meta_update_updates_datetime() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn create_empty_blob_doesnt_create_file() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;

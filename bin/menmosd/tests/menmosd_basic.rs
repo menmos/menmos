@@ -6,7 +6,7 @@ use interface::QueryResponse;
 use menmos_client::{Meta, Query};
 use testing::fixtures;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn comes_up_and_stops() -> Result<()> {
     let fixture = fixtures::Menmos::new().await?;
 
@@ -19,7 +19,7 @@ async fn comes_up_and_stops() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn queries_initially_return_empty() -> Result<()> {
     let fixture = fixtures::Menmos::new().await?;
 
@@ -39,7 +39,7 @@ async fn queries_initially_return_empty() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn no_storage_nodes_initially_registered() -> Result<()> {
     let fixture = fixtures::Menmos::new().await?;
 
@@ -52,7 +52,7 @@ async fn no_storage_nodes_initially_registered() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn add_single_storage_node() -> Result<()> {
     let mut fixture = fixtures::Menmos::new().await?;
 
@@ -67,7 +67,7 @@ async fn add_single_storage_node() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn simple_put_query_loop() -> Result<()> {
     let mut fixture = fixtures::Menmos::new().await?;
     fixture.add_amphora("alpha").await?;
@@ -85,7 +85,7 @@ async fn simple_put_query_loop() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn cant_register_same_username() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;

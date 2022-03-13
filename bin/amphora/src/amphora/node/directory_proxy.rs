@@ -1,5 +1,3 @@
-use std::fs;
-use std::io::Write;
 use std::path::Path;
 
 use anyhow::{ensure, Result};
@@ -9,6 +7,9 @@ use interface::{BlobInfo, CertificateInfo, StorageNodeInfo};
 use protocol::directory::storage::{MoveRequest, RegisterResponse};
 
 use reqwest::Url;
+
+use tokio::fs;
+use tokio::io::AsyncWriteExt;
 
 use super::constants;
 use crate::DirectoryHostConfig;
@@ -72,13 +73,15 @@ impl DirectoryProxy {
         if let Some(certs) = &response.certificates {
             // Write the certificate.
             let mut cert =
-                fs::File::create(certificate_path.join(constants::CERTIFICATE_FILE_NAME))?;
-            cert.write_all(&base64::decode(&certs.certificate_b64)?)?;
+                fs::File::create(certificate_path.join(constants::CERTIFICATE_FILE_NAME)).await?;
+            cert.write_all(&base64::decode(&certs.certificate_b64)?)
+                .await?;
 
             // Write the private key.
             let mut key =
-                fs::File::create(certificate_path.join(constants::PRIVATE_KEY_FILE_NAME))?;
-            key.write_all(&base64::decode(&certs.private_key_b64)?)?;
+                fs::File::create(certificate_path.join(constants::PRIVATE_KEY_FILE_NAME)).await?;
+            key.write_all(&base64::decode(&certs.private_key_b64)?)
+                .await?;
         }
 
         Ok(RegisterResponseWrapper {
