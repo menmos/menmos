@@ -33,7 +33,7 @@ impl interface::UserManagement for UserService {
     async fn list(&self) -> Vec<String> {
         // TODO: This might need improving for cases where the number of users is very high.
         // It'd be premature to do now though.
-        self.store.iter().filter_map(|f| f.ok()).collect()
+        tokio::task::block_in_place(|| self.store.iter().filter_map(|f| f.ok()).collect())
     }
 
     async fn flush(&self) -> Result<()> {

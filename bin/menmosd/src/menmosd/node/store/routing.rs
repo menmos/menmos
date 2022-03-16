@@ -1,9 +1,8 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use interface::{RoutingConfigState, TaggedRoutingConfigState};
 
 use super::iface::Flush;
-use super::DynIter;
 
 const ROUTING_KEY_MAP: &str = "routing_keys";
 
@@ -12,7 +11,6 @@ pub trait RoutingStore: Flush {
     fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfigState>>;
     fn set_routing_config(&self, username: &str, routing_key: &RoutingConfigState) -> Result<()>;
     fn delete_routing_config(&self, username: &str) -> Result<()>;
-    fn iter(&self) -> DynIter<'static, Result<RoutingConfigState>>;
 }
 
 pub struct SledRoutingStore {
@@ -36,7 +34,10 @@ impl Flush for SledRoutingStore {
 
 impl RoutingStore for SledRoutingStore {
     fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfigState>> {
-        if let Some(config_ivec) = self.routing_keys.get(username.as_bytes())? {
+        let config_ivec_maybe =
+            tokio::task::block_in_place(|| self.routing_keys.get(username.as_bytes()))?;
+
+        if let Some(config_ivec) = config_ivec_maybe {
             let config: TaggedRoutingConfigState = bincode::deserialize(&config_ivec)?;
             Ok(Some(config.into()))
         } else {
@@ -47,25 +48,17 @@ impl RoutingStore for SledRoutingStore {
     fn set_routing_config(&self, username: &str, routing_key: &RoutingConfigState) -> Result<()> {
         let tagged_state = TaggedRoutingConfigState::from(routing_key.clone());
         let encoded = bincode::serialize(&tagged_state)?;
-        self.routing_keys
-            .insert(username.as_bytes(), encoded.as_slice())?;
+
+        tokio::task::block_in_place(|| {
+            self.routing_keys
+                .insert(username.as_bytes(), encoded.as_slice())
+        })?;
+
         Ok(())
     }
 
     fn delete_routing_config(&self, username: &str) -> Result<()> {
-        self.routing_keys.remove(username.as_bytes())?;
+        tokio::task::block_in_place(|| self.routing_keys.remove(username.as_bytes()))?;
         Ok(())
-    }
-
-    fn iter(&self) -> DynIter<'static, Result<RoutingConfigState>> {
-        DynIter::new(self.routing_keys.iter().map(|pair_result| {
-            pair_result
-                .map_err(|e| anyhow!(e))
-                .and_then(|(_key_ivec, config_ivec)| {
-                    let tagged_config: TaggedRoutingConfigState =
-                        bincode::deserialize(&config_ivec).map_err(|e| anyhow!(e))?;
-                    Ok(tagged_config.into())
-                })
-        }))
     }
 }
