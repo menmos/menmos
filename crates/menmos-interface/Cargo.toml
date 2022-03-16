@@ -20,7 +20,7 @@ async-trait = "0.1.42"
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 headers = "0.3.7"
-nom = "7.1.0"
+nom = "7.1.1"
 rapidquery = { version = "^0.1.0", features = ["bitvec_size", "parse"] }
 reqwest = { version = "0.11", features = ["json", "stream"] }
 serde = { version = "1.0", features = ["derive"] }
