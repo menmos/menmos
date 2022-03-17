@@ -213,6 +213,40 @@ async fn query_sorting_order() -> Result<()> {
         ]
     );
 
+    cluster.stop_all().await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn query_case_sensitivity() -> Result<()> {
+    let mut cluster = Menmos::new().await?;
+    cluster.add_amphora("alpha").await?;
+
+    let blob_id = cluster
+        .push_document("Document 1", Meta::new().with_field("name", "blob_1"))
+        .await?;
+
+    // Sanity check that we can find the document using exact casing.
+    let results = cluster
+        .client
+        .query(Query::default().and_field("name", "blob_1"))
+        .await?;
+
+    assert_eq!(results.count, 1);
+    assert_eq!(results.hits.first().unwrap().id, blob_id);
+
+    // Do the same query but with incorrect casing.
+    let results = cluster
+        .client
+        .query(Query::default().and_field("name", "Blob_1"))
+        .await?;
+
+    assert_eq!(results.count, 1);
+    assert_eq!(results.hits.first().unwrap().id, blob_id);
+
+    cluster.stop_all().await?;
+
     Ok(())
 }
 
