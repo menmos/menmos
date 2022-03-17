@@ -40,8 +40,9 @@ async fn graceful_shutdown(handle: Handle, rx: oneshot::Receiver<()>) {
     handle.graceful_shutdown(None)
 }
 
-async fn interruptible_delay(dur: Duration, stop_rx: &mut mpsc::Receiver<()>) -> bool {
-    let delay = tokio::time::sleep(dur);
+async fn interruptible_delay(dur: time::Duration, stop_rx: &mut mpsc::Receiver<()>) -> bool {
+    let std_duration = Duration::try_from(dur).unwrap(); // Infallible
+    let delay = tokio::time::sleep(std_duration);
     tokio::pin!(delay);
 
     let stop_signal = stop_rx.recv();
@@ -126,7 +127,7 @@ pub async fn use_tls(
     tracing::debug!("account ok");
 
     loop {
-        const TMIN: Duration = Duration::from_secs(60 * 60 * 24 * 30);
+        const TMIN: time::Duration = time::Duration::new(60 * 60 * 24 * 30, 0);
 
         let time_to_exp = time_to_expiration(&pem_name);
         tracing::debug!(
@@ -256,7 +257,7 @@ pub async fn use_tls(
             wait_for_server_stop(http_handle, https_handle).await;
         } else {
             tracing::warn!("looks like there is an issue with certificate refresh - waiting an hour before retrying...");
-            should_quit = interruptible_delay(Duration::from_secs(60 * 60), &mut stop_rx).await;
+            should_quit = interruptible_delay(time::Duration::new(60 * 60, 0), &mut stop_rx).await;
         }
 
         if should_quit {
@@ -267,7 +268,7 @@ pub async fn use_tls(
     }
 }
 
-fn time_to_expiration<P: AsRef<StdPath>>(p: P) -> Option<Duration> {
+fn time_to_expiration<P: AsRef<StdPath>>(p: P) -> Option<time::Duration> {
     let file = fs::File::open(p).ok()?;
     Pem::read(BufReader::new(file))
         .ok()?
