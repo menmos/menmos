@@ -8,7 +8,7 @@ use reqwest::StatusCode;
 use serde::Serialize;
 use testing::fixtures::Menmos;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_pagination() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -49,7 +49,7 @@ async fn query_pagination() -> Result<()> {
 }
 
 /// Tests that numeric fields are indexable & queryable properly.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_numeric_fields() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -98,7 +98,7 @@ async fn query_numeric_fields() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_bad_request() -> Result<()> {
     let cluster = Menmos::new().await?;
 
@@ -135,7 +135,7 @@ async fn query_bad_request() -> Result<()> {
 }
 
 // Makes sure that when datetime is updated, the new value is mirrored properly to the directory.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_has_up_to_date_datetime() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -163,7 +163,7 @@ async fn query_has_up_to_date_datetime() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_sorting_order() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;

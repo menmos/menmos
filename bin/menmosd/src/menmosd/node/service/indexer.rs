@@ -115,24 +115,51 @@ impl interface::BlobIndexer for IndexerService {
             tracing::error!("no node found for blob_id={}", blob_id);
         }
 
-        // This is tricky, because since our internal document IDs are sequential, we can't just delete the blob from the index and call it a day.
-        // Also, since we have a limit of u32::MAX document IDs, we'd better recycle those deleted IDs so we don't creep
-        // towards the limit too fast in delete-heavy implementations.
+        // Deleting a document is a multi-step process.
+        // Quick recap of the index structures related to documents:
+        // - The storage node index maps the blobID (its UUID) to the ID of the storage node on
+        //   which it is stored.
+        // - The documents index keeps a bidirectional map of BlobID <=> BlobIndex
+        // - The BlobIndex (sequential u64) is used by the metadata index to represent document
+        //   sets as bitvectors (the index of a given document is given by its DocumentIndex, and
+        //   the corresponding bit is true if that document is present in the set).
+        //      - e.g. an index of five documents where the last document contains the tag hello
+        //        will look like {"hello" => [0, 0, 0, 0, 1]}
         //
-        // This is the algorithm:
-        //  - Delete the BlobID from the storage node index.
+        // Now, for the delete process.
+        // 1. Remove the BlobID from the storage node index, this "unlinks" the blob from the
+        //    storage node that contains it.
+        //
+        // 2. Remove the association between the BlobID and its BlobIndex.
+        //  2.1. If the BlobID was in the index, we need to add its BlobIndex to a list of free
+        //       indices so it can be reused. There are only u32::MAX BlobIndices available so we
+        //       need to be smart so that delete-heavy usecases dont overflow the ID limit.
+        //
+        // 3. If the BlobIndex exists in the index, we need to "purge" uses of this BlobIndex.
+        //    If we didn't, recycling a BlobIndex would carry over the metadata of the previous
+        //    blob that had this index.
+        //
+        //    The recycling can be done either right now, or "lazily" when the document is
+        //    recycled in the future. We're doing it now.
+        //  3.1. For all tag and field values in the metadata index, set to `0`  the bit
+        //       corresponding to this BlobIndex.
+        //
+        // 4. Return the ID of the storage node containing the blob so it can be deleted there
+        //    also.
+        
+        // See [1]
         let node_id_maybe = self.storage.delete_blob(blob_id)?;
 
-        //  - Delete the BlobID -> BlobIDX mapping in the document index.
-        //  - Add the BlobIDX to a list of "free" indices (up for recycling) kept in the document index.
+        // See [2, 2.1]
         if let Some(blob_idx) = self.documents.delete(blob_id)? {
-            //  - If the blob exists in the index we need to "purge" the BlobIDX:
-            //  - For all tag and k/v values in the metadata index, set to `0` the bit corresponding to the deleted BlobIDX.
-            //  - Once a new insert comes, prioritize using a recycled BlobIDX over allocating a new one.
+            // See [3.1]
             self.metadata.purge(blob_idx)?;
+
+            ensure!(node_id_maybe.is_some(), "blob '{}' was in the document index but was not assigned to a storage node", blob_id);
         }
 
         if let Some(node_id) = node_id_maybe {
+            // See [4]
             Ok(self.router.get_node(&node_id).await)
         } else {
             Ok(None)

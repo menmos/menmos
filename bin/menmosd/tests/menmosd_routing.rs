@@ -9,7 +9,7 @@ use menmos_client::{Client, Meta};
 use testing::fixtures::Menmos;
 use util::stream_to_bytes;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_set_delete_routing_config() -> Result<()> {
     let cluster = Menmos::new().await?;
 
@@ -46,7 +46,7 @@ async fn get_set_delete_routing_config() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn move_request_full_loop() -> Result<()> {
     let mut cluster = Menmos::new().await?;
 

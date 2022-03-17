@@ -10,7 +10,7 @@ use menmos_client::{Client, Meta};
 use testing::fixtures::Menmos;
 use util::stream_to_bytes;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn permissions_query() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -34,7 +34,7 @@ async fn permissions_query() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn list_metadata_permissions() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -63,7 +63,7 @@ async fn list_metadata_permissions() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn direct_get_permissions() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -90,7 +90,7 @@ async fn direct_get_permissions() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_after_delete_permissions() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -125,7 +125,7 @@ async fn get_after_delete_permissions() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn direct_get_meta() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -152,7 +152,7 @@ async fn direct_get_meta() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn permissions_write() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -185,7 +185,7 @@ async fn permissions_write() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn permissions_update_meta() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -221,7 +221,7 @@ async fn permissions_update_meta() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn permissions_delete() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -253,7 +253,7 @@ async fn permissions_delete() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn permissions_fsync() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;
@@ -273,7 +273,7 @@ async fn permissions_fsync() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn permissions_update_blob() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;

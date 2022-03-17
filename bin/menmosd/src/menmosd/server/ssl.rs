@@ -24,8 +24,6 @@ use hyper::service::service_fn;
 
 use interface::{CertificateInfo, DirectoryNode};
 
-use parking_lot::Mutex;
-
 use tokio::{
     sync::{mpsc, oneshot},
     task::{spawn, JoinHandle},
@@ -140,18 +138,17 @@ pub async fn use_tls(
         if time_to_exp.filter(|&t| t > TMIN).is_none() {
             // TODO: Don't do a new order with every boot.
             tracing::debug!("sending an ACME order for a new certificate");
-            let new_order = account.new_order(&format!("*.{}", cfg.dns.root_domain), &[])?;
+            let mut new_order = tokio::task::block_in_place(|| {
+                account.new_order(&format!("*.{}", cfg.dns.root_domain), &[])
+            })?;
 
-            // TODO: Review this, not sure we _need_ Arc + Mutex but didn't find anything better.
-            let order_sync = Arc::new(Mutex::new(new_order));
             let ord_csr = loop {
                 let auths = {
-                    let order = order_sync.lock();
-                    if let Some(ord_csr) = order.confirm_validations() {
+                    if let Some(ord_csr) = new_order.confirm_validations() {
                         break ord_csr;
                     }
 
-                    let auths = order.authorizations()?;
+                    let auths = new_order.authorizations()?;
                     assert_eq!(auths.len(), 1);
 
                     auths
@@ -161,15 +158,11 @@ pub async fn use_tls(
                 let challenge = auths[0].dns_challenge();
                 dns_server.set_dns_challenge(&challenge.dns_proof()).await?;
 
-                let order_sync = order_sync.clone();
-                let handle: JoinHandle<anyhow::Result<()>> =
-                    tokio::task::spawn_blocking(move || {
-                        let mut order = order_sync.lock();
-                        challenge.validate(5000)?;
-                        order.refresh()?;
-                        Ok(())
-                    });
-                handle.await??;
+                tokio::task::block_in_place(|| {
+                    challenge.validate(5000)?;
+                    new_order.refresh()?;
+                    Ok::<_, anyhow::Error>(())
+                })?;
             };
 
             // Ownership is proven. Create a private/public key pair for the

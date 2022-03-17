@@ -43,32 +43,44 @@ impl Index {
     }
 
     pub fn get(&self, blob_id: &str) -> Result<Option<BlobInfo>> {
-        self.db
-            .get(blob_id.as_bytes())?
-            .map(|blob_info_iv| {
-                let tagged_info: TaggedBlobInfo =
-                    bincode::deserialize(blob_info_iv.as_ref()).map_err(|e| anyhow!("{}", e))?;
-                Ok(tagged_info.into())
-            })
-            .transpose()
+        // TODO: Using block_in_place instead of spawn_blocking
+        //       is fine as long as we don't want to run multiple operations concurrently in a
+        //       single task (e.g. with `tokio::join!()`). If we want to do that in the future
+        //       we'll have to use spawn_blocking
+        tokio::task::block_in_place(|| {
+            self.db
+                .get(blob_id.as_bytes())?
+                .map(|blob_info_iv| {
+                    let tagged_info: TaggedBlobInfo = bincode::deserialize(blob_info_iv.as_ref())
+                        .map_err(|e| anyhow!("{}", e))?;
+                    Ok(tagged_info.into())
+                })
+                .transpose()
+        })
     }
 
     pub fn get_all_keys(&self) -> Result<Vec<String>> {
-        self.db
-            .iter()
-            .map(|r| {
-                r.map_err(|e| e.into())
-                    .map(|(k, _v)| String::from_utf8(k.to_vec()).expect("key is not UTF-8"))
-            })
-            .collect()
+        tokio::task::block_in_place(|| {
+            self.db
+                .iter()
+                .map(|r| {
+                    r.map_err(|e| e.into())
+                        .map(|(k, _v)| String::from_utf8(k.to_vec()).expect("key is not UTF-8"))
+                })
+                .collect()
+        })
     }
 
     pub fn insert(&self, blob_id: &str, info: &BlobInfo) -> Result<()> {
         let tagged_info = TaggedBlobInfo::from(info.clone());
-        let size_diff = match self
-            .db
-            .insert(blob_id.as_bytes(), bincode::serialize(&tagged_info)?)?
-        {
+
+        let insert_ivec = tokio::task::block_in_place(|| {
+            self.db
+                .insert(blob_id.as_bytes(), bincode::serialize(&tagged_info)?)
+                .map_err(anyhow::Error::from)
+        })?;
+
+        let size_diff = match insert_ivec {
             Some(old_ivec) => {
                 let old_info: TaggedBlobInfo = bincode::deserialize(&old_ivec)?;
                 -(old_info.meta.size as i128) + info.meta.size as i128
@@ -86,7 +98,9 @@ impl Index {
     }
 
     pub fn remove(&self, blob_id: &str) -> Result<()> {
-        if let Some(ivec) = self.db.remove(blob_id.as_bytes())? {
+        let old_ivec = tokio::task::block_in_place(|| self.db.remove(blob_id.as_bytes()))?;
+
+        if let Some(ivec) = old_ivec {
             let tagged_info: TaggedBlobInfo = bincode::deserialize(&ivec)?;
             self.size.fetch_sub(tagged_info.meta.size, Ordering::SeqCst);
         }

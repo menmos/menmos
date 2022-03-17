@@ -166,24 +166,29 @@ impl MetadataStore for SledMetadataStore {
 
     #[tracing::instrument(level = "trace", skip(self, mask))]
     fn list_all_tags(&self, mask: Option<&BitVec>) -> Result<HashMap<String, usize>> {
-        let mut hsh = HashMap::with_capacity(self.tag_map.tree().len());
+        let tree_len = tokio::task::block_in_place(|| self.tag_map.tree().len());
+        let mut hsh = HashMap::with_capacity(tree_len);
 
-        for r in self.tag_map.tree().iter() {
-            let (tag, vector) = r?;
+        tokio::task::block_in_place(|| {
+            for r in self.tag_map.tree().iter() {
+                let (tag, vector) = r?;
 
-            let tag_str = String::from_utf8(tag.to_vec()).expect("tag is not UTF-8");
-            let mut bv: BitVec = bincode::deserialize(vector.as_ref())?;
+                let tag_str = String::from_utf8(tag.to_vec()).expect("tag is not UTF-8");
+                let mut bv: BitVec = bincode::deserialize(vector.as_ref())?;
 
-            if let Some(user_bitvec) = mask {
-                bv &= user_bitvec.clone();
+                if let Some(user_bitvec) = mask {
+                    bv &= user_bitvec.clone();
+                }
+
+                let count = bv.count_ones();
+                if count > 0 {
+                    tracing::trace!(tag = %tag_str, count = count, "loaded tag");
+                    hsh.insert(tag_str, count);
+                }
             }
 
-            let count = bv.count_ones();
-            if count > 0 {
-                tracing::trace!(tag = %tag_str, count = count, "loaded tag");
-                hsh.insert(tag_str, count);
-            }
-        }
+            Ok::<_, anyhow::Error>(())
+        })?;
 
         Ok(hsh)
     }
@@ -198,52 +203,60 @@ impl MetadataStore for SledMetadataStore {
 
         match field_filter {
             Some(filter) => {
-                for field in filter.iter() {
-                    if let Some(result_it) = self.field_index.get_field_values(field)? {
-                        for result in result_it {
-                            let ((field_name, value), mut bv) = result?;
+                tokio::task::block_in_place(|| {
+                    for field in filter.iter() {
+                        if let Some(result_it) = self.field_index.get_field_values(field)? {
+                            for result in result_it {
+                                let ((field_name, value), mut bv) = result?;
 
-                            // if this trips, the field name we got back from disk for the field the user requested
-                            // does _not_ match the field the user requested. will _hopefully_ never be thrown.
-                            ensure!(
-                                &field_name == field,
-                                "the loaded field key doesn't match the requested field"
-                            );
+                                // if this trips, the field name we got back from disk for the field the user requested
+                                // does _not_ match the field the user requested. will _hopefully_ never be thrown.
+                                ensure!(
+                                    &field_name == field,
+                                    "the loaded field key doesn't match the requested field"
+                                );
 
-                            if let Some(user_bitvec) = mask {
-                                bv &= user_bitvec.clone();
-                            }
+                                if let Some(user_bitvec) = mask {
+                                    bv &= user_bitvec.clone();
+                                }
 
-                            let count = bv.count_ones();
+                                let count = bv.count_ones();
 
-                            if count > 0 {
-                                tracing::trace!(key=%field, value=%value, count=count, "loaded field-value");
-                                hsh.entry(field_name)
-                                    .or_insert_with(HashMap::default)
-                                    .insert(value, count);
+                                if count > 0 {
+                                    tracing::trace!(key=%field, value=%value, count=count, "loaded field-value");
+                                    hsh.entry(field_name)
+                                        .or_insert_with(HashMap::default)
+                                        .insert(value, count);
+                                }
                             }
                         }
                     }
-                }
+
+                    Ok::<_, anyhow::Error>(())
+                })?;
             }
             None => {
                 // List everything.
                 // This will most likely lead to a massive response body - sorry about that.
-                for result in self.field_index.iter() {
-                    let ((field_name, value), mut bv) = result?;
+                tokio::task::block_in_place(|| {
+                    for result in self.field_index.iter() {
+                        let ((field_name, value), mut bv) = result?;
 
-                    if let Some(user_bitvec) = mask {
-                        bv &= user_bitvec.clone();
+                        if let Some(user_bitvec) = mask {
+                            bv &= user_bitvec.clone();
+                        }
+
+                        let count = bv.count_ones();
+                        if count > 0 {
+                            tracing::trace!(key=%field_name, value=%value, count=count, "loaded field-value");
+                            hsh.entry(field_name)
+                                .or_insert_with(HashMap::default)
+                                .insert(value, count);
+                        }
                     }
 
-                    let count = bv.count_ones();
-                    if count > 0 {
-                        tracing::trace!(key=%field_name, value=%value, count=count, "loaded field-value");
-                        hsh.entry(field_name)
-                            .or_insert_with(HashMap::default)
-                            .insert(value, count);
-                    }
-                }
+                    Ok::<_, anyhow::Error>(())
+                })?;
             }
         }
         Ok(hsh)

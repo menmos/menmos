@@ -437,10 +437,6 @@ impl RoutingStore for MockRoutingStore {
         guard.remove(username);
         Ok(())
     }
-
-    fn iter(&self) -> DynIter<'static, Result<RoutingConfigState>> {
-        unimplemented!()
-    }
 }
 
 #[async_trait]
