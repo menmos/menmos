@@ -87,6 +87,7 @@ impl FieldsIndex {
         value: &FieldValue,
         allocate_field: bool,
     ) -> Result<Option<Bytes>> {
+        let field = field.to_lowercase();
         let field_id = if allocate_field {
             self.field_ids.get_or_assign(field)?
         } else {
@@ -99,7 +100,7 @@ impl FieldsIndex {
         };
 
         let (type_id, value_slice) = match value {
-            FieldValue::Str(s) => (TYPEID_STR, s.as_bytes().to_vec()),
+            FieldValue::Str(s) => (TYPEID_STR, s.to_lowercase().as_bytes().to_vec()),
             FieldValue::Numeric(i) => (TYPEID_NUMERIC, i.to_be_bytes().to_vec()),
         };
 
@@ -157,10 +158,8 @@ impl FieldsIndex {
     }
 
     pub fn insert(&self, field: &str, value: &FieldValue, serialized_docid: &[u8]) -> Result<()> {
-        let field = field.to_lowercase();
-
         let field_key = self
-            .build_field_key(&field, value, true)?
+            .build_field_key(field, value, true)?
             .ok_or_else(|| anyhow!("ID allocation for field {field} returned no ID"))?;
 
         self.field_map.insert_bytes(&field_key, serialized_docid)
@@ -182,7 +181,7 @@ impl FieldsIndex {
     pub fn load_field(&self, field: &str) -> Result<BitVec> {
         let mut bv = BitVec::default();
 
-        if let Some(field_id) = self.field_ids.get(field)? {
+        if let Some(field_id) = self.field_ids.get(&field.to_lowercase())? {
             bv = tokio::task::block_in_place(|| {
                 for (_, v_ivec) in self
                     .field_map
@@ -231,7 +230,7 @@ impl FieldsIndex {
         field: &str,
     ) -> Result<Option<impl Iterator<Item = Result<((String, FieldValue), BitVec)>> + '_>> {
         let field_id = {
-            match self.field_ids.get(field)? {
+            match self.field_ids.get(&field.to_lowercase())? {
                 Some(field_id) => field_id,
                 None => {
                     return Ok(None);
@@ -278,6 +277,59 @@ mod tests {
     use std::collections::HashSet;
 
     use super::FieldsIndex;
+
+    #[test]
+    fn casing_load_field() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("SomeField", &"SomeValue".into(), &5_u32.to_le_bytes())?;
+        index.insert("somefield", &"somevalue".into(), &1_u32.to_le_bytes())?;
+
+        let bv = index.load_field("SOMEFIELD")?;
+        assert_eq!(&bv, bits![0, 1, 0, 0, 0, 1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn casing_load_field_value() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("SomeField", &"SomeValue".into(), &5_u32.to_le_bytes())?;
+        index.insert("SomeField", &"somevalue".into(), &1_u32.to_le_bytes())?;
+
+        let bv = index.load_field_value("SOMEFIELD", &"SOMEVALUE".into())?;
+        assert_eq!(&bv, bits![0, 1, 0, 0, 0, 1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn casing_get_field_values() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("SomeField", &"SomeValue".into(), &5_u32.to_le_bytes())?;
+        index.insert("somefield", &"somevalue".into(), &1_u32.to_le_bytes())?;
+
+        let values = index
+            .get_field_values("SOMEFIELD")?
+            .unwrap()
+            .collect::<Result<Vec<_>>>()?;
+
+        let expected_val = vec![(
+            (
+                String::from("somefield"),
+                FieldValue::Str(String::from("somevalue")),
+            ),
+            bits![0, 1, 0, 0, 0, 1].to_owned(),
+        )];
+        assert_eq!(values, expected_val);
+
+        Ok(())
+    }
 
     #[test]
     fn insert_load_field_value() -> Result<()> {

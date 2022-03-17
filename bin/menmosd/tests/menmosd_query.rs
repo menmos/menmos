@@ -236,7 +236,16 @@ async fn query_case_sensitivity() -> Result<()> {
     assert_eq!(results.count, 1);
     assert_eq!(results.hits.first().unwrap().id, blob_id);
 
-    // Do the same query but with incorrect casing.
+    // Do the same query with incorrect field casing
+    let results = cluster
+        .client
+        .query(Query::default().and_field("NAME", "blob_1"))
+        .await?;
+
+    assert_eq!(results.count, 1);
+    assert_eq!(results.hits.first().unwrap().id, blob_id);
+
+    // Do the same query but with incorrect value casing.
     let results = cluster
         .client
         .query(Query::default().and_field("name", "Blob_1"))

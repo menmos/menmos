@@ -59,7 +59,7 @@ impl SledMetadataStore {
     ) -> Result<()> {
         for tag in old_meta.meta.tags.into_iter() {
             if !new_meta.meta.tags.contains(&tag) {
-                self.tag_map.purge_key(&tag, for_idx)?;
+                self.tag_map.purge_key(&tag.to_lowercase(), for_idx)?;
                 tracing::trace!(tag = %tag, index = for_idx, "purged tag");
             }
         }
@@ -108,12 +108,6 @@ impl MetadataStore for SledMetadataStore {
 
     #[tracing::instrument(level = "trace", skip(self, info))]
     fn insert(&self, id: u32, info: &BlobInfo) -> Result<()> {
-        // Validate tags are ok.
-        for tag in info.meta.tags.iter() {
-            // TODO: Remove this.
-            ensure!(!tag.contains('$'), "tag cannot contain separator");
-        }
-
         let serialized_id = id.to_le_bytes();
 
         // Set the owner field in the users mask.
