@@ -51,14 +51,17 @@ impl UserStore for SledUserStore {
         let password_hash =
             argon2::hash_encoded(password.as_bytes(), &self.generate_salt()?, &config).unwrap();
 
-        self.map
-            .insert(username.as_bytes(), password_hash.as_bytes())?;
+        tokio::task::block_in_place(|| {
+            self.map
+                .insert(username.as_bytes(), password_hash.as_bytes())
+        })?;
 
         Ok(())
     }
 
     fn authenticate(&self, username: &str, password: &str) -> Result<bool> {
-        if let Some(value) = self.map.get(username.as_bytes())? {
+        let hash_ivec = tokio::task::block_in_place(|| self.map.get(username.as_bytes()))?;
+        if let Some(value) = hash_ivec {
             let pw_hash = String::from_utf8(value.to_vec()).expect("password hash is not UTF-8");
             Ok(argon2::verify_encoded(&pw_hash, password.as_bytes())?)
         } else {
@@ -67,7 +70,8 @@ impl UserStore for SledUserStore {
     }
 
     fn has_user(&self, username: &str) -> Result<bool> {
-        let user_exists = self.map.contains_key(username.as_bytes())?;
+        let user_exists =
+            tokio::task::block_in_place(|| self.map.contains_key(username.as_bytes()))?;
 
         Ok(user_exists)
     }

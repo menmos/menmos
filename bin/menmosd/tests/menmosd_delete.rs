@@ -3,7 +3,7 @@ use anyhow::Result;
 use menmos_client::Meta;
 use testing::fixtures::Menmos;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn delete_blob() -> Result<()> {
     let mut cluster = Menmos::new().await?;
     cluster.add_amphora("alpha").await?;

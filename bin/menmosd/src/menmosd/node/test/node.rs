@@ -59,7 +59,7 @@ async fn index<S: AsRef<str>>(
     tgt_storage_node
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn pick_node_for_blob_with_no_storage_nodes() {
     let node = mock::node();
     assert!(node
@@ -76,7 +76,7 @@ async fn pick_node_for_blob_with_no_storage_nodes() {
         .is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn register_storage_node_ok() {
     let node = mock::node();
     assert!(node
@@ -86,7 +86,7 @@ async fn register_storage_node_ok() {
         .is_ok())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn pick_node_for_blob_with_single_node() {
     let node = mock::node();
 
@@ -101,7 +101,7 @@ async fn pick_node_for_blob_with_single_node() {
     assert_eq!(storage, actual);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn add_multiblob_round_robin() {
     let node = mock::node();
 
@@ -122,7 +122,7 @@ async fn add_multiblob_round_robin() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_blob_node_multiblob() {
     let node = mock::node();
 
@@ -152,7 +152,7 @@ async fn get_blob_node_multiblob() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_nonexistent_blob() {
     let node = mock::node();
     assert_eq!(
@@ -161,7 +161,7 @@ async fn get_nonexistent_blob() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn empty_query_empty_node() {
     let node = mock::node();
 
@@ -181,7 +181,7 @@ async fn empty_query_empty_node() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_single_tag() {
     let node = mock::node();
     node.admin()
@@ -203,7 +203,7 @@ async fn query_single_tag() {
     assert_eq!(r.hits[0].id, "beta");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_single_kv() {
     let node = mock::node();
     node.admin()
@@ -236,7 +236,7 @@ async fn query_single_kv() {
     assert_eq!(r.hits[0].id, "beta");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_multi_tag() {
     let node = mock::node();
     node.admin()
@@ -266,7 +266,7 @@ async fn query_multi_tag() {
     assert_eq!(r.hits[0].id, "beta");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_single_tag_no_match() {
     let node = mock::node();
     node.admin()
@@ -294,7 +294,7 @@ async fn query_single_tag_no_match() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn list_metadata_tags() -> Result<()> {
     let node = mock::node();
     node.admin()
@@ -317,7 +317,7 @@ async fn list_metadata_tags() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn document_deletion_missing_document_with_not() -> Result<()> {
     let node = mock::node();
     node.admin()
@@ -341,7 +341,7 @@ async fn document_deletion_missing_document_with_not() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn faceting_basic() -> Result<()> {
     let node = mock::node();
     node.admin()
@@ -392,7 +392,7 @@ async fn faceting_basic() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn facet_grouping() -> Result<()> {
     let node = mock::node();
     node.admin()
@@ -443,7 +443,7 @@ async fn facet_grouping() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn routing_info_get_set_delete() -> Result<()> {
     let node = mock::node();
 
@@ -465,7 +465,7 @@ async fn routing_info_get_set_delete() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn add_multi_blob_routing_key() -> Result<()> {
     let node = mock::node();
 
@@ -517,7 +517,7 @@ async fn add_multi_blob_routing_key() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn add_blob_routing_key_unknown_value() -> Result<()> {
     let node = mock::node();
 
@@ -555,7 +555,7 @@ async fn add_blob_routing_key_unknown_value() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn add_blob_routing_key_missing_storage_node() -> Result<()> {
     let node = mock::node();
 
@@ -587,7 +587,7 @@ async fn add_blob_routing_key_missing_storage_node() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn register_basic() -> Result<()> {
     let node = mock::node();
 
@@ -600,7 +600,7 @@ async fn register_basic() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn login_correct_password() -> Result<()> {
     let node = mock::node();
 
@@ -610,7 +610,7 @@ async fn login_correct_password() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn login_incorrect_password() -> Result<()> {
     let node = mock::node();
 
@@ -620,7 +620,7 @@ async fn login_incorrect_password() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn list_users() -> Result<()> {
     let node = mock::node();
 
@@ -635,7 +635,7 @@ async fn list_users() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn register_empty_username() -> Result<()> {
     let node = mock::node();
 
@@ -644,7 +644,7 @@ async fn register_empty_username() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn register_empty_password() -> Result<()> {
     let node = mock::node();
 

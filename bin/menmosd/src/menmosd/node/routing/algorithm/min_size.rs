@@ -72,7 +72,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn policy_selects_node_with_most_free_space() -> Result<()> {
         let policy = MinSizePolicy::default();
 
@@ -86,7 +86,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn node_updates_changes_selected_candidate() -> Result<()> {
         let policy = MinSizePolicy::default();
 
@@ -110,7 +110,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn prune_last_removes_best_candidate() -> Result<()> {
         let policy = MinSizePolicy::default();
 

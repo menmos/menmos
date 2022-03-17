@@ -34,26 +34,32 @@ impl Flush for SledStorageMappingStore {
 
 impl StorageMappingStore for SledStorageMappingStore {
     fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>> {
-        Ok(self
-            .tree
-            .get(blob_id.as_bytes())?
-            .map(|ivec| String::from_utf8(ivec.to_vec()).expect("node ID is not UTF-8")))
+        tokio::task::block_in_place(|| {
+            Ok(self
+                .tree
+                .get(blob_id.as_bytes())?
+                .map(|ivec| String::from_utf8(ivec.to_vec()).expect("node ID is not UTF-8")))
+        })
     }
 
     fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()> {
-        self.tree.insert(blob_id, node_id.as_bytes())?;
-        Ok(())
+        tokio::task::block_in_place(|| {
+            self.tree.insert(blob_id, node_id.as_bytes())?;
+            Ok(())
+        })
     }
 
     fn delete_blob(&self, blob_id: &str) -> Result<Option<String>> {
-        Ok(self.tree.remove(blob_id.as_bytes())?.map(|ivec| {
-            String::from_utf8(ivec.to_vec())
-                .expect("node ID is not UTF-8")
-        }))
+        tokio::task::block_in_place(|| {
+            Ok(self
+                .tree
+                .remove(blob_id.as_bytes())?
+                .map(|ivec| String::from_utf8(ivec.to_vec()).expect("node ID is not UTF-8")))
+        })
     }
 
     fn clear(&self) -> Result<()> {
-        self.tree.clear()?;
+        tokio::task::block_in_place(|| self.tree.clear())?;
         tracing::debug!("storage index destroyed");
         Ok(())
     }

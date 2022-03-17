@@ -52,57 +52,65 @@ impl IDMap {
 
     /// Gets the ID associated with an item, assigning it if it doesn't exist.
     pub fn get_or_assign<T: AsRef<[u8]>>(&self, item: T) -> Result<u32> {
-        if let Some(i) = self.fwd_map.get(item.as_ref()).unwrap() {
-            Ok(i.as_ref().read_u32::<BigEndian>()?)
-        } else {
-            // Recycle an ID (if possible), else assign a new one.
-            let current_id = if let Some((idx_ivec, _)) = self.recycling_store.pop_min()? {
-                idx_ivec.as_ref().read_u32::<BigEndian>()?
+        tokio::task::block_in_place(|| {
+            if let Some(i) = self.fwd_map.get(item.as_ref()).unwrap() {
+                Ok(i.as_ref().read_u32::<BigEndian>()?)
             } else {
-                self.next_id.fetch_add(1, Ordering::SeqCst)
-            };
+                // Recycle an ID (if possible), else assign a new one.
+                let current_id = if let Some((idx_ivec, _)) = self.recycling_store.pop_min()? {
+                    idx_ivec.as_ref().read_u32::<BigEndian>()?
+                } else {
+                    self.next_id.fetch_add(1, Ordering::SeqCst)
+                };
 
-            let current_id_bytes = current_id.to_be_bytes();
+                let current_id_bytes = current_id.to_be_bytes();
 
-            self.fwd_map
-                .insert(item.as_ref(), &current_id_bytes.clone())?;
+                self.fwd_map
+                    .insert(item.as_ref(), &current_id_bytes.clone())?;
 
-            self.rev_map.insert(current_id_bytes, item.as_ref())?;
+                self.rev_map.insert(current_id_bytes, item.as_ref())?;
 
-            Ok(current_id)
-        }
+                Ok(current_id)
+            }
+        })
     }
 
     /// Get the ID corresponding to an item.
     pub fn get<T: AsRef<[u8]>>(&self, item: T) -> Result<Option<u32>> {
-        Ok(self
-            .fwd_map
-            .get(item.as_ref())?
-            .map(|idx_ivec| idx_ivec.as_ref().read_u32::<BigEndian>())
-            .transpose()?)
+        tokio::task::block_in_place(|| {
+            Ok(self
+                .fwd_map
+                .get(item.as_ref())?
+                .map(|idx_ivec| idx_ivec.as_ref().read_u32::<BigEndian>())
+                .transpose()?)
+        })
     }
 
     /// Lookup the item associated with an ID.
     pub fn lookup(&self, id: u32) -> Result<Option<IVec>> {
-        if let Some(i) = self.rev_map.get(id.to_be_bytes())? {
-            Ok(Some(i))
-        } else {
-            Ok(None)
-        }
+        tokio::task::block_in_place(|| {
+            if let Some(i) = self.rev_map.get(id.to_be_bytes())? {
+                Ok(Some(i))
+            } else {
+                Ok(None)
+            }
+        })
     }
 
     /// Delete an item from the ID Map.
     ///
     /// Returns the ID of the item if it was in the map.
     pub fn delete<T: AsRef<[u8]>>(&self, item: T) -> Result<Option<u32>> {
-        if let Some(ivec) = self.fwd_map.remove(item.as_ref())? {
-            let id = ivec.as_ref().read_u32::<BigEndian>()?;
-            self.rev_map.remove(&ivec)?;
-            self.recycling_store.insert(ivec, &[])?;
-            Ok(Some(id))
-        } else {
-            Ok(None)
-        }
+        tokio::task::block_in_place(|| {
+            if let Some(ivec) = self.fwd_map.remove(item.as_ref())? {
+                let id = ivec.as_ref().read_u32::<BigEndian>()?;
+                self.rev_map.remove(&ivec)?;
+                self.recycling_store.insert(ivec, &[])?;
+                Ok(Some(id))
+            } else {
+                Ok(None)
+            }
+        })
     }
 
     /// Get the number of allocated and recycled ids.
@@ -126,13 +134,15 @@ impl IDMap {
     }
 
     pub fn clear(&self) -> Result<()> {
-        self.next_id.store(0, Ordering::SeqCst);
+        tokio::task::block_in_place(|| {
+            self.next_id.store(0, Ordering::SeqCst);
 
-        self.fwd_map.clear()?;
-        self.rev_map.clear()?;
-        self.recycling_store.clear()?;
+            self.fwd_map.clear()?;
+            self.rev_map.clear()?;
+            self.recycling_store.clear()?;
 
-        Ok(())
+            Ok(())
+        })
     }
 }
 

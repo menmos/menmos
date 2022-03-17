@@ -138,16 +138,19 @@ impl FieldsIndex {
         // We can try recycling here because the caller indicated that the field value for this doc
         // was _removed_, not modified. In that case, we need to check if the field is still in use,
         // and recycle its ID if not.
-        if try_recycling
-            && self
-                .field_map
-                .tree()
-                .scan_prefix(&field_key[0..mem::size_of::<u32>()])
-                .next()
-                .is_none()
-        {
-            // We can recycle the field.
-            self.field_ids.delete(field)?;
+        if try_recycling {
+            let field_in_use = tokio::task::block_in_place(|| {
+                self.field_map
+                    .tree()
+                    .scan_prefix(&field_key[0..mem::size_of::<u32>()])
+                    .next()
+                    .is_some()
+            });
+
+            if !field_in_use {
+                // We can recycle the field.
+                self.field_ids.delete(field)?;
+            }
         }
 
         Ok(())
@@ -180,22 +183,26 @@ impl FieldsIndex {
         let mut bv = BitVec::default();
 
         if let Some(field_id) = self.field_ids.get(field)? {
-            for (_, v_ivec) in self
-                .field_map
-                .tree()
-                .scan_prefix(field_id.to_be_bytes())
-                .filter_map(|f| f.ok())
-            {
-                let resolved: BitVec = bincode::deserialize(v_ivec.as_ref())?;
-                let (biggest, smallest) = if bv.len() > resolved.len() {
-                    (bv, resolved)
-                } else {
-                    (resolved, bv)
-                };
+            bv = tokio::task::block_in_place(|| {
+                for (_, v_ivec) in self
+                    .field_map
+                    .tree()
+                    .scan_prefix(field_id.to_be_bytes())
+                    .filter_map(|f| f.ok())
+                {
+                    let resolved: BitVec = bincode::deserialize(v_ivec.as_ref())?;
+                    let (biggest, smallest) = if bv.len() > resolved.len() {
+                        (bv, resolved)
+                    } else {
+                        (resolved, bv)
+                    };
 
-                bv = biggest;
-                bv |= smallest;
-            }
+                    bv = biggest;
+                    bv |= smallest;
+                }
+
+                Ok::<_, anyhow::Error>(bv)
+            })?;
         } else {
             // We can skip the whole scan if the fieldID doesn't exist in the map! :)
             tracing::debug!(
@@ -209,11 +216,13 @@ impl FieldsIndex {
 
     /// Iterates on all field-value pairs in the fields index.
     pub fn iter(&self) -> impl Iterator<Item = Result<((String, FieldValue), BitVec)>> + '_ {
-        self.field_map.tree().iter().map(|res| {
-            let (field_key_ivec, bv_ivec) = res?;
-            let (k, v) = self.parse_field_key(field_key_ivec.as_ref())?;
-            let bv: BitVec = bincode::deserialize(bv_ivec.as_ref())?;
-            Ok(((k, v), bv))
+        tokio::task::block_in_place(|| {
+            self.field_map.tree().iter().map(|res| {
+                let (field_key_ivec, bv_ivec) = res?;
+                let (k, v) = self.parse_field_key(field_key_ivec.as_ref())?;
+                let bv: BitVec = bincode::deserialize(bv_ivec.as_ref())?;
+                Ok(((k, v), bv))
+            })
         })
     }
 

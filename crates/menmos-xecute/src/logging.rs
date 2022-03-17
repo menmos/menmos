@@ -1,7 +1,8 @@
 use std::path::PathBuf;
-use std::{fs, path::Path};
 
 use anyhow::Result;
+
+use config::Config;
 
 use serde::{Deserialize, Serialize};
 
@@ -92,20 +93,24 @@ impl LoggingConfig {
     }
 }
 
-fn load_log_config_file(path: &Path) -> Result<LoggingConfig> {
-    let f = fs::File::open(path)?;
-    let cfg: LoggingConfig = serde_json::from_reader(f)?;
-    Ok(cfg)
-}
+fn get_logging_config(path: &Option<PathBuf>) -> Result<LoggingConfig> {
+    let mut builder = Config::builder();
+    builder = builder
+        .set_default("level", "normal")?
+        .set_default("json", false)?
+        .add_source(config::Environment::with_prefix("MENMOS_LOG"));
 
-fn get_logging_config(path: &Option<PathBuf>) -> LoggingConfig {
-    path.as_ref()
-        .and_then(|p| load_log_config_file(p).ok())
-        .unwrap_or_default()
+    if let Some(path) = path {
+        builder = builder.add_source(config::File::from(path.as_ref()))
+    }
+
+    let config: LoggingConfig = builder.build()?.try_deserialize()?;
+
+    Ok(config)
 }
 
 pub fn init_logger(log_cfg_path: &Option<PathBuf>) -> Result<()> {
-    let cfg = get_logging_config(log_cfg_path);
+    let cfg = get_logging_config(log_cfg_path)?;
 
     let env_filter = cfg.get_filter();
 

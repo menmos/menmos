@@ -88,7 +88,7 @@ impl StringLock {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn basic_get_works() {
         let lock_map = StringLock::new(Duration::from_secs(1));
         {
@@ -100,7 +100,7 @@ mod tests {
         assert_eq!(guard.len(), 1);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn locking_same_key_does_not_add_again_to_map() {
         let lock_map = StringLock::new(Duration::from_secs(1));
 
@@ -115,7 +115,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn cleanup_triggered_when_capacity_exceeded() {
         const TTL_MS: u64 = 10;
 

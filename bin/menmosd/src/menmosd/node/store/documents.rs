@@ -66,13 +66,15 @@ impl DocumentIdStore for SledDocumentIdStore {
         let nb_of_docs = self.get_nb_of_docs() as usize;
         let mut initial_bv = bitvec![usize, Lsb0; 1; nb_of_docs];
 
-        for idx in self.doc_id_map.recycling_iter() {
-            let idx = idx? as usize;
-            if idx < initial_bv.len() {
-                initial_bv.set(idx, false);
+        tokio::task::block_in_place(|| {
+            for idx in self.doc_id_map.recycling_iter() {
+                let idx = idx? as usize;
+                if idx < initial_bv.len() {
+                    initial_bv.set(idx, false);
+                }
             }
-        }
-        Ok(initial_bv)
+            Ok(initial_bv)
+        })
     }
 
     fn clear(&self) -> Result<()> {

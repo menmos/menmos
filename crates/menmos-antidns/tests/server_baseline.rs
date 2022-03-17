@@ -34,14 +34,14 @@ async fn get_server() -> Result<(Server, TokioAsyncResolver)> {
     Ok((Server::start(cfg), resolver))
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn dns_server_lifecycle() -> Result<()> {
     let (server, _resolver) = get_server().await?;
     server.stop().await?;
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn dns_resolution_of_magic_domain_names() -> Result<()> {
     let (server, resolver) = get_server().await?;
 
