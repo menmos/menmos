@@ -120,7 +120,7 @@ impl interface::BlobIndexer for IndexerService {
         // - The storage node index maps the blobID (its UUID) to the ID of the storage node on
         //   which it is stored.
         // - The documents index keeps a bidirectional map of BlobID <=> BlobIndex
-        // - The BlobIndex (sequential u64) is used by the metadata index to represent document
+        // - The BlobIndex (sequential u32) is used by the metadata index to represent document
         //   sets as bitvectors (the index of a given document is given by its DocumentIndex, and
         //   the corresponding bit is true if that document is present in the set).
         //      - e.g. an index of five documents where the last document contains the tag hello
@@ -146,7 +146,7 @@ impl interface::BlobIndexer for IndexerService {
         //
         // 4. Return the ID of the storage node containing the blob so it can be deleted there
         //    also.
-        
+
         // See [1]
         let node_id_maybe = self.storage.delete_blob(blob_id)?;
 
@@ -155,7 +155,11 @@ impl interface::BlobIndexer for IndexerService {
             // See [3.1]
             self.metadata.purge(blob_idx)?;
 
-            ensure!(node_id_maybe.is_some(), "blob '{}' was in the document index but was not assigned to a storage node", blob_id);
+            ensure!(
+                node_id_maybe.is_some(),
+                "blob '{}' was in the document index but was not assigned to a storage node",
+                blob_id
+            );
         }
 
         if let Some(node_id) = node_id_maybe {
