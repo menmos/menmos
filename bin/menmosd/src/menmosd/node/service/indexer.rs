@@ -178,16 +178,11 @@ impl interface::BlobIndexer for IndexerService {
     }
 
     async fn flush(&self) -> Result<()> {
-        let (a, b, c) = tokio::join!(
+        tokio::try_join!(
             self.metadata.flush(),
             self.documents.flush(),
             self.storage.flush()
-        );
-
-        a?;
-        b?;
-        c?;
-
+        )?;
         Ok(())
     }
 }
