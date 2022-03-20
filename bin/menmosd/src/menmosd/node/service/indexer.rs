@@ -78,8 +78,9 @@ impl interface::BlobIndexer for IndexerService {
     async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>> {
         // These next two lines could technically be in one line, but since its an async
         // function and index::storage() returns a ref to the storage provider, the borrow checker can't guarantee that there
-        // won't be concurrent accesses to the storage provider. Doing it in two lines makes it explicit that the ref. to the
-        // storage provider is dropped before the await point.
+        // won't be concurrent accesses to the storage provider while awaiting Router::get_node.
+        // Doing it in two lines makes it explicit that the ref to the storage provider ref is dropped
+        // before the await point.
         let node_id_maybe = self.storage.get_node_for_blob(blob_id)?;
         if let Some(node_id) = node_id_maybe {
             Ok(self.router.get_node(&node_id).await)
@@ -92,7 +93,7 @@ impl interface::BlobIndexer for IndexerService {
         self.storage
             .set_node_for_blob(blob_id, storage_node_id.to_string())?;
 
-        // TODO: Figure out a way to implement transactions here, so that a failed insert won't pollute the document index..
+        // FIXME: Sled transactions
         let doc_idx = self.documents.insert(blob_id)?;
         self.metadata.insert(doc_idx, &info)?;
 
@@ -104,6 +105,7 @@ impl interface::BlobIndexer for IndexerService {
         blob_id: &str,
         storage_node_id: &str,
     ) -> Result<Option<StorageNodeInfo>> {
+        // FIXME: Use sled transactions
         let node_maybe = self.storage.get_node_for_blob(blob_id)?;
 
         if let Some(node) = node_maybe {
@@ -146,7 +148,7 @@ impl interface::BlobIndexer for IndexerService {
         //
         // 4. Return the ID of the storage node containing the blob so it can be deleted there
         //    also.
-        
+
         // See [1]
         let node_id_maybe = self.storage.delete_blob(blob_id)?;
 
@@ -155,7 +157,11 @@ impl interface::BlobIndexer for IndexerService {
             // See [3.1]
             self.metadata.purge(blob_idx)?;
 
-            ensure!(node_id_maybe.is_some(), "blob '{}' was in the document index but was not assigned to a storage node", blob_id);
+            ensure!(
+                node_id_maybe.is_some(),
+                "blob '{}' was in the document index but was not assigned to a storage node",
+                blob_id
+            );
         }
 
         if let Some(node_id) = node_id_maybe {

@@ -34,7 +34,7 @@ impl ExpressionField {
     }
 
     fn field_value(i: &str) -> IResult<&str, FieldValue> {
-        alt((Self::string_field_value, Self::int_field_value))(i)
+        alt((Self::int_field_value, Self::string_field_value))(i)
     }
 
     fn key_value_node(i: &str) -> IResult<&str, Self> {
@@ -124,7 +124,7 @@ mod test {
             e,
             Expression::Field(ExpressionField::Field {
                 key: "bing".into(),
-                value: 42.into()
+                value: FieldValue::Numeric(42)
             })
         )
     }
