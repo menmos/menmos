@@ -8,7 +8,7 @@ use nom::sequence::{preceded, separated_pair};
 use nom::IResult;
 
 use crate::FieldValue;
-use rapidquery::parse::util::{identifier, string};
+use rapidquery::parse::util::{identifier, integer, string};
 
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 #[serde(untagged)]
@@ -25,14 +25,22 @@ impl ExpressionField {
         })(i)
     }
 
+    fn string_field_value(i: &str) -> IResult<&str, FieldValue> {
+        map(alt((identifier, string)), FieldValue::Str)(i)
+    }
+
+    fn int_field_value(i: &str) -> IResult<&str, FieldValue> {
+        map(integer, FieldValue::Numeric)(i)
+    }
+
+    fn field_value(i: &str) -> IResult<&str, FieldValue> {
+        alt((Self::int_field_value, Self::string_field_value))(i)
+    }
+
     fn key_value_node(i: &str) -> IResult<&str, Self> {
-        // TODO: Support parsing other field types here once we have them.
         map(
-            separated_pair(identifier, tag("="), alt((identifier, string))),
-            |(key, value)| ExpressionField::Field {
-                key,
-                value: FieldValue::Str(value),
-            },
+            separated_pair(identifier, tag("="), Self::field_value),
+            |(key, value)| ExpressionField::Field { key, value },
         )(i)
     }
 
@@ -107,6 +115,18 @@ mod test {
                 value: "bong".into(),
             })
         );
+    }
+
+    #[test]
+    fn parse_int_kv() {
+        let e = Expression::parse("bing=42").unwrap();
+        assert_eq!(
+            e,
+            Expression::Field(ExpressionField::Field {
+                key: "bing".into(),
+                value: FieldValue::Numeric(42)
+            })
+        )
     }
 
     #[test]
