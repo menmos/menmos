@@ -1,4 +1,8 @@
+use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
 use axum::routing::*;
+use headers::HeaderName;
+use hyper::Method;
+use tower_http::cors::{Any, CorsLayer};
 
 use super::handlers;
 
@@ -30,6 +34,23 @@ fn blob() -> Router {
 }
 
 pub fn new() -> Router {
+    let cors = CorsLayer::new()
+        .allow_methods(vec![
+            Method::GET,
+            Method::POST,
+            Method::DELETE,
+            Method::PUT,
+            Method::OPTIONS,
+        ])
+        // TODO: add config to allows specifying whitelisted origins
+        .allow_origin(Any)
+        .allow_headers(vec![
+            CONTENT_TYPE,
+            AUTHORIZATION,
+            HeaderName::from_static("x-blob-meta"),
+            HeaderName::from_static("x-blob-size"),
+        ]);
+
     Router::new()
         // Admin Routes
         .route("/health", get(handlers::admin::health))
@@ -59,4 +80,5 @@ pub fn new() -> Router {
             "/web",
             Router::new().route("/*path", get(handlers::webui::serve_static)),
         )
+        .layer(cors)
 }
