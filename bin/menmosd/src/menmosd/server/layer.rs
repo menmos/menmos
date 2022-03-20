@@ -2,14 +2,19 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::extract::Extension;
+use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::Router;
 
-use headers::HeaderValue;
+use headers::{HeaderName, HeaderValue};
+
+use hyper::Method;
 
 use interface::{CertificateInfo, DynDirectoryNode};
+
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tower_request_id::{RequestId, RequestIdLayer};
 
@@ -71,6 +76,27 @@ fn wrap_extension_layers(
         .layer(axum::middleware::from_fn(redirect_request_id))
 }
 
+fn wrap_cors_layer(router: Router) -> Router {
+    let cors = CorsLayer::new()
+        .allow_methods(vec![
+            Method::GET,
+            Method::POST,
+            Method::DELETE,
+            Method::PUT,
+            Method::OPTIONS,
+        ])
+        // TODO: add config to allows specifying whitelisted origins
+        .allow_origin(Any)
+        .allow_headers(vec![
+            CONTENT_TYPE,
+            AUTHORIZATION,
+            HeaderName::from_static("x-blob-meta"),
+            HeaderName::from_static("x-blob-size"),
+        ]);
+
+    router.layer(cors)
+}
+
 pub fn wrap(
     mut router: Router,
     config: Arc<Config>,
@@ -79,6 +105,7 @@ pub fn wrap(
 ) -> Router {
     router = wrap_trace_layer(router);
     router = wrap_extension_layers(router, config, node, certificate_info);
+    router = wrap_cors_layer(router);
 
     // Generate an ID for each request.
     router.layer(RequestIdLayer)
