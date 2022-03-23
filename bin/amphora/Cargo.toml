@@ -24,7 +24,7 @@ tempfile = "3.3"
 axum = "0.4.6"
 axum-server = { version = "0.3.3", features = ["tls-rustls"] }
 tower-http = { version = "0.2.5", features = ["trace"] }
-hyper = "0.14.17"
+hyper = "0.14.18"
 
 anyhow = "1"
 async-trait = "0.1.42"
