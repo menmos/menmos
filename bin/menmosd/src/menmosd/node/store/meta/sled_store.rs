@@ -106,7 +106,7 @@ impl MetadataStore for SledMetadataStore {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(self, info))]
+    #[tracing::instrument(name = "MetadataStore::insert", level = "trace", skip(self, info))]
     fn insert(&self, id: u32, info: &BlobInfo) -> Result<()> {
         let serialized_id = id.to_le_bytes();
 

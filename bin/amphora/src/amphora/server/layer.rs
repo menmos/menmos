@@ -35,7 +35,7 @@ pub fn wrap(router: Router, node: DynStorageNode, config: &Config) -> Router {
                         tracing::info_span!(
                             "request",
                             method = %r.method(),
-                            uri = %r.uri(),
+                            uri = %r.uri().path()
                         )
                     }
                 })

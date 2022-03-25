@@ -2,7 +2,7 @@ use std::io::{self, SeekFrom};
 use std::ops::Bound;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{bail, ensure, Context, Result};
 
 use async_trait::async_trait;
 
@@ -64,6 +64,7 @@ impl DiskRepository {
 
 #[async_trait]
 impl Repository for DiskRepository {
+    #[tracing::instrument(skip(self, stream))]
     async fn save(
         &self,
         id: String,
@@ -72,15 +73,22 @@ impl Repository for DiskRepository {
         let file_path = self.get_path_for_blob(&id);
         tracing::trace!(path = ?file_path, "begin writing to file");
 
-        match betterstreams::fs::write_all(&file_path, stream).await {
+        match betterstreams::fs::write_all(&file_path, stream)
+            .await
+            .context("failed to write stream to disk")
+        {
             Ok(size) => Ok(size),
             Err(e) => {
-                fs::remove_file(&file_path).await?;
+                fs::remove_file(&file_path)
+                    .await
+                    .context("failed to rollback file creation")?;
+                tracing::trace!(path=?file_path, "removed temporary file");
                 Err(e)
             }
         }
     }
 
+    #[tracing::instrument(skip(self, body))]
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
         let file_path = self.get_path_for_blob(&id);
 
@@ -107,12 +115,15 @@ impl Repository for DiskRepository {
                 .open(&file_path)
                 .await?;
             f.seek(SeekFrom::Start(start)).await?;
-            f.write_all(body.as_ref()).await?;
+            f.write_all(body.as_ref())
+                .await
+                .context("failed to write stream to file")?;
         }
 
         Ok(new_length)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn get(
         &self,
         blob_id: &str,
@@ -130,24 +141,31 @@ impl Repository for DiskRepository {
 
         betterstreams::fs::read_range(&file_path, range.map(|r| util::bounds_to_range(r, 0, size)))
             .await
+            .context("failed to read byte range from file")
     }
 
+    #[tracing::instrument(skip(self))]
     async fn delete(&self, blob_id: &str) -> Result<()> {
         let blob_path = self.get_path_for_blob(blob_id);
 
         if blob_path.exists() {
-            fs::remove_file(&blob_path).await?;
+            fs::remove_file(&blob_path)
+                .await
+                .context("failed to delete file")?;
             tracing::trace!(path=?blob_path, "file deleted");
         }
 
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     async fn fsync(&self, _id: String) -> Result<()> {
         // Nothing to do for us.
+        tracing::trace!("fsync on disk repository is a no-op");
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     async fn available_space(&self) -> Result<Option<u64>> {
         let mut sys = self.system.lock();
         sys.refresh_disks_list();

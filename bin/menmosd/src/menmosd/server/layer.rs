@@ -36,7 +36,7 @@ fn wrap_trace_layer(router: Router) -> Router {
                     "request",
                     id = %request_id,
                     method = %r.method(),
-                    uri = %r.uri(),
+                    uri = %r.uri().path(),
                 )
             })
             .on_request(|_r: &Request<_>, _s: &tracing::Span| {}) // We silence the on-request hook

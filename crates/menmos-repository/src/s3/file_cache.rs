@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use aws_sdk_s3::error::GetObjectErrorKind;
 use aws_sdk_s3::Client;
 use aws_smithy_http::result::SdkError;
@@ -42,10 +42,13 @@ impl FileCache {
         self.file_path_cache.get(blob_id.as_ref()).await
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn invalidate(&self, blob_id: &str) -> Result<()> {
         let file_path = self.root_path.join(blob_id);
         if file_path.exists() {
-            fs::remove_file(&file_path).await?;
+            fs::remove_file(&file_path).await.with_context(|| {
+                format!("failed to remove entry '{file_path:?}' from file cache")
+            })?;
             tracing::trace!(path = ?file_path, "file existed and was removed");
         }
         self.file_path_cache.invalidate(blob_id).await;
@@ -53,6 +56,7 @@ impl FileCache {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     async fn download_blob(&self, blob_id: &str) -> Result<PathBuf> {
         match self
             .client
@@ -66,12 +70,19 @@ impl FileCache {
                 let mut bytestream = result.body;
 
                 let file_path = self.root_path.join(blob_id);
-                let mut f = fs::File::create(&file_path).await?;
-
+                let mut f = fs::File::create(&file_path).await.with_context(|| {
+                    format!("failed to create destination file '{file_path:?}'")
+                })?;
                 while let Some(chunk) = bytestream.next().await {
                     match chunk {
-                        Ok(c) => f.write_all(c.as_ref()).await?,
+                        Ok(c) => f
+                            .write_all(c.as_ref())
+                            .await
+                            .context("failed to write stream chunk to file")?,
                         Err(e) => {
+                            tracing::warn!(
+                                "file cache encountered an error while downlading blob {blob_id}: {e}"
+                            );
                             fs::remove_file(&file_path).await?;
                             return Err(e.into());
                         }
@@ -84,7 +95,9 @@ impl FileCache {
                 if let GetObjectErrorKind::NoSuchKey(_) = err.kind {
                     // Create the file - empty - in the file cache.
                     let file_path = self.root_path.join(blob_id);
-                    fs::File::create(&file_path).await?;
+                    fs::File::create(&file_path)
+                        .await
+                        .context("failed to create empty file")?;
                     Ok(file_path)
                 } else {
                     //Rethrow.
@@ -98,6 +111,7 @@ impl FileCache {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get(&self, blob_id: &str) -> Result<PathBuf> {
         if let Some(cache_hit) = self.contains(&blob_id).await {
             tracing::trace!("cache hit");
@@ -115,13 +129,17 @@ impl FileCache {
 
         if let Some(victim) = eviction_victim_maybe {
             // If a key was evicted from the cache, delete it from disk.
-            fs::remove_file(&victim).await?;
+            fs::remove_file(&victim)
+                .await
+                .context("failed to remove evicted item")?;
             tracing::trace!(path=?victim, "removed victim from disk");
         }
 
         if !was_inserted {
             // The cache failed to keep our path, fail gracefully.
-            fs::remove_file(&blob_path).await?;
+            fs::remove_file(&blob_path)
+                .await
+                .context("failed to remove cache candidate")?;
             return Err(anyhow!("failed to insert blob in file cache"));
         }
 
