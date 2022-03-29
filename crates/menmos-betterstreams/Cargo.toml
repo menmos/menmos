@@ -19,5 +19,5 @@ anyhow = "1"
 bytes = "1.0"
 futures = "0.3"
 tokio = {version = "1", features = ["io-util", "fs"]}
-tokio-util = {version = "0.7.0", features = ["codec", "io"]}
+tokio-util = {version = "0.7.1", features = ["codec", "io"]}
 tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_debug"]}
