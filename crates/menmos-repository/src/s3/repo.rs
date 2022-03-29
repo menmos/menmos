@@ -2,7 +2,7 @@ use std::io::{self, SeekFrom, Write};
 use std::ops::{Bound, RangeBounds};
 use std::path::Path;
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use async_trait::async_trait;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3::model::{CompletedMultipartUpload, CompletedPart};
@@ -49,8 +49,8 @@ impl S3Repository {
         let shared_config = aws_config::from_env().region(region_provider).load().await;
         let client = Client::new(&shared_config);
 
-        let file_cache =
-            FileCache::new(cache_path, max_nb_of_cached_files, bucket, client.clone())?;
+        let file_cache = FileCache::new(cache_path, max_nb_of_cached_files, bucket, client.clone())
+            .context("failed to initialize file cache")?;
 
         Ok(Self {
             bucket: String::from(bucket),
@@ -59,6 +59,7 @@ impl S3Repository {
         })
     }
 
+    #[tracing::instrument(level = "trace", skip(self, buf_writer))]
     async fn flush_part(
         &self,
         running_size: usize,
@@ -77,7 +78,10 @@ impl S3Repository {
             .part_number(part_id)
             .upload_id(upload_id)
             .send()
-            .await?;
+            .await
+            .context("s3 repository flush error")?;
+
+        tracing::trace!("part flushed");
 
         Ok(CompletedPart::builder()
             .set_e_tag(result.e_tag)
@@ -85,6 +89,7 @@ impl S3Repository {
             .build())
     }
 
+    #[tracing::instrument(level = "trace", skip(self, stream))]
     async fn do_multipart(
         &self,
         id: String,
@@ -102,14 +107,22 @@ impl S3Repository {
         let mut total_size = 0_u64;
 
         while let Some(part) = stream.try_next().await? {
+            tracing::trace!(size = part.len(), "got stream part");
+
             buf_writer.write_all(&part)?;
             running_size += part.len();
             total_size += part.len() as u64;
 
             if running_size <= 5 * 1024 * 1024 {
+                tracing::trace!(
+                    "running size of {} is smaller than {}, continuing",
+                    running_size,
+                    5 * 1024 * 1024
+                );
                 continue;
             }
 
+            tracing::trace!("flushing current part");
             let completed_part = self
                 .flush_part(running_size, buf_writer, part_id, &upload_id, &id)
                 .await?;
@@ -119,10 +132,15 @@ impl S3Repository {
             part_id += 1;
             running_size = 0;
             buf_writer = BytesMut::new().writer();
+
+            tracing::trace!("next part id={part_id}");
         }
 
         // Flush the last part if required
         if running_size > 0 {
+            tracing::trace!(
+                "finished consuming stream but some data is left over, sending one last part"
+            );
             let completed_part = self
                 .flush_part(running_size, buf_writer, part_id, &upload_id, &id)
                 .await?;
@@ -136,13 +154,17 @@ impl S3Repository {
 
 #[async_trait]
 impl Repository for S3Repository {
+    #[tracing::instrument(skip(self, stream))]
     async fn save(
         &self,
         id: String,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
     ) -> Result<u64> {
         // TODO: Validate that we wrote the correct number of bytes from the stream.
-        self.file_cache.invalidate(&id).await?;
+        self.file_cache
+            .invalidate(&id)
+            .await
+            .context("failed to invalidate entry from s3 file cache")?;
 
         let mp_upload = self
             .client
@@ -150,11 +172,14 @@ impl Repository for S3Repository {
             .bucket(&self.bucket)
             .key(&id)
             .send()
-            .await?;
+            .await
+            .context("failed to create s3 multipart upload")?;
 
         let upload_id = mp_upload
             .upload_id
             .ok_or_else(|| anyhow!("missing upload ID"))?;
+
+        tracing::trace!(id=?upload_id, "created multipart upload");
 
         match self
             .do_multipart(id.clone(), upload_id.clone(), stream)
@@ -169,7 +194,9 @@ impl Repository for S3Repository {
                     .upload_id(&upload_id)
                     .multipart_upload(completed_parts)
                     .send()
-                    .await?;
+                    .await
+                    .context("failed to complete multipart upload")?;
+                tracing::debug!(length = total_length, "completed multipart upload");
                 Ok(total_length)
             }
             Err(e) => {
@@ -179,28 +206,36 @@ impl Repository for S3Repository {
                     .key(&id)
                     .upload_id(&upload_id)
                     .send()
-                    .await?;
-
+                    .await
+                    .context("failed to abort multipart upload")?;
                 bail!("failed upload: {}", e.to_string());
             }
         }
     }
 
+    #[tracing::instrument(skip(self, body))]
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
         let file_path = self.file_cache.get(&id).await?;
         let range = util::bounds_to_range(range, 0, 0);
         let (start, end) = (range.start, range.end);
-        ensure!(start < end, "invalid range");
+        ensure!(
+            start < end,
+            "invalid range, end bound is smaller than start bound"
+        );
 
         {
+            tracing::trace!(path=?file_path, range=?range, length=body.len(), "beginning cache write operation");
             let mut f = OpenOptions::new()
                 .read(true)
                 .write(true)
                 .open(&file_path)
-                .await?;
+                .await
+                .context("failed to open file cache entry")?;
             f.seek(SeekFrom::Start(start)).await?;
+            tracing::trace!("seeked to offset {}", start);
             f.write_all(body.as_ref()).await?;
             f.sync_all().await?;
+            tracing::trace!("fsync ok");
         }
 
         let file_length = file_path.metadata()?.len();
@@ -208,6 +243,7 @@ impl Repository for S3Repository {
         Ok(file_length)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn get(
         &self,
         blob_id: &str,
@@ -215,13 +251,17 @@ impl Repository for S3Repository {
     ) -> Result<StreamInfo> {
         // First, if the blob is in cache we'll read from there -- much faster.
         if let Some(blob_path) = self.file_cache.contains(blob_id).await {
+            tracing::debug!("blob is in cache");
             let file_size = blob_path.metadata()?.len();
             return betterstreams::fs::read_range(
                 blob_path,
                 range.map(|r| util::bounds_to_range(r, 0, file_size)),
             )
-            .await;
+            .await
+            .context("failed to read from file cache");
         }
+
+        tracing::debug!("blob is not in cache, falling back on S3");
 
         // Else we carry on to S3.
         let mut req_builder = self
@@ -247,9 +287,16 @@ impl Repository for S3Repository {
             req_builder = req_builder.range(range_str);
         }
 
-        let result = req_builder.send().await?;
+        let result = req_builder
+            .send()
+            .await
+            .context("s3 GetObject request failed")?;
 
         let raw_content_length: i64 = result.content_length;
+        tracing::trace!(
+            content_length = raw_content_length,
+            "got GetObject response"
+        );
 
         ensure!(raw_content_length >= 0, "content length cannot be negative");
 
@@ -275,25 +322,35 @@ impl Repository for S3Repository {
         })
     }
 
+    #[tracing::instrument(skip(self))]
     async fn delete(&self, blob_id: &str) -> Result<()> {
-        self.file_cache.invalidate(blob_id).await?;
+        self.file_cache
+            .invalidate(blob_id)
+            .await
+            .context("failed to invalidate file cache entry")?;
 
         self.client
             .delete_object()
             .bucket(&self.bucket)
             .key(blob_id.to_string())
             .send()
-            .await?;
+            .await
+            .context("failed to delete blob on s3")?;
+
+        tracing::debug!("s3 object delete complete");
 
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     async fn fsync(&self, id: String) -> Result<()> {
         // FIXME: Trigger fsync asynchronously so it doesn't block the call.
         // FIXME: Trigger fsync periodically for cache keys, and every time on cache eviction.
         if let Some(path) = self.file_cache.contains(&id).await {
             let f = fs::File::open(&path).await?;
             let file_length = path.metadata()?.len();
+
+            tracing::trace!("flushing {} bytes", file_length);
 
             // TODO: Do this multipart?
 
@@ -304,9 +361,12 @@ impl Repository for S3Repository {
                 .key(&id)
                 .body(ByteStream::from_file(f).await?)
                 .send()
-                .await?;
+                .await
+                .context("s3 PutObject request failed")?;
 
             tracing::debug!(file_length = file_length, "complete");
+        } else {
+            tracing::trace!("nothing to flush");
         }
 
         Ok(())
