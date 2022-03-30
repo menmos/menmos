@@ -6,7 +6,7 @@ use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 // See https://preshing.com/20110504/hash-collision-probabilities/
 fn optimal_bucket_count(concurrent_calls: usize, mut collision_probability: f64) -> usize {
     if collision_probability == 0.0 {
-        collision_probability = f64::EPSILON;
+        collision_probability = f64::EPSILON; // use the smallest possible float that is greater than zero - this will generate a huge amount of filters.
     }
 
     let bucket_count_float =
