@@ -12,7 +12,7 @@ fn optimal_bucket_count(concurrent_calls: usize, mut collision_probability: f64)
     let bucket_count_float =
         ((concurrent_calls as f64 - 1.0) * concurrent_calls as f64) / (2.0 * collision_probability);
 
-    return (bucket_count_float.ceil() as usize).max(1);
+    (bucket_count_float.ceil() as usize).max(1)
 }
 
 pub struct ShardedMutex {
