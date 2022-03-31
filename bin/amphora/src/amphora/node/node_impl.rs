@@ -312,6 +312,7 @@ impl StorageNode for Storage {
 
     async fn delete(&self, blob_id: String, username: &str) -> Result<()> {
         let _guard = self.shard_lock.write(&blob_id).await;
+
         // Privilege check.
         ensure!(self.is_blob_owned_by(&blob_id, username)?, "forbidden");
 
@@ -333,6 +334,7 @@ impl StorageNode for Storage {
 
     async fn fsync(&self, blob_id: String, username: &str) -> Result<()> {
         let _guard = self.shard_lock.write(&blob_id).await;
+
         // Privilege check.
         ensure!(self.is_blob_owned_by(&blob_id, username)?, "forbidden");
 
