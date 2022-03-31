@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process::exit};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -86,6 +86,7 @@ impl DaemonProcess {
 
         if let Err(e) = main_loop(cfg, log_config, daemon) {
             tracing::error!("fatal: {}", e);
+            exit(1);
         }
     }
 }
