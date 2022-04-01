@@ -39,7 +39,7 @@ version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum",
+ "axum 0.5.0",
  "axum-server",
  "base64",
  "bincode",
@@ -528,7 +528,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c9f346c92c1e9a71d14fe4aaf7c2a5d9932cc4e5e48d8fb6641524416eb79ddd"
 dependencies = [
  "async-trait",
- "axum-core",
+ "axum-core 0.1.2",
+ "bitflags",
+ "bytes",
+ "futures-util",
+ "http",
+ "http-body",
+ "hyper",
+ "matchit 0.4.6",
+ "memchr",
+ "mime",
+ "percent-encoding",
+ "pin-project-lite",
+ "serde 1.0.136",
+ "serde_json",
+ "serde_urlencoded",
+ "sync_wrapper",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
+name = "axum"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5611d4977882c5af1c0f7a34d51b5d87f784f86912bb543986b014ea4995ef93"
+dependencies = [
+ "async-trait",
+ "axum-core 0.2.0",
  "bitflags",
  "bytes",
  "futures-util",
@@ -536,7 +566,8 @@ dependencies = [
  "http",
  "http-body",
  "hyper",
- "matchit",
+ "itoa",
+ "matchit 0.5.0",
  "memchr",
  "mime",
  "percent-encoding",
@@ -558,7 +589,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f33c9433aed1ddf03771767129db4d125fb9ae009aac5ddb58f7ee4c2256e43a"
 dependencies = [
- "axum",
+ "axum 0.4.8",
  "forwarded-header-value",
 ]
 
@@ -567,6 +598,20 @@ name = "axum-core"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbcda393bef9c87572779cb8ef916f12d77750b27535dd6819fa86591627a51"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "futures-util",
+ "http",
+ "http-body",
+ "mime",
+]
+
+[[package]]
+name = "axum-core"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95cd109b3e93c9541dcce5b0219dcf89169dcc58c1bebed65082808324258afb"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1808,6 +1853,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9376a4f0340565ad675d11fc1419227faf5f60cd7ac9cb2e7185a471f30af833"
 
 [[package]]
+name = "matchit"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73cbba799671b762df5a175adf59ce145165747bb891505c43d09aefbbf38beb"
+
+[[package]]
 name = "md5"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1868,7 +1919,7 @@ name = "menmos-apikit"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "axum",
+ "axum 0.5.0",
  "serde 1.0.136",
  "tracing",
 ]
@@ -1879,7 +1930,7 @@ version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum",
+ "axum 0.5.0",
  "bincode",
  "branca",
  "chrono",
@@ -2045,7 +2096,7 @@ dependencies = [
  "amphora",
  "anyhow",
  "async-trait",
- "axum",
+ "axum 0.5.0",
  "axum-client-ip",
  "axum-server",
  "base64",
