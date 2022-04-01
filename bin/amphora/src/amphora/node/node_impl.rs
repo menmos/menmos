@@ -15,6 +15,8 @@ use futures::{stream::empty, Stream};
 
 use interface::{Blob, BlobInfo, BlobInfoRequest, CertificateInfo, StorageNode, StorageNodeInfo};
 
+use menmos_std::sync::ShardedMutex;
+
 use parking_lot::Mutex;
 
 use repository::{Repository, StreamInfo};
@@ -41,6 +43,8 @@ pub struct Storage {
     repo: Arc<ConcurrentRepository>,
 
     transfer_manager: Arc<AsyncMutex<Option<TransferManager>>>,
+
+    shard_lock: ShardedMutex,
 }
 
 impl Storage {
@@ -66,6 +70,9 @@ impl Storage {
 
         let transfer_manager = TransferManager::new(repo.clone(), index.clone(), config.clone());
 
+        // TODO: Tune this (and allow runtime tuning).
+        let shard_lock = ShardedMutex::new(10, 0.01);
+
         let s = Self {
             config,
             directory: proxy,
@@ -73,6 +80,7 @@ impl Storage {
             repo,
             certificates,
             transfer_manager: Arc::new(AsyncMutex::new(Some(transfer_manager))),
+            shard_lock,
         };
 
         Ok(s)
@@ -183,6 +191,8 @@ impl StorageNode for Storage {
         info_request: BlobInfoRequest,
         stream: Option<Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin>>,
     ) -> Result<()> {
+        let _guard = self.shard_lock.write(&id).await;
+
         let actual_blob_size = if let Some(s) = stream {
             self.repo.save(id.clone(), s).await?
         } else {
@@ -224,6 +234,8 @@ impl StorageNode for Storage {
         body: Bytes,
         username: &str,
     ) -> Result<()> {
+        let _guard = self.shard_lock.write(&id).await;
+
         // Privilege check.
         ensure!(self.is_blob_owned_by(&id, username)?, "forbidden");
 
@@ -248,6 +260,8 @@ impl StorageNode for Storage {
     }
 
     async fn get(&self, blob_id: String, range: Option<(Bound<u64>, Bound<u64>)>) -> Result<Blob> {
+        let _guard = self.shard_lock.read(&blob_id).await;
+
         // TODO: Clip the bounds to the real blob?
         let info: BlobInfo = self
             .index
@@ -273,6 +287,8 @@ impl StorageNode for Storage {
     }
 
     async fn update_meta(&self, blob_id: String, info_request: BlobInfoRequest) -> Result<()> {
+        let _guard = self.shard_lock.write(&blob_id).await;
+
         // Privilege check.
         ensure!(
             self.is_blob_owned_by(&blob_id, &info_request.owner)?,
@@ -295,6 +311,8 @@ impl StorageNode for Storage {
     }
 
     async fn delete(&self, blob_id: String, username: &str) -> Result<()> {
+        let _guard = self.shard_lock.write(&blob_id).await;
+
         // Privilege check.
         ensure!(self.is_blob_owned_by(&blob_id, username)?, "forbidden");
 
@@ -315,6 +333,8 @@ impl StorageNode for Storage {
     }
 
     async fn fsync(&self, blob_id: String, username: &str) -> Result<()> {
+        let _guard = self.shard_lock.write(&blob_id).await;
+
         // Privilege check.
         ensure!(self.is_blob_owned_by(&blob_id, username)?, "forbidden");
 
