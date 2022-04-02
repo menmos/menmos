@@ -9,8 +9,6 @@ use async_trait::async_trait;
 
 use bytes::Bytes;
 
-use chrono::Utc;
-
 use futures::{stream::empty, Stream};
 
 use interface::{Blob, BlobInfo, BlobInfoRequest, CertificateInfo, StorageNode, StorageNodeInfo};
@@ -21,6 +19,7 @@ use parking_lot::Mutex;
 
 use repository::{Repository, StreamInfo};
 
+use time::OffsetDateTime;
 use tokio::sync::Mutex as AsyncMutex;
 
 use super::{
@@ -213,7 +212,7 @@ impl StorageNode for Storage {
         let (created_at, modified_at) = if let Some(old_info) = self.index.get(&id)? {
             (old_info.meta.created_at, old_info.meta.modified_at)
         } else {
-            let date = Utc::now();
+            let date = OffsetDateTime::now_utc();
             (date, date)
         };
 
@@ -244,7 +243,7 @@ impl StorageNode for Storage {
 
         // Update the index.
         if let Some(mut info) = self.index.get(&id)? {
-            info.meta.modified_at = Utc::now();
+            info.meta.modified_at = OffsetDateTime::now_utc();
             info.meta.size = new_blob_size;
             self.index.insert(&id, &info)?;
 
@@ -296,7 +295,8 @@ impl StorageNode for Storage {
         );
 
         if let Some(old_info) = self.index.get(&blob_id)? {
-            let mut info = info_request.into_blob_info(old_info.meta.created_at, Utc::now());
+            let mut info =
+                info_request.into_blob_info(old_info.meta.created_at, OffsetDateTime::now_utc());
             info.meta.size = old_info.meta.size; // carry-over the old size because changing the metadata doesn't change the size
             self.index.insert(&blob_id, &info)?;
 

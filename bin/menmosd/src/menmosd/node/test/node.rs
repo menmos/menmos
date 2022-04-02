@@ -4,12 +4,11 @@ use std::net::IpAddr;
 
 use anyhow::Result;
 
-use chrono::Utc;
-
 use interface::{
     BlobInfo, BlobInfoRequest, BlobMetaRequest, DirectoryNode, FieldValue, Query, QueryResponse,
     RoutingConfig, StorageNodeInfo,
 };
+use time::OffsetDateTime;
 
 use crate::Directory;
 
@@ -50,7 +49,11 @@ async fn index<S: AsRef<str>>(
             id.as_ref(),
             BlobInfo {
                 owner: "admin".to_string(),
-                meta: meta_request.into_meta(Utc::now(), Utc::now(), 0),
+                meta: meta_request.into_meta(
+                    OffsetDateTime::now_utc(),
+                    OffsetDateTime::now_utc(),
+                    0,
+                ),
             },
             &tgt_storage_node.id,
         )
