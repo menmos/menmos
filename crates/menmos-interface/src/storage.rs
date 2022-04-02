@@ -162,9 +162,11 @@ pub struct BlobMeta {
     pub size: u64,
 
     /// This blob's creation time.
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
 
     /// This blob's last modified time.
+    #[serde(with = "time::serde::rfc3339")]
     pub modified_at: OffsetDateTime,
 }
 
@@ -230,9 +232,11 @@ pub struct TaggedBlobMeta {
     pub size: u64,
 
     /// This blob's creation time.
+    #[serde(with = "crate::timestamp_nanos")]
     pub created_at: OffsetDateTime,
 
     /// This blob's last modified time.
+    #[serde(with = "crate::timestamp_nanos")]
     pub modified_at: OffsetDateTime,
 }
 
