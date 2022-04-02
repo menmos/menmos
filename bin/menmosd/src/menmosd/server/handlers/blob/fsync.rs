@@ -36,5 +36,5 @@ pub async fn fsync(
     )
     .map_err(HTTPError::internal_server_error)?;
 
-    Ok(Redirect::temporary(node_address))
+    Ok(Redirect::temporary(&node_address.to_string()))
 }
