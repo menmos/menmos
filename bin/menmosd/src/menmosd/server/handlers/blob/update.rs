@@ -43,5 +43,5 @@ pub async fn update(
         get_storage_node_address(addr, storage_node, &config, &format!("blob/{}", &blob_id))
             .map_err(HTTPError::internal_server_error)?;
 
-    Ok(Redirect::temporary(node_address))
+    Ok(Redirect::temporary(&node_address.to_string()))
 }

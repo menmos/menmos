@@ -54,7 +54,7 @@ impl Server {
                 let srv = axum::Server::bind(&([0, 0, 0, 0], http_cfg.port).into())
                     .serve(
                         build_router(config, node.clone(), Arc::new(None))
-                            .into_make_service_with_connect_info::<SocketAddr, _>(),
+                            .into_make_service_with_connect_info::<SocketAddr>(),
                     )
                     .with_graceful_shutdown(async move {
                         stop_rx.recv().await;

@@ -52,5 +52,5 @@ pub async fn put(
 
     tracing::debug!("redirecting to {}", &node_address);
 
-    Ok(Redirect::temporary(node_address))
+    Ok(Redirect::temporary(&node_address.to_string()))
 }

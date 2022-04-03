@@ -53,7 +53,7 @@ impl NodeServer {
             let https_srv =
                 axum_server::bind_rustls(([0, 0, 0, 0], config.server.port).into(), rustls_config)
                     .handle(interrupt_handle)
-                    .serve(router.into_make_service_with_connect_info::<SocketAddr, _>());
+                    .serve(router.into_make_service_with_connect_info::<SocketAddr>());
 
             let h = spawn(async move {
                 match https_srv.await {
@@ -69,7 +69,7 @@ impl NodeServer {
         } else {
             tracing::debug!("starting http layer");
             let srv = axum::Server::bind(&([0, 0, 0, 0], config.server.port).into())
-                .serve(router.into_make_service_with_connect_info::<SocketAddr, _>())
+                .serve(router.into_make_service_with_connect_info::<SocketAddr>())
                 .with_graceful_shutdown(async move {
                     rx.await.ok();
                 });
