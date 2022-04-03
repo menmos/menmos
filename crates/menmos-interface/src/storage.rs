@@ -12,11 +12,10 @@ use async_trait::async_trait;
 
 use bytes::Bytes;
 
-use chrono::{DateTime, Utc};
-
 use futures::Stream;
 
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 fn file_to_base64<P: AsRef<Path>>(path: P) -> Result<String> {
     Ok(base64::encode(fs::read(path.as_ref())?))
@@ -71,8 +70,8 @@ impl BlobMetaRequest {
 
     pub fn into_meta(
         self,
-        created_at: DateTime<Utc>,
-        modified_at: DateTime<Utc>,
+        created_at: OffsetDateTime,
+        modified_at: OffsetDateTime,
         size: u64,
     ) -> BlobMeta {
         BlobMeta {
@@ -163,10 +162,12 @@ pub struct BlobMeta {
     pub size: u64,
 
     /// This blob's creation time.
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
 
     /// This blob's last modified time.
-    pub modified_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub modified_at: OffsetDateTime,
 }
 
 impl From<BlobMeta> for BlobMetaRequest {
@@ -184,8 +185,8 @@ impl Default for BlobMeta {
             fields: Default::default(),
             tags: Default::default(),
             size: 0,
-            created_at: Utc::now(),
-            modified_at: Utc::now(),
+            created_at: OffsetDateTime::now_utc(),
+            modified_at: OffsetDateTime::now_utc(),
         }
     }
 }
@@ -231,10 +232,12 @@ pub struct TaggedBlobMeta {
     pub size: u64,
 
     /// This blob's creation time.
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "crate::timestamp_nanos")]
+    pub created_at: OffsetDateTime,
 
     /// This blob's last modified time.
-    pub modified_at: DateTime<Utc>,
+    #[serde(with = "crate::timestamp_nanos")]
+    pub modified_at: OffsetDateTime,
 }
 
 impl From<BlobMeta> for TaggedBlobMeta {
@@ -278,7 +281,11 @@ pub struct BlobInfoRequest {
 }
 
 impl BlobInfoRequest {
-    pub fn into_blob_info(self, created_at: DateTime<Utc>, modified_at: DateTime<Utc>) -> BlobInfo {
+    pub fn into_blob_info(
+        self,
+        created_at: OffsetDateTime,
+        modified_at: OffsetDateTime,
+    ) -> BlobInfo {
         BlobInfo {
             meta: self
                 .meta_request

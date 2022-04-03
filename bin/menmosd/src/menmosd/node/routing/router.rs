@@ -1,17 +1,17 @@
 use anyhow::{anyhow, bail, Result};
 
-use chrono::{DateTime, Duration, Utc};
-
 use interface::{BlobMetaRequest, RoutingAlgorithm, RoutingConfig, StorageNodeInfo};
 
 use menmos_std::collections::ConcurrentHashMap;
+
+use time::{Duration, OffsetDateTime};
 
 use super::algorithm::{MinSizePolicy, RoundRobinPolicy, RoutingPolicy};
 
 const NODE_FORGET_DURATION_SECONDS: i64 = 60;
 
 pub struct NodeRouter {
-    storage_nodes: ConcurrentHashMap<String, (StorageNodeInfo, DateTime<Utc>)>,
+    storage_nodes: ConcurrentHashMap<String, (StorageNodeInfo, OffsetDateTime)>,
     routing_policy: Box<dyn RoutingPolicy + Send + Sync>,
 
     node_forget_duration: Duration,
@@ -41,7 +41,7 @@ impl NodeRouter {
 
     async fn get_node_if_fresh(&self, node_id: &str) -> Option<StorageNodeInfo> {
         if let Some((node_info, seen_at)) = self.storage_nodes.get(node_id) {
-            if Utc::now() - seen_at > self.node_forget_duration {
+            if OffsetDateTime::now_utc() - seen_at > self.node_forget_duration {
                 // Node is expired.
                 None
             } else {
@@ -58,7 +58,7 @@ impl NodeRouter {
             .storage_nodes
             .insert(
                 storage_node.id.clone(),
-                (storage_node.clone(), chrono::Utc::now()),
+                (storage_node.clone(), OffsetDateTime::now_utc()),
             )
             .is_some();
 

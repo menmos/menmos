@@ -48,7 +48,7 @@ pub fn make_token<K: AsRef<str>, D: Serialize>(key: K, data: D) -> anyhow::Resul
     let mut token = Branca::new(key.as_ref().as_bytes())?;
     token
         .set_ttl(TOKEN_TTL_SECONDS)
-        .set_timestamp(chrono::Utc::now().timestamp() as u32);
+        .set_timestamp(time::OffsetDateTime::now_utc().unix_timestamp() as u32);
 
     let encoded_body = bincode::serialize(&data)?;
     Ok(token.encode(&encoded_body)?)
