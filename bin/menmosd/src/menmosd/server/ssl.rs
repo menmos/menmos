@@ -194,13 +194,15 @@ pub async fn use_tls(
                         tracing::debug!("redirect to https://{}/{}", &domain, path);
                         let target_uri = Uri::from_str(&format!("https://{}/{}", &domain, path))
                             .expect("problem with uri");
-                        Ok::<_, Infallible>(Redirect::permanent(target_uri).into_response())
+                        Ok::<_, Infallible>(
+                            Redirect::permanent(&target_uri.to_string()).into_response(),
+                        )
                     }
                 })),
             );
 
             let http_srv = axum::Server::bind(&([0, 0, 0, 0], cfg.http_port).into())
-                .serve(router.into_make_service_with_connect_info::<SocketAddr, _>())
+                .serve(router.into_make_service_with_connect_info::<SocketAddr>())
                 .with_graceful_shutdown(async move {
                     rx80.await.ok();
                     tracing::info!("redirect layer stop signal received");
@@ -231,7 +233,7 @@ pub async fn use_tls(
 
             let https_srv = axum_server::bind_rustls(([0, 0, 0, 0], cfg.https_port).into(), config)
                 .handle(interrupt_handle)
-                .serve(router.into_make_service_with_connect_info::<SocketAddr, _>());
+                .serve(router.into_make_service_with_connect_info::<SocketAddr>());
             spawn(https_srv)
         };
 
