@@ -1,9 +1,7 @@
 use std::io;
 use std::ops::Bound;
-use std::sync::Arc;
-use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 
 use async_trait::async_trait;
 
@@ -11,42 +9,29 @@ use bytes::Bytes;
 
 use futures::Stream;
 
+use menmos_std::collections::ConcurrentSet;
+
 use repository::{Repository, StreamInfo};
 
-use tokio::sync::RwLock;
-
-use super::stringlock::StringLock;
-
 pub struct ConcurrentRepository {
-    key_locks: StringLock,
     repo: Box<dyn Repository + Send + Sync>,
+    read_only_blobs: ConcurrentSet<String>, // FIXME(permissions): This is a quick fix before we implement a proper permissions system.
 }
 
 impl ConcurrentRepository {
-    pub fn new(
-        repo: Box<dyn Repository + Send + Sync>,
-        lifetime: Duration,
-        max_memory: usize,
-    ) -> Self {
+    pub fn new(repo: Box<dyn Repository + Send + Sync>) -> Self {
         Self {
-            key_locks: StringLock::new(lifetime).with_cleanup_trigger(max_memory),
             repo,
+            read_only_blobs: ConcurrentSet::new(),
         }
     }
 
-    /// Utility to lock a blob indefinitely.
-    /// Used for blob transfers.
-    pub async fn unsafe_lock(&self, id: &str) -> Arc<RwLock<()>> {
-        self.key_locks.get_lock(id).await
+    pub fn set_read_only(&self, blob_id: &str) {
+        self.read_only_blobs.insert(String::from(blob_id));
     }
 
-    /// Get a ref to the underlying repository.
-    ///
-    /// This is unsafe because concurrency protection is not enforced.
-    /// Be sure to use this in conjuntion with ConcurrentRepository::unsafe_lock.
-    /// to ensure safety manually.
-    pub async fn unsafe_repository(&self) -> &Box<dyn Repository + Send + Sync> {
-        &self.repo
+    pub fn remove_read_only(&self, blob_id: &str) {
+        self.read_only_blobs.remove(blob_id);
     }
 }
 
@@ -57,14 +42,16 @@ impl Repository for ConcurrentRepository {
         id: String,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
     ) -> Result<u64> {
-        let mtx = self.key_locks.get_lock(&id).await;
-        let _w_guard = mtx.write().await;
+        if self.read_only_blobs.contains(&id) {
+            bail!("cannot save blob '{id}': blob is read-only");
+        }
         self.repo.save(id, stream).await
     }
 
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
-        let mtx = self.key_locks.get_lock(&id).await;
-        let _w_guard = mtx.write().await;
+        if self.read_only_blobs.contains(&id) {
+            bail!("cannot write to blob '{id}': blob is read-only");
+        }
         self.repo.write(id, range, body).await
     }
 
@@ -73,20 +60,20 @@ impl Repository for ConcurrentRepository {
         blob_id: &str,
         range: Option<(Bound<u64>, Bound<u64>)>,
     ) -> Result<StreamInfo> {
-        let mtx = self.key_locks.get_lock(&blob_id).await;
-        let _r_guard = mtx.read().await;
         self.repo.get(blob_id, range).await
     }
 
     async fn delete(&self, blob_id: &str) -> Result<()> {
-        let mtx = self.key_locks.get_lock(&blob_id).await;
-        let _w_guard = mtx.write().await;
+        if self.read_only_blobs.contains(blob_id) {
+            bail!("cannot delete blob '{blob_id}': blob is read-only");
+        }
         self.repo.delete(blob_id).await
     }
 
     async fn fsync(&self, id: String) -> Result<()> {
-        let mtx = self.key_locks.get_lock(&id).await;
-        let _r_guard = mtx.read().await;
+        if self.read_only_blobs.contains(&id) {
+            bail!("cannot fsync blob '{id}': blob is read-only");
+        }
         self.repo.fsync(id).await
     }
 

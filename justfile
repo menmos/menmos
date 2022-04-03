@@ -23,8 +23,8 @@ bundle $MENMOS_WEBUI="branch=master" +args="":
 # -- Test Workflows --
 
 # Run all tests and validations
-test:
-    cargo nextest run
+test +args="":
+    cargo nextest run {{args}}
 
 # -- Local Setup Workflows --
 # TODO: Add trace-level logging preset

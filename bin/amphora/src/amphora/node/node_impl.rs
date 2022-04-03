@@ -1,7 +1,6 @@
 use std::io;
 use std::ops::Bound;
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::{anyhow, bail, ensure, Result};
 
@@ -62,11 +61,7 @@ impl Storage {
 
         let index = Arc::from(Index::new(&config.node.db_path)?);
 
-        let repo = Arc::from(ConcurrentRepository::new(
-            repo,
-            Duration::from_secs(config.node.key_locks_lifetime_seconds),
-            config.node.key_locks_max_memory,
-        ));
+        let repo = Arc::from(ConcurrentRepository::new(repo));
 
         let transfer_manager = TransferManager::new(repo.clone(), index.clone(), config.clone());
 

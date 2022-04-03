@@ -6,6 +6,7 @@ use anyhow::{anyhow, ensure, Result};
 use http::header;
 use interface::BlobMetaRequest;
 use protocol::{directory::storage::MoveRequest, storage::PutResponse};
+use repository::Repository;
 use tokio::sync::mpsc;
 
 use crate::node::{concurrent_repository::ConcurrentRepository, index::Index};
@@ -73,12 +74,7 @@ impl TransferWorker {
     #[tracing::instrument(level = "debug", skip(self))]
     async fn sync_blob(&self, request: &MoveRequest) -> Result<()> {
         tracing::debug!("beginning sync");
-        let stream_info = self
-            .repo
-            .unsafe_repository()
-            .await
-            .get(&request.blob_id, None)
-            .await?;
+        let stream_info = self.repo.get(&request.blob_id, None).await?;
 
         let (encoded_meta, size) = self.encode_metadata(&request.blob_id)?;
 
@@ -115,20 +111,20 @@ impl TransferWorker {
     }
 
     async fn transfer_single(&self, request: &MoveRequest) -> Result<()> {
-        // Lock the blob ID manually.
-        // This is done this way because we need to keep the blob readlocked while we make a copy of it
-        // and transfer it.
-        let rwlock = self.repo.unsafe_lock(&request.blob_id).await;
-        let _blob_guard = rwlock.read().await;
+        self.repo.set_read_only(&request.blob_id);
+        let sync_result = self.sync_blob(request).await;
 
-        self.sync_blob(request).await?;
+        // Releasing the read-only status here might seem like an error, because it could allow
+        // writes between releasing the read_only and deleting the blob.
+        // However it is perfectly safe, because sync_blob only returns once the directory has been
+        // notified of the relocation of the moved blobs
+        // (therefore write operations will be redirected to the new location).
+        self.repo.remove_read_only(&request.blob_id);
+
+        sync_result?;
 
         // Once our sync is complete, we can delete the blob from our repo safely.
-        self.repo
-            .unsafe_repository()
-            .await
-            .delete(&request.blob_id)
-            .await?;
+        self.repo.delete(&request.blob_id).await?;
 
         self.index.remove(&request.blob_id)?;
 
@@ -136,7 +132,6 @@ impl TransferWorker {
     }
 
     async fn run(mut self) -> Result<()> {
-        // Note: transfer guard does nothing, but on drop it removes the blob ID from the pending transfers set, preventing duplicates.
         while let Some((request, _transfer_guard)) = self.rx.recv().await {
             let mut try_count = 0;
             loop {

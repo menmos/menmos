@@ -7,10 +7,8 @@ use protocol::directory::storage::MoveRequest;
 use tokio::sync::mpsc::{self, error::TrySendError};
 
 use super::{PendingTransfers, TransferGuard, TransferWorker};
-use crate::{
-    node::{index::Index, ConcurrentRepository},
-    Config,
-};
+use crate::node::{index::Index, ConcurrentRepository};
+use crate::Config;
 
 pub struct TransferManager {
     pending_transfers: PendingTransfers,

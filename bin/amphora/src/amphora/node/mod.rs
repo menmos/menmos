@@ -7,7 +7,6 @@ mod index;
 mod node_impl;
 mod node_info;
 mod rebuild;
-mod stringlock;
 mod transfer;
 
 use interface::CertificateInfo;
