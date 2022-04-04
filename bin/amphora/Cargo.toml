@@ -21,7 +21,7 @@ portpicker = "0.1"
 tempfile = "3.3"
 
 [dependencies]
-axum = "0.5.0"
+axum = "0.5.1"
 axum-server = { version = "0.3.3", features = ["tls-rustls"] }
 tower-http = { version = "0.2.5", features = ["trace"] }
 hyper = "0.14.18"
