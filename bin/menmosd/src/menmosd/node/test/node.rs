@@ -630,7 +630,7 @@ async fn list_users() -> Result<()> {
     node.user().register("testa", "testa").await?;
     node.user().register("testb", "testb").await?;
 
-    let results: HashSet<String> = HashSet::from_iter(node.user().list().await.into_iter());
+    let results: HashSet<String> = HashSet::from_iter(node.user().list().await?.into_iter());
 
     assert!(results.contains("testa"));
     assert!(results.contains("testb"));

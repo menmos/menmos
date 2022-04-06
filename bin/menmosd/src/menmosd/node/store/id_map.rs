@@ -125,11 +125,11 @@ impl IDMap {
         // TODO: Improve the datastructure for keeping recycled IDs if this becomes a bottleneck.
         self.recycling_store
             .iter()
-            .filter_map(|f| f.ok())
-            .map(|p| p.0)
-            .map(|id_ivec| {
-                let idx = id_ivec.as_ref().read_u32::<BigEndian>()?;
-                Ok(idx)
+            .map(|p| p.map(|val| val.0))
+            .map(|id_ivec_result| {
+                id_ivec_result
+                    .map_err(anyhow::Error::from)
+                    .and_then(|id_ivec| Ok(id_ivec.as_ref().read_u32::<BigEndian>()?))
             })
     }
 

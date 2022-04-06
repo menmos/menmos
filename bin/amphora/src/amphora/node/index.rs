@@ -17,24 +17,13 @@ impl Index {
             .mode(Mode::HighThroughput)
             .path(path.as_ref())
             .open()?;
-        let size = db
-            .iter()
-            .filter_map(|result| match result {
-                Ok((_key_ivec, value_ivec)) => {
-                    match bincode::deserialize::<TaggedBlobInfo>(value_ivec.as_ref()) {
-                        Ok(e) => Some(e.meta.size),
-                        Err(e) => {
-                            tracing::warn!(
-                                "failed to deserialize blob during size computation: {}",
-                                e
-                            );
-                            None
-                        }
-                    }
-                }
-                Err(_) => None,
-            })
-            .sum();
+
+        let mut size = 0;
+        for res in db.iter() {
+            let value_ivec = res?.1;
+            let deserialized = bincode::deserialize::<TaggedBlobInfo>(value_ivec.as_ref())?;
+            size = size + deserialized.meta.size;
+        }
 
         Ok(Index {
             db,
