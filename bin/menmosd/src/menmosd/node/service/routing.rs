@@ -75,7 +75,7 @@ impl interface::RoutingConfigManager for RoutingService {
 
         let mut move_requests = Vec::with_capacity(MOVE_REQUEST_BATCH_SIZE);
 
-        for username in self.users_service.list().await {
+        for username in self.users_service.list().await? {
             let routing_config_maybe = self.store.get_routing_config(&username)?;
             if routing_config_maybe.is_none() {
                 continue;

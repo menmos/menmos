@@ -183,12 +183,8 @@ impl FieldsIndex {
 
         if let Some(field_id) = self.field_ids.get(&field.to_lowercase())? {
             bv = tokio::task::block_in_place(|| {
-                for (_, v_ivec) in self
-                    .field_map
-                    .tree()
-                    .scan_prefix(field_id.to_be_bytes())
-                    .filter_map(|f| f.ok())
-                {
+                for result in self.field_map.tree().scan_prefix(field_id.to_be_bytes()) {
+                    let v_ivec = result?.1;
                     let resolved: BitVec = bincode::deserialize(v_ivec.as_ref())?;
                     let (biggest, smallest) = if bv.len() > resolved.len() {
                         (bv, resolved)

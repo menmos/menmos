@@ -121,8 +121,8 @@ impl BitvecTree {
     #[tracing::instrument(level = "trace", skip(self), fields(name = % self.name))]
     pub fn purge(&self, idx: u32) -> Result<()> {
         tokio::task::block_in_place(|| {
-            for (k, _) in self.tree.iter().filter_map(|f| f.ok()) {
-                self.purge_key(k, idx)?;
+            for res in self.tree.iter() {
+                self.purge_key(res?.0, idx)?;
             }
             Ok::<_, anyhow::Error>(())
         })?;
