@@ -5,14 +5,14 @@ use std::hash::Hash;
 use parking_lot::RwLock;
 
 #[derive(Default)]
-pub struct AsyncSet<T>
+pub struct ConcurrentSet<T>
 where
     T: Eq + Hash,
 {
     data: RwLock<HashSet<T>>,
 }
 
-impl<T> AsyncSet<T>
+impl<T> ConcurrentSet<T>
 where
     T: Eq + Hash + Clone,
 {
