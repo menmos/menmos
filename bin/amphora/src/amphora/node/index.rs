@@ -22,7 +22,7 @@ impl Index {
         for res in db.iter() {
             let value_ivec = res?.1;
             let deserialized = bincode::deserialize::<TaggedBlobInfo>(value_ivec.as_ref())?;
-            size = size + deserialized.meta.size;
+            size += deserialized.meta.size;
         }
 
         Ok(Index {
