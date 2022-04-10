@@ -25,18 +25,14 @@ jobs:
         with:
           toolchain: stable
 
-      - run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Install
         if: matrix.os == 'windows-latest'
-
-      - run: vcpkg install openssl:x64-windows-static-md
-        if: matrix.os == 'windows-latest'
-
-      - uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry/index
-          key: index-${{ runner.os }}-${{ github.run_number }}
-          restore-keys: |
-            index-${{ runner.os }}-
+        run: |
+          git clone https://github.com/microsoft/vcpkg
+          .\vcpkg\bootstrap-vcpkg.bat
+          .\vcpkg\vcpkg integrate install
+          .\vcpkg\vcpkg install openssl:x64-windows-static-md
+        shell: pwsh
 
       - uses: Swatinem/rust-cache@v1
 
