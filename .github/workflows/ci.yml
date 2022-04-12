@@ -10,8 +10,6 @@ on:
 jobs:
   validate:
     runs-on: ${{ matrix.os }}
-    env:
-      VCPKGRS_DYNAMIC: 1
     strategy:
       matrix:
         include:
