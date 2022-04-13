@@ -53,7 +53,7 @@ dirs = "4"
 external-ip = "=4.1.0"
 futures = "0.3"
 headers = "0.3"
-ipnetwork = "0.18"
+ipnetwork = "0.19"
 menmos-antidns = { version = "^0.1.1" }
 menmos-apikit = { version = "^0.1.1" }
 menmos-auth = { version = "^0.1.1" }
