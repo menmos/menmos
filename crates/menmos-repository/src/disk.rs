@@ -44,7 +44,7 @@ async fn is_path_on_disk(disk: &Disk, path: &Path) -> Result<bool> {
         WEIRD_WINDOWS_VOLUME_PREFIX.to_string()
             + disk.mount_point().to_string_lossy().to_string().as_ref(),
     );
-    Ok(path.starts_with(disk.mount_point()))
+    Ok(path.starts_with(a))
 }
 
 /// Represents a blob repository stored on disk.
