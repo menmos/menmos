@@ -2931,9 +2931,9 @@ dependencies = [
 
 [[package]]
 name = "rood"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b127a85e28387fbc6da6401dd19555d6d524d16ccbcad3b01fca597b1d7d14bc"
+checksum = "5a41ca414b57c136ad29f89b5283dc1dc2ccd6c210e7eaf5375c3e31b894fcbd"
 dependencies = [
  "atty",
  "colored",
@@ -2942,11 +2942,13 @@ dependencies = [
 
 [[package]]
 name = "rpassword"
-version = "5.0.1"
+version = "6.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffc936cf8a7ea60c58f030fd36a612a48f440610214dc54bc36431f9ea0c3efb"
+checksum = "2bf099a1888612545b683d2661a1940089f6c2e5a8e38979b2159da876bfd956"
 dependencies = [
  "libc",
+ "serde 1.0.136",
+ "serde_json",
  "winapi",
 ]
 
@@ -3464,9 +3466,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.23.6"
+version = "0.23.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f3c0db8e08e06cfd352a043bd0143498fb7d42783a6e941da83b55464eb27d2"
+checksum = "b3fb8adaa82317f1e8a040281807f411803c9111303cfe129b4abb4a14b2c223"
 dependencies = [
  "cfg-if",
  "core-foundation-sys",
