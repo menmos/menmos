@@ -13,6 +13,7 @@ use futures::{stream::empty, Stream};
 use interface::{Blob, BlobInfo, BlobInfoRequest, CertificateInfo, StorageNode, StorageNodeInfo};
 
 use menmos_std::sync::ShardedMutex;
+use menmos_std::tx;
 
 use parking_lot::Mutex;
 
@@ -189,38 +190,75 @@ impl StorageNode for Storage {
     ) -> Result<()> {
         let _guard = self.shard_lock.write(&id).await;
 
-        let actual_blob_size = if let Some(s) = stream {
-            self.repo.save(id.clone(), s).await?
-        } else {
-            0
-        };
+        tx::try_rollback(move |tx_state| async move {
+            // TODO: Do this last so we can revert properly in case it blows up in our face..
+            let actual_blob_size = if let Some(s) = stream {
+                self.repo.save(id.clone(), s).await?
+            } else {
+                0
+            };
 
-        // We have a mismatch between the actual size of the stream and the size declared by the user.
-        // Clean up & stop everything.
-        if actual_blob_size != info_request.size {
-            self.repo.delete(&id).await?;
-            bail!(
-                "size mismatch: broadcasted={} actual={}",
-                info_request.size,
-                actual_blob_size
-            );
-        }
+            // Roll back the repo save if required.
+            tx_state
+                .complete({
+                    let id = id.clone();
+                    let repo = self.repo.clone();
+                    Box::pin(async move {
+                        repo.delete(&id).await?;
+                        Ok(())
+                    })
+                })
+                .await;
 
-        let (created_at, modified_at) = if let Some(old_info) = self.index.get(&id)? {
-            (old_info.meta.created_at, old_info.meta.modified_at)
-        } else {
-            let date = OffsetDateTime::now_utc();
-            (date, date)
-        };
+            // We have a mismatch between the actual size of the stream and the size declared by the user.
+            if actual_blob_size != info_request.size {
+                bail!(
+                    "size mismatch: broadcasted={} actual={}",
+                    info_request.size,
+                    actual_blob_size
+                );
+            }
 
-        let info = info_request.into_blob_info(created_at, modified_at);
-        self.index.insert(&id, &info)?;
+            let (created_at, modified_at, old_info) = if let Some(old_info) = self.index.get(&id)? {
+                (
+                    old_info.meta.created_at,
+                    old_info.meta.modified_at,
+                    Some(old_info),
+                )
+            } else {
+                let date = OffsetDateTime::now_utc();
+                (date, date, None)
+            };
 
-        self.directory
-            .index_blob(&id, info, &self.config.node.name)
-            .await?;
+            let info = info_request.into_blob_info(created_at, modified_at);
+            self.index.insert(&id, &info)?;
 
-        Ok(())
+            // Add a rollback step for our index insert
+            tx_state
+                .complete({
+                    let id = id.clone();
+                    let index = self.index.clone();
+                    Box::pin(async move {
+                        if let Some(info) = old_info {
+                            // We did an update so we'll revert to the old one
+                            index.insert(&id, &info)?;
+                        } else {
+                            // We did an insert so we'll delete
+                            index.remove(&id)?;
+                        }
+
+                        Ok(())
+                    })
+                })
+                .await;
+
+            self.directory
+                .index_blob(&id, info, &self.config.node.name)
+                .await?;
+
+            Ok(())
+        })
+        .await
     }
 
     #[tracing::instrument(name = "node.write", skip(self, body), fields(buf_size=?body.len()))]
@@ -237,6 +275,7 @@ impl StorageNode for Storage {
         ensure!(self.is_blob_owned_by(&id, username)?, "forbidden");
 
         // Write the diff
+        // TODO: Do this last so we can revert properly in case it blows up in our face..
         let new_blob_size = self.repo.write(id.clone(), range, body).await?;
 
         // Update the index.
@@ -317,15 +356,49 @@ impl StorageNode for Storage {
         // Privilege check.
         ensure!(self.is_blob_owned_by(&blob_id, username)?, "forbidden");
 
-        self.index.remove(&blob_id)?;
-        self.repo.delete(&blob_id).await?;
+        tx::try_rollback(move |tx_state| async move {
+            let blob_info = self
+                .index
+                .remove(&blob_id)?
+                .ok_or_else(|| anyhow!("missing blob meta for {blob_id}"))?;
 
-        // Delete the blob on the directory.
-        self.directory
-            .delete_blob(&blob_id, &self.config.node.name)
-            .await?;
+            // Add step to rollback the index deletion
+            tx_state
+                .complete({
+                    let blob_id = blob_id.clone();
+                    let blob_info = blob_info.clone();
+                    let index = self.index.clone();
+                    Box::pin(async move {
+                        index.insert(&blob_id, &blob_info)?;
+                        Ok(())
+                    })
+                })
+                .await;
 
-        Ok(())
+            // Delete the blob on the directory.
+            self.directory
+                .delete_blob(&blob_id, &self.config.node.name)
+                .await?;
+
+            // Re-index the blob on the directory if the repo delete fails.
+            tx_state
+                .complete({
+                    let blob_id = blob_id.clone();
+                    let blob_info = blob_info.clone();
+                    let directory = self.directory.clone();
+                    let node_id = self.config.node.name.clone();
+                    Box::pin(async move {
+                        directory.index_blob(&blob_id, blob_info, &node_id).await?;
+                        Ok(())
+                    })
+                })
+                .await;
+
+            self.repo.delete(&blob_id).await?;
+
+            Ok(())
+        })
+        .await
     }
 
     async fn get_certificates(&self) -> Option<CertificateInfo> {

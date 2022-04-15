@@ -90,14 +90,16 @@ impl Index {
     }
 
     #[tracing::instrument(name = "index.remove", skip(self))]
-    pub fn remove(&self, blob_id: &str) -> Result<()> {
+    pub fn remove(&self, blob_id: &str) -> Result<Option<BlobInfo>> {
         let old_ivec = tokio::task::block_in_place(|| self.db.remove(blob_id.as_bytes()))?;
 
         if let Some(ivec) = old_ivec {
             let tagged_info: TaggedBlobInfo = bincode::deserialize(&ivec)?;
             self.size.fetch_sub(tagged_info.meta.size, Ordering::SeqCst);
+            Ok(Some(BlobInfo::from(tagged_info)))
+        } else {
+            Ok(None)
         }
-        Ok(())
     }
 
     #[tracing::instrument(name = "index.flush", skip(self))]

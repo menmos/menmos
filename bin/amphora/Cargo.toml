@@ -39,7 +39,6 @@ futures = "0.3"
 headers = "0.3"
 http = "=0.2.7"
 local_ipaddress = "0.1.3"
-machine-uid = "0.2.0"
 menmos-apikit = { version = "^0.2.6" }
 menmos-auth = { version = "^0.2.6" }
 menmos-interface = { version = "^0.2.6" }
