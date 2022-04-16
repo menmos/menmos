@@ -4,7 +4,8 @@ ADD . /build
 
 WORKDIR /build
 
-RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && apt-get update && apt-get install -y nodejs
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && apt-get update && apt-get install -y nodejs && \
+    npm install --global yarn
 
 RUN MENMOS_WEBUI="branch=master" cargo build --features "webui" -p menmosd -p amphora --release
 
