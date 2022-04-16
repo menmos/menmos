@@ -35,7 +35,7 @@ dependencies = [
 
 [[package]]
 name = "amphora"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1703,7 +1703,7 @@ dependencies = [
 
 [[package]]
 name = "lfan"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "linked-hash-map 0.5.4",
  "tokio",
@@ -1830,7 +1830,7 @@ dependencies = [
 
 [[package]]
 name = "menmos"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -1850,7 +1850,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-antidns"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "nom 7.1.1",
@@ -1865,7 +1865,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-apikit"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "axum",
@@ -1875,7 +1875,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-auth"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1890,7 +1890,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-betterstreams"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1902,7 +1902,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-cli"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "clap",
@@ -1918,7 +1918,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-client"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "base64",
  "bytes",
@@ -1938,7 +1938,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-interface"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1955,7 +1955,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-protocol"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "base64",
@@ -1970,7 +1970,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-repository"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1990,7 +1990,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-std"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "once_cell",
  "parking_lot 0.12.0",
@@ -2000,7 +2000,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-testing"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "amphora",
  "anyhow",
@@ -2023,7 +2023,7 @@ dependencies = [
 
 [[package]]
 name = "menmos-xecute"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2039,7 +2039,7 @@ dependencies = [
 
 [[package]]
 name = "menmosd"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "acme-lib",
  "amphora",
@@ -2759,7 +2759,7 @@ dependencies = [
 
 [[package]]
 name = "rapidquery"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "bitvec",
  "nom 7.1.1",

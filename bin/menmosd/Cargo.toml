@@ -1,6 +1,6 @@
 [package]
 name = "menmosd"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2021"
 publish = false
@@ -22,7 +22,7 @@ menmos_debug = []
 
 [dev-dependencies]
 amphora = { path = "../amphora" }
-menmos-client = { version = "^0.2.4" }
+menmos-client = { version = "^0.2.5" }
 menmos-testing = { path = "../../crates/menmos-testing" }
 portpicker = "0.1"
 reqwest = { version = "0.11", features = ["json", "stream"] }
@@ -54,15 +54,15 @@ external-ip = "=4.1.0"
 futures = "0.3"
 headers = "0.3"
 ipnetwork = "0.19"
-menmos-antidns = { version = "^0.2.4" }
-menmos-apikit = { version = "^0.2.4" }
-menmos-auth = { version = "^0.2.4" }
-menmos-interface = { version = "^0.2.4" }
-menmos-protocol = { version = "^0.2.4" }
-menmos-std = { version = "^0.2.4" }
-menmos-xecute = { version = "^0.2.4" }
+menmos-antidns = { version = "^0.2.5" }
+menmos-apikit = { version = "^0.2.5" }
+menmos-auth = { version = "^0.2.5" }
+menmos-interface = { version = "^0.2.5" }
+menmos-protocol = { version = "^0.2.5" }
+menmos-std = { version = "^0.2.5" }
+menmos-xecute = { version = "^0.2.5" }
 parking_lot = "0.12.0"
-rapidquery = { version = "^0.2.4", features = ["bitvec_size"] }
+rapidquery = { version = "^0.2.5", features = ["bitvec_size"] }
 ring = "0.16"
 rust-argon2 = "1.0"
 serde = { version = "1", features = ["derive"] }
