@@ -333,20 +333,35 @@ impl StorageNode for Storage {
             "forbidden"
         );
 
-        if let Some(old_info) = self.index.get(&blob_id)? {
-            let mut info =
-                info_request.into_blob_info(old_info.meta.created_at, OffsetDateTime::now_utc());
-            info.meta.size = old_info.meta.size; // carry-over the old size because changing the metadata doesn't change the size
-            self.index.insert(&blob_id, &info)?;
+        tx::try_rollback(move |tx_state| async move {
+            if let Some(old_info) = self.index.get(&blob_id)? {
+                let mut info = info_request
+                    .into_blob_info(old_info.meta.created_at, OffsetDateTime::now_utc());
 
-            self.directory
-                .index_blob(&blob_id, info, &self.config.node.name)
-                .await?;
-        } else {
-            return Err(anyhow!("cannot update metadata for non-existent blob"));
-        }
+                info.meta.size = old_info.meta.size; // carry-over the old size because changing the metadata doesn't change the size
 
-        Ok(())
+                self.index.insert(&blob_id, &info)?;
+                tx_state
+                    .complete({
+                        let blob_id = blob_id.clone();
+                        let index = self.index.clone();
+                        Box::pin(async move {
+                            index.insert(&blob_id, &old_info)?;
+                            Ok(())
+                        })
+                    })
+                    .await;
+
+                self.directory
+                    .index_blob(&blob_id, info, &self.config.node.name)
+                    .await?;
+            } else {
+                return Err(anyhow!("cannot update metadata for non-existent blob"));
+            }
+
+            Ok(())
+        })
+        .await
     }
 
     #[tracing::instrument(name = "node.delete", skip(self))]
