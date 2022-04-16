@@ -1,6 +1,6 @@
 [package]
 name = "rapidquery"
-version = "0.2.5"
+version = "0.2.6"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2021"
 description = "Rapid Query Executor"
