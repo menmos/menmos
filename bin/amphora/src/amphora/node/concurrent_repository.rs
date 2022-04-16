@@ -41,11 +41,12 @@ impl Repository for ConcurrentRepository {
         &self,
         id: String,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
-    ) -> Result<u64> {
+        expected_size: u64,
+    ) -> Result<()> {
         if self.read_only_blobs.contains(&id) {
             bail!("cannot save blob '{id}': blob is read-only");
         }
-        self.repo.save(id, stream).await
+        self.repo.save(id, stream, expected_size).await
     }
 
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {

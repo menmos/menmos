@@ -1,6 +1,7 @@
 use std::io::{self, SeekFrom, Write};
 use std::ops::{Bound, RangeBounds};
 use std::path::Path;
+use std::pin::Pin;
 
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use async_trait::async_trait;
@@ -94,9 +95,7 @@ impl S3Repository {
         &self,
         id: String,
         upload_id: String,
-        mut stream: Box<
-            dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static,
-        >,
+        stream: betterstreams::DynIoStream,
     ) -> Result<(CompletedMultipartUpload, u64)> {
         let mut part_id = 1;
 
@@ -106,6 +105,7 @@ impl S3Repository {
         let mut running_size = 0;
         let mut total_size = 0_u64;
 
+        let mut stream = Pin::from(stream);
         while let Some(part) = stream.try_next().await? {
             tracing::trace!(size = part.len(), "got stream part");
 
@@ -159,13 +159,24 @@ impl Repository for S3Repository {
         &self,
         id: String,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
-    ) -> Result<u64> {
-        // TODO: Validate that we wrote the correct number of bytes from the stream.
+        expected_size: u64,
+    ) -> Result<()> {
         self.file_cache
             .invalidate(&id)
             .await
             .context("failed to invalidate entry from s3 file cache")?;
 
+        // Step 1 - Write the stream to a tempfile and validate its length.
+        let tmp_dir = tempfile::tempdir()?;
+        let tmp_path = tmp_dir.path().join(&id);
+        let size = betterstreams::fs::write_all(&tmp_path, stream, Some(expected_size)).await?;
+        ensure!(
+            size == expected_size,
+            "stream size and size header were not equal"
+        );
+        let fstream = betterstreams::fs::read_range(&tmp_path, None).await?.stream;
+
+        // Step 2 - Once we know the file is of valid length, we write it to S3.
         let mp_upload = self
             .client
             .create_multipart_upload()
@@ -182,7 +193,7 @@ impl Repository for S3Repository {
         tracing::trace!(id=?upload_id, "created multipart upload");
 
         match self
-            .do_multipart(id.clone(), upload_id.clone(), stream)
+            .do_multipart(id.clone(), upload_id.clone(), fstream)
             .await
         {
             Ok((completed_parts, total_length)) => {
@@ -196,8 +207,10 @@ impl Repository for S3Repository {
                     .send()
                     .await
                     .context("failed to complete multipart upload")?;
+
                 tracing::debug!(length = total_length, "completed multipart upload");
-                Ok(total_length)
+
+                Ok(())
             }
             Err(e) => {
                 self.client

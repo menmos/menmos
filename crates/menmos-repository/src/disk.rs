@@ -88,23 +88,37 @@ impl Repository for DiskRepository {
         &self,
         id: String,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
-    ) -> Result<u64> {
+        expected_size: u64,
+    ) -> Result<()> {
         let file_path = self.get_path_for_blob(&id);
-        tracing::trace!(path = ?file_path, "begin writing to file");
+        let tmp_path = file_path.with_extension("buf");
 
-        match betterstreams::fs::write_all(&file_path, stream)
+        tracing::trace!(path = ?tmp_path, "begin writing to file");
+
+        let blob_size = match betterstreams::fs::write_all(&tmp_path, stream, Some(expected_size))
             .await
             .context("failed to write stream to disk")
         {
             Ok(size) => Ok(size),
             Err(e) => {
-                fs::remove_file(&file_path)
+                // Clean up our temp file and throw.
+                fs::remove_file(&tmp_path)
                     .await
                     .context("failed to rollback file creation")?;
-                tracing::trace!(path=?file_path, "removed temporary file");
+                tracing::trace!(path=?tmp_path, "removed temporary file");
                 Err(e)
             }
-        }
+        }?;
+
+        ensure!(
+            blob_size == expected_size,
+            "stream size and size header were not equal"
+        );
+
+        // Once we know we got the right amount of bytes, we do the swap.
+        fs::rename(&tmp_path, file_path).await?;
+
+        Ok(())
     }
 
     #[tracing::instrument(name = "disk.write", skip(self, body))]

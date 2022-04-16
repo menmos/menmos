@@ -2,7 +2,7 @@ use std::io;
 use std::ops::Bound;
 use std::sync::Arc;
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, ensure, Result};
 
 use async_trait::async_trait;
 
@@ -191,13 +191,6 @@ impl StorageNode for Storage {
         let _guard = self.shard_lock.write(&id).await;
 
         tx::try_rollback(move |tx_state| async move {
-            // TODO: Do this last so we can revert properly in case it blows up in our face..
-            let actual_blob_size = if let Some(s) = stream {
-                self.repo.save(id.clone(), s).await?
-            } else {
-                0
-            };
-
             // Roll back the repo save if required.
             tx_state
                 .complete({
@@ -210,15 +203,6 @@ impl StorageNode for Storage {
                 })
                 .await;
 
-            // We have a mismatch between the actual size of the stream and the size declared by the user.
-            if actual_blob_size != info_request.size {
-                bail!(
-                    "size mismatch: broadcasted={} actual={}",
-                    info_request.size,
-                    actual_blob_size
-                );
-            }
-
             let (created_at, modified_at, old_info) = if let Some(old_info) = self.index.get(&id)? {
                 (
                     old_info.meta.created_at,
@@ -230,6 +214,7 @@ impl StorageNode for Storage {
                 (date, date, None)
             };
 
+            let size = info_request.size;
             let info = info_request.into_blob_info(created_at, modified_at);
             self.index.insert(&id, &info)?;
 
@@ -237,6 +222,7 @@ impl StorageNode for Storage {
             tx_state
                 .complete({
                     let id = id.clone();
+                    let old_info = old_info.clone();
                     let index = self.index.clone();
                     Box::pin(async move {
                         if let Some(info) = old_info {
@@ -255,6 +241,42 @@ impl StorageNode for Storage {
             self.directory
                 .index_blob(&id, info, &self.config.node.name)
                 .await?;
+
+            // Add a rollback step for our directory update.
+
+            // FIXME TODO BEFORE PR: There is still a potential corruption issue here.
+            //        If the disk write were to fail at the same time as the network fails, we'd be left unable
+            //        to revert our metadata write. Normally when we revert from disk we assume it won't fail,
+            //        but applying a revert step over the network is another can of worms.
+            //
+            //        The better way would be to do the directory update _after_ committing the stream to disk but _before_ replacing the old blob.
+            //        This way, if the directory update fails we simply nuke the temp file and throw, and if it succeeds we commit the temp file and return.
+            tx_state
+                .complete({
+                    let id = id.clone();
+                    let id = id.clone();
+                    let old_info = old_info.clone();
+                    let directory = self.directory.clone();
+                    let node_name = self.config.node.name.clone();
+
+                    Box::pin(async move {
+                        if let Some(info) = old_info {
+                            // We did an update so we'll revert to the old one
+                            directory.index_blob(&id, info, &node_name).await?;
+                        } else {
+                            // We did an insert so we'll delete
+                            directory.delete_blob(&id, &node_name).await?;
+                        }
+                        Ok(())
+                    })
+                })
+                .await;
+
+            // The repo save doesn't need to be rolled back in case of failure, because it does _not_ modify the blob file
+            // in case of failure.
+            if let Some(s) = stream {
+                self.repo.save(id.clone(), s, size).await?;
+            }
 
             Ok(())
         })
@@ -396,6 +418,15 @@ impl StorageNode for Storage {
                 .await?;
 
             // Re-index the blob on the directory if the repo delete fails.
+
+            // FIXME TODO BEFORE PR: Similar to put() there is still a potential corruption issue here.
+            //        If the disk write were to fail at the same time as the network fails, we'd be left unable
+            //        to revert our metadata delete. Normally when we revert from disk we assume it won't fail,
+            //        but applying a revert step over the network is another can of worms.
+            //
+            //        The better way would be to "pre-delete" the file (by renaming it to something else or otherwise using a mask to mark it as deleted in a non-destructive way),
+            //        _then_ delete the file meta from the directory. If the directory fails, we undo the file deletion on disk and throw, and if it succeeds we commit the
+            //        deletion and return.
             tx_state
                 .complete({
                     let blob_id = blob_id.clone();

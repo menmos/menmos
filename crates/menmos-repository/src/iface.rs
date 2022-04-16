@@ -8,13 +8,22 @@ use futures::Stream;
 
 #[async_trait]
 pub trait Repository {
+    /// Writes a whole blob from a stream, overwriting if it already exists.
+    ///
+    /// A repository implementing save should:
+    ///     - Consume the stream without overwriting the old blob (if it exists).
+    ///     - Validate that the amount of bytes consumed is equal to the expected size (throwing if not).
+    ///     - Write the contents of the stream to its final destination, overwriting if necessary.
+    ///
+    /// If an error is returned, the blob must not have been modified.
     async fn save(
         &self,
         id: String,
         mut stream: Box<
             dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static,
         >,
-    ) -> Result<u64>;
+        expected_size: u64,
+    ) -> Result<()>;
 
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64>;
 
