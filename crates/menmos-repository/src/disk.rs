@@ -19,6 +19,7 @@ use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::Mutex;
 
 use super::iface::Repository;
+use crate::iface::OperationGuard;
 use crate::util;
 
 #[cfg(unix)]
@@ -55,6 +56,53 @@ async fn is_path_on_disk(disk: &Disk, path: &Path) -> Result<bool> {
     Ok(path.starts_with(a))
 }
 
+/// Guards the commit of a save operation.
+struct SaveOperationGuard {
+    src_path: PathBuf,
+    dst_path: PathBuf,
+    committed: bool,
+}
+
+impl SaveOperationGuard {
+    pub fn new(src_path: PathBuf, dst_path: PathBuf) -> Self {
+        Self {
+            src_path,
+            dst_path,
+            committed: false,
+        }
+    }
+}
+
+impl Drop for SaveOperationGuard {
+    /// Aborts the operation.
+    fn drop(&mut self) {
+        if !self.committed {
+            if let Err(e) = std::fs::remove_file(&self.src_path) {
+                tracing::warn!("failed to rollback save operation: {e}")
+            }
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl OperationGuard for SaveOperationGuard {
+    /// Commits a save operation.
+    ///
+    /// # Panics
+    /// All the following potential causes are checked by the repository, any
+    /// of them occurring constitute an unrecoverable error:
+    ///   - If the source file shouldn't exist
+    ///   - If the target path's parent directory doesn't exist.
+    ///   - If the target path is on a different disk.
+    ///   - If the target path is a directory (on windows)
+    async fn commit(mut self) {
+        fs::rename(&self.src_path, &self.dst_path)
+            .await
+            .expect("renaming a temp blob on save commit shouldn't fail");
+        self.committed = true;
+    }
+}
+
 /// Represents a blob repository stored on disk.
 pub struct DiskRepository {
     path: PathBuf,
@@ -89,7 +137,7 @@ impl Repository for DiskRepository {
         id: String,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
         expected_size: u64,
-    ) -> Result<()> {
+    ) -> Result<Box<dyn OperationGuard>> {
         let file_path = self.get_path_for_blob(&id);
         let tmp_path = file_path.with_extension("buf");
 
@@ -115,10 +163,7 @@ impl Repository for DiskRepository {
             "stream size and size header were not equal"
         );
 
-        // Once we know we got the right amount of bytes, we do the swap.
-        fs::rename(&tmp_path, file_path).await?;
-
-        Ok(())
+        Ok(Box::new(SaveOperationGuard::new(tmp_path, file_path)))
     }
 
     #[tracing::instrument(name = "disk.write", skip(self, body))]

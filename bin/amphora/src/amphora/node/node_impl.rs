@@ -238,45 +238,16 @@ impl StorageNode for Storage {
                 })
                 .await;
 
+            // We precommit the file to disk.
+            let save_operation = self.repo.save(id.clone(), s, size).await?;
+
+            // We update the metadata on the directory.
             self.directory
                 .index_blob(&id, info, &self.config.node.name)
                 .await?;
 
-            // Add a rollback step for our directory update.
-
-            // FIXME TODO BEFORE PR: There is still a potential corruption issue here.
-            //        If the disk write were to fail at the same time as the network fails, we'd be left unable
-            //        to revert our metadata write. Normally when we revert from disk we assume it won't fail,
-            //        but applying a revert step over the network is another can of worms.
-            //
-            //        The better way would be to do the directory update _after_ committing the stream to disk but _before_ replacing the old blob.
-            //        This way, if the directory update fails we simply nuke the temp file and throw, and if it succeeds we commit the temp file and return.
-            tx_state
-                .complete({
-                    let id = id.clone();
-                    let id = id.clone();
-                    let old_info = old_info.clone();
-                    let directory = self.directory.clone();
-                    let node_name = self.config.node.name.clone();
-
-                    Box::pin(async move {
-                        if let Some(info) = old_info {
-                            // We did an update so we'll revert to the old one
-                            directory.index_blob(&id, info, &node_name).await?;
-                        } else {
-                            // We did an insert so we'll delete
-                            directory.delete_blob(&id, &node_name).await?;
-                        }
-                        Ok(())
-                    })
-                })
-                .await;
-
-            // The repo save doesn't need to be rolled back in case of failure, because it does _not_ modify the blob file
-            // in case of failure.
-            if let Some(s) = stream {
-                self.repo.save(id.clone(), s, size).await?;
-            }
+            // If we made it here we're safe, so we commit.
+            save_operation.commit().await;
 
             Ok(())
         })

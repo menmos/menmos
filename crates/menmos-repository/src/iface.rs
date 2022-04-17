@@ -6,6 +6,18 @@ use betterstreams::ChunkedStreamInfo;
 use bytes::Bytes;
 use futures::Stream;
 
+/// An operation guard is a structure returned by pre-performing an operation.
+///
+/// If the structure is dropped without committing the operation, the operation is cancelled.
+#[async_trait::async_trait]
+pub trait OperationGuard {
+    /// Commit can _technically_ fail, but if it
+    /// actually fails we consider the error to be unrecoverable.
+    ///
+    /// Implementations should panic when encoutering an error during commit.
+    async fn commit(self);
+}
+
 #[async_trait]
 pub trait Repository {
     /// Writes a whole blob from a stream, overwriting if it already exists.
@@ -23,7 +35,7 @@ pub trait Repository {
             dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static,
         >,
         expected_size: u64,
-    ) -> Result<()>;
+    ) -> Result<Box<dyn OperationGuard>>;
 
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64>;
 

@@ -11,7 +11,7 @@ use futures::Stream;
 
 use menmos_std::collections::ConcurrentSet;
 
-use repository::{Repository, StreamInfo};
+use repository::{OperationGuard, Repository, StreamInfo};
 
 pub struct ConcurrentRepository {
     repo: Box<dyn Repository + Send + Sync>,
@@ -42,7 +42,7 @@ impl Repository for ConcurrentRepository {
         id: String,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
         expected_size: u64,
-    ) -> Result<()> {
+    ) -> Result<Box<dyn OperationGuard>> {
         if self.read_only_blobs.contains(&id) {
             bail!("cannot save blob '{id}': blob is read-only");
         }
