@@ -10,12 +10,12 @@ use futures::Stream;
 ///
 /// If the structure is dropped without committing the operation, the operation is cancelled.
 #[async_trait::async_trait]
-pub trait OperationGuard {
+pub trait OperationGuard: Send {
     /// Commit can _technically_ fail, but if it
     /// actually fails we consider the error to be unrecoverable.
     ///
     /// Implementations should panic when encoutering an error during commit.
-    async fn commit(self);
+    async fn commit(&mut self);
 }
 
 #[async_trait]

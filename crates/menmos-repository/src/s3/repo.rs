@@ -3,7 +3,7 @@ use std::ops::{Bound, RangeBounds};
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::{anyhow, bail, ensure, Context, Result};
+use anyhow::{ensure, Context, Result};
 
 use async_trait::async_trait;
 
@@ -12,11 +12,11 @@ use aws_sdk_s3::{Client, Region};
 
 use betterstreams::DynIoStream;
 
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::Bytes;
 
 use futures::prelude::*;
 
-use tokio::fs::{self, OpenOptions};
+use tokio::fs::OpenOptions;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 
 use super::FileCache;
@@ -52,16 +52,16 @@ impl SaveOperationGuard {
 impl Drop for SaveOperationGuard {
     fn drop(&mut self) {
         if !self.comitted {
-            // TODO BEFORE PR:
-            //  Invalidate file cache entry in a sync way somehow?
-            //  Rework the concurrent cache to use a parking_lot mutex??
+            if let Err(e) = self.cache.invalidate(&self.blob_id) {
+                tracing::warn!("failed to rollback save operation: {e}")
+            }
         }
     }
 }
 
 #[async_trait::async_trait]
 impl OperationGuard for SaveOperationGuard {
-    async fn commit(self) {
+    async fn commit(&mut self) {
         // FIXME(MEN-164): Related to the comment in FileCache::insert_evict() :
         //                 For now the file cache can evict and destroy a blob
         //                 that is not synced with S3. This is why we consider
@@ -121,10 +121,12 @@ impl Repository for S3Repository {
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
         expected_size: u64,
     ) -> Result<Box<dyn OperationGuard>> {
-        self.file_cache
-            .invalidate(&id)
-            .await
-            .context("failed to invalidate entry from s3 file cache")?;
+        tokio::task::block_in_place(|| {
+            self.file_cache
+                .invalidate(&id)
+                .context("failed to invalidate entry from s3 file cache")?;
+            Ok::<_, anyhow::Error>(())
+        })?;
 
         self.file_cache.put(&id, stream, expected_size).await?;
 
@@ -245,10 +247,12 @@ impl Repository for S3Repository {
 
     #[tracing::instrument(name = "s3.delete", skip(self))]
     async fn delete(&self, blob_id: &str) -> Result<()> {
-        self.file_cache
-            .invalidate(blob_id)
-            .await
-            .context("failed to invalidate file cache entry")?;
+        tokio::task::block_in_place(|| {
+            self.file_cache
+                .invalidate(&blob_id)
+                .context("failed to invalidate entry from s3 file cache")?;
+            Ok::<_, anyhow::Error>(())
+        })?;
 
         self.client
             .delete_object()

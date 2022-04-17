@@ -95,7 +95,7 @@ impl OperationGuard for SaveOperationGuard {
     ///   - If the target path's parent directory doesn't exist.
     ///   - If the target path is on a different disk.
     ///   - If the target path is a directory (on windows)
-    async fn commit(mut self) {
+    async fn commit(&mut self) {
         fs::rename(&self.src_path, &self.dst_path)
             .await
             .expect("renaming a temp blob on save commit shouldn't fail");

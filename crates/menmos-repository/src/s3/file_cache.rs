@@ -1,4 +1,4 @@
-use std::io::{self, SeekFrom, Write};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 
@@ -146,19 +146,19 @@ impl FileCache {
     }
 
     pub async fn contains<S: AsRef<str>>(&self, blob_id: S) -> Option<PathBuf> {
-        self.file_path_cache.get(blob_id.as_ref()).await
+        self.file_path_cache.get(blob_id.as_ref())
     }
 
     #[tracing::instrument(name = "file_cache.invalidate", skip(self))]
-    pub async fn invalidate(&self, blob_id: &str) -> Result<()> {
+    pub fn invalidate(&self, blob_id: &str) -> Result<()> {
         let file_path = self.root_path.join(blob_id);
         if file_path.exists() {
-            fs::remove_file(&file_path).await.with_context(|| {
+            std::fs::remove_file(&file_path).with_context(|| {
                 format!("failed to remove entry '{file_path:?}' from file cache")
             })?;
             tracing::trace!(path = ?file_path, "file existed and was removed");
         }
-        self.file_path_cache.invalidate(blob_id).await;
+        self.file_path_cache.invalidate(blob_id);
 
         Ok(())
     }
@@ -221,8 +221,7 @@ impl FileCache {
     async fn insert_evict(&self, blob_id: &str, blob_path: &Path) -> Result<bool> {
         let (was_inserted, eviction_victim_maybe) = self
             .file_path_cache
-            .insert(blob_id.to_string(), blob_path.into())
-            .await;
+            .insert(blob_id.to_string(), blob_path.into());
 
         if let Some(victim) = eviction_victim_maybe {
             // FIXME(MEN-164): Before deleting the blob on cache evict we should check that

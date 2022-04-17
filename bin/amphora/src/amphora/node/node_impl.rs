@@ -181,6 +181,17 @@ impl Storage {
 
 #[async_trait]
 impl StorageNode for Storage {
+    /// Creates / overwrites a blob in this storage node.
+    ///
+    /// # Insertion process
+    /// 0. Writelock the mutex shard corresponding to the blob.
+    /// 1. Start a transaction with `try_rollback`
+    /// 2. Write the blob metadata in the local sled store.
+    /// 3. Enqueue an operation in the transaction to revert the metadata mutation in case of failure.
+    /// 4. Consume and pre-commit the stream to the repository (which gives us back an [`repository::OperationGuard`])
+    /// 5. Send the new blob metadata to the directory node
+    /// 6. Finally, if everything went OK, commit the blob to the repository.
+    /// 7. Release the shard lock and return.
     #[tracing::instrument(name = "node.put", skip(self, info_request, stream))]
     async fn put(
         &self,
@@ -191,18 +202,6 @@ impl StorageNode for Storage {
         let _guard = self.shard_lock.write(&id).await;
 
         tx::try_rollback(move |tx_state| async move {
-            // Roll back the repo save if required.
-            tx_state
-                .complete({
-                    let id = id.clone();
-                    let repo = self.repo.clone();
-                    Box::pin(async move {
-                        repo.delete(&id).await?;
-                        Ok(())
-                    })
-                })
-                .await;
-
             let (created_at, modified_at, old_info) = if let Some(old_info) = self.index.get(&id)? {
                 (
                     old_info.meta.created_at,
@@ -218,7 +217,7 @@ impl StorageNode for Storage {
             let info = info_request.into_blob_info(created_at, modified_at);
             self.index.insert(&id, &info)?;
 
-            // Add a rollback step for our index insert
+            // Add the meta revert step.
             tx_state
                 .complete({
                     let id = id.clone();
@@ -238,16 +237,19 @@ impl StorageNode for Storage {
                 })
                 .await;
 
-            // We precommit the file to disk.
-            let save_operation = self.repo.save(id.clone(), s, size).await?;
+            let save_operation = if let Some(s) = stream {
+                Some(self.repo.save(id.clone(), s, size).await?)
+            } else {
+                None
+            };
 
-            // We update the metadata on the directory.
             self.directory
                 .index_blob(&id, info, &self.config.node.name)
                 .await?;
 
-            // If we made it here we're safe, so we commit.
-            save_operation.commit().await;
+            if let Some(mut op) = save_operation {
+                op.commit().await;
+            }
 
             Ok(())
         })
@@ -268,7 +270,14 @@ impl StorageNode for Storage {
         ensure!(self.is_blob_owned_by(&id, username)?, "forbidden");
 
         // Write the diff
-        // TODO: Do this last so we can revert properly in case it blows up in our face..
+        // FIXME TODO BEFORE PR: Similar to delete() there is still a potential corruption issue here.
+        //        If the disk write were to fail at the same time as the network fails, we'd be left unable
+        //        to revert our metadata update. Normally when we revert from disk we assume it won't fail,
+        //        but applying a revert step over the network is another can of worms.
+        //
+        //        The better way would be to "pre-update" the file (by writing the diff to a temporary file),
+        //        _then_ update the file meta from the directory. If the directory fails, we undo the file update on disk and throw, and if it succeeds we commit the
+        //        diff and return.
         let new_blob_size = self.repo.write(id.clone(), range, body).await?;
 
         // Update the index.
