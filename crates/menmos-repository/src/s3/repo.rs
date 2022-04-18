@@ -1,6 +1,6 @@
 use std::io::{self, SeekFrom};
 use std::ops::{Bound, RangeBounds};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{ensure, Context, Result};
@@ -77,6 +77,46 @@ impl OperationGuard for SaveOperationGuard {
             .expect("fsync should not fail");
 
         self.committed = true;
+    }
+}
+
+struct WriteOperationGuard {
+    file_path: PathBuf,
+    offset: u64,
+    buf: Bytes,
+}
+
+impl WriteOperationGuard {
+    pub fn new(file_path: PathBuf, offset: u64, buf: Bytes) -> Self {
+        Self {
+            file_path,
+            offset,
+            buf,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl OperationGuard for WriteOperationGuard {
+    async fn commit(&mut self) {
+        let mut f = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&self.file_path)
+            .await
+            .expect("write operation commit should not fail");
+
+        f.seek(SeekFrom::Start(self.offset))
+            .await
+            .expect("write operation commit should not fail");
+
+        f.write_all(self.buf.as_ref())
+            .await
+            .expect("write operation commit should not fail");
+
+        f.sync_all()
+            .await
+            .expect("write operation commit should not fail");
     }
 }
 
@@ -186,8 +226,12 @@ impl Repository for S3Repository {
     }
 
     #[tracing::instrument(name = "s3.write", skip(self, body))]
-    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
-        let file_path = self.file_cache.get(&id).await?;
+    async fn write(
+        &self,
+        id: String,
+        range: (Bound<u64>, Bound<u64>),
+        body: Bytes,
+    ) -> Result<(u64, Box<dyn OperationGuard>)> {
         let range = util::bounds_to_range(range, 0, 0);
         let (start, end) = (range.start, range.end);
         ensure!(
@@ -195,24 +239,14 @@ impl Repository for S3Repository {
             "invalid range, end bound is smaller than start bound"
         );
 
-        {
-            tracing::trace!(path=?file_path, range=?range, length=body.len(), "beginning cache write operation");
-            let mut f = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(&file_path)
-                .await
-                .context("failed to open file cache entry")?;
-            f.seek(SeekFrom::Start(start)).await?;
-            tracing::trace!("seeked to offset {}", start);
-            f.write_all(body.as_ref()).await?;
-            f.sync_all().await?;
-            tracing::trace!("fsync ok");
-        }
-
+        let file_path = self.file_cache.get(&id).await?;
         let file_length = file_path.metadata()?.len();
+        let new_length = (start + end).max(file_length);
 
-        Ok(file_length)
+        Ok((
+            new_length,
+            Box::new(WriteOperationGuard::new(file_path, start, body)),
+        ))
     }
 
     #[tracing::instrument(name = "s3.get", skip(self))]
@@ -298,7 +332,7 @@ impl Repository for S3Repository {
     async fn delete(&self, blob_id: &str) -> Result<Box<dyn OperationGuard>> {
         tokio::task::block_in_place(|| {
             self.file_cache
-                .invalidate(&blob_id)
+                .invalidate(blob_id)
                 .context("failed to invalidate entry from s3 file cache")?;
             Ok::<_, anyhow::Error>(())
         })?;

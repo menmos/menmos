@@ -37,7 +37,12 @@ pub trait Repository {
         expected_size: u64,
     ) -> Result<Box<dyn OperationGuard>>;
 
-    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64>;
+    async fn write(
+        &self,
+        id: String,
+        range: (Bound<u64>, Bound<u64>),
+        body: Bytes,
+    ) -> Result<(u64, Box<dyn OperationGuard>)>;
 
     async fn get(
         &self,

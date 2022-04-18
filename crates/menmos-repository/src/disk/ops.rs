@@ -1,6 +1,10 @@
+use std::io::SeekFrom;
 use std::path::PathBuf;
 
+use bytes::Bytes;
+
 use tokio::fs;
+use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 
 use crate::iface::OperationGuard;
 
@@ -48,6 +52,39 @@ impl OperationGuard for SaveOperationGuard {
             .await
             .expect("save commit should not fail");
         self.committed = true;
+    }
+}
+
+pub struct WriteOperationGuard {
+    buf: Bytes,
+    path: PathBuf,
+    offset: u64,
+}
+
+impl WriteOperationGuard {
+    pub fn new(buf: Bytes, path: PathBuf, offset: u64) -> Self {
+        Self { buf, path, offset }
+    }
+}
+
+#[async_trait::async_trait]
+impl OperationGuard for WriteOperationGuard {
+    async fn commit(&mut self) {
+        let mut f = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&self.path)
+            .await
+            .expect("write operation commit should not fail");
+
+        f.seek(SeekFrom::Start(self.offset))
+            .await
+            .expect("write operation commit should not fail");
+
+        f.write_all(self.buf.as_ref())
+            .await
+            .expect("write operation commit should not fail");
     }
 }
 

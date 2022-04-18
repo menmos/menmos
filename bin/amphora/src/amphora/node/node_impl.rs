@@ -269,32 +269,40 @@ impl StorageNode for Storage {
         // Privilege check.
         ensure!(self.is_blob_owned_by(&id, username)?, "forbidden");
 
-        // Write the diff
-        // FIXME TODO BEFORE PR: Similar to delete() there is still a potential corruption issue here.
-        //        If the disk write were to fail at the same time as the network fails, we'd be left unable
-        //        to revert our metadata update. Normally when we revert from disk we assume it won't fail,
-        //        but applying a revert step over the network is another can of worms.
-        //
-        //        The better way would be to "pre-update" the file (by writing the diff to a temporary file),
-        //        _then_ update the file meta from the directory. If the directory fails, we undo the file update on disk and throw, and if it succeeds we commit the
-        //        diff and return.
-        let new_blob_size = self.repo.write(id.clone(), range, body).await?;
-
         // Update the index.
-        if let Some(mut info) = self.index.get(&id)? {
-            info.meta.modified_at = OffsetDateTime::now_utc();
-            info.meta.size = new_blob_size;
-            self.index.insert(&id, &info)?;
+        if let Some(info) = self.index.get(&id)? {
+            tx::try_rollback(move |tx_state| async move {
+                let (new_blob_size, mut op_guard) =
+                    self.repo.write(id.clone(), range, body).await?;
 
-            // Update the meta on the directory.
-            self.directory
-                .index_blob(&id, info, &self.config.node.name)
-                .await?;
+                let mut new_info = info.clone();
+                new_info.meta.modified_at = OffsetDateTime::now_utc();
+                new_info.meta.size = new_blob_size;
+
+                self.index.insert(&id, &new_info)?;
+                tx_state
+                    .complete({
+                        let index = self.index.clone();
+                        let id = id.clone();
+                        Box::pin(async move {
+                            index.insert(&id, &info)?;
+                            Ok(())
+                        })
+                    })
+                    .await;
+
+                // Update the meta on the directory.
+                self.directory
+                    .index_blob(&id, new_info, &self.config.node.name)
+                    .await?;
+
+                op_guard.commit().await;
+                Ok(())
+            })
+            .await
         } else {
-            return Err(anyhow!("failed to update blob size"));
+            Err(anyhow!("blob meta did not exist"))
         }
-
-        Ok(())
     }
 
     #[tracing::instrument(name = "node.get", skip(self))]

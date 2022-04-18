@@ -7,8 +7,10 @@ use futures::Future;
 
 use tokio::sync::Mutex;
 
+type RollbackStep<E> = Pin<Box<dyn Future<Output = Result<(), E>> + Send>>;
+
 pub struct TxState<E> {
-    rb_stack: Mutex<Vec<Pin<Box<dyn Future<Output = Result<(), E>> + Send>>>>,
+    rb_stack: Mutex<Vec<RollbackStep<E>>>,
 }
 
 impl<E> TxState<E> {
@@ -19,7 +21,7 @@ impl<E> TxState<E> {
     }
 
     /// Complete a step in the transaction, pushing its rollback step on the stack.
-    pub async fn complete(&self, step: Pin<Box<dyn Future<Output = Result<(), E>> + Send>>) {
+    pub async fn complete(&self, step: RollbackStep<E>) {
         let mut guard = self.rb_stack.lock().await;
         guard.push(step);
     }

@@ -1,4 +1,4 @@
-use std::io::{self, SeekFrom};
+use std::io::{self};
 use std::ops::Bound;
 use std::path::{Path, PathBuf};
 
@@ -14,8 +14,7 @@ use futures::prelude::*;
 
 use sysinfo::{Disk, DiskExt, System, SystemExt};
 
-use tokio::fs::{self, OpenOptions};
-use tokio::io::{AsyncSeekExt, AsyncWriteExt};
+use tokio::fs;
 use tokio::sync::Mutex;
 
 use crate::iface::{OperationGuard, Repository};
@@ -121,7 +120,12 @@ impl Repository for DiskRepository {
     }
 
     #[tracing::instrument(name = "disk.write", skip(self, body))]
-    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
+    async fn write(
+        &self,
+        id: String,
+        range: (Bound<u64>, Bound<u64>),
+        body: Bytes,
+    ) -> Result<(u64, Box<dyn OperationGuard>)> {
         let file_path = self.get_path_for_blob(&id);
 
         let range = util::bounds_to_range(range, u64::MAX, 0);
@@ -137,22 +141,12 @@ impl Repository for DiskRepository {
 
         let new_length = (start + end).max(old_length);
 
-        tracing::trace!(old_length = old_length, new_length = new_length, offset = start, path = ?file_path, "begin writing to file");
+        tracing::trace!(old_length = old_length, new_length = new_length, offset = start, path = ?file_path, "opened write operation");
 
-        {
-            let mut f = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(&file_path)
-                .await?;
-            f.seek(SeekFrom::Start(start)).await?;
-            f.write_all(body.as_ref())
-                .await
-                .context("failed to write stream to file")?;
-        }
-
-        Ok(new_length)
+        Ok((
+            new_length,
+            Box::new(ops::WriteOperationGuard::new(body, file_path, start)),
+        ))
     }
 
     #[tracing::instrument(name = "disk.get", skip(self))]
