@@ -124,9 +124,9 @@ impl TransferWorker {
         sync_result?;
 
         // Once our sync is complete, we can delete the blob from our repo safely.
-        self.repo.delete(&request.blob_id).await?;
-
+        let mut op = self.repo.delete(&request.blob_id).await?;
         self.index.remove(&request.blob_id)?;
+        op.commit().await;
 
         Ok(())
     }

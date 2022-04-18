@@ -18,9 +18,10 @@ use tokio::fs::{self, OpenOptions};
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::Mutex;
 
-use super::iface::Repository;
-use crate::iface::OperationGuard;
+use crate::iface::{OperationGuard, Repository};
 use crate::util;
+
+use super::ops;
 
 #[cfg(unix)]
 async fn is_path_on_disk(disk: &Disk, path: &Path) -> Result<bool> {
@@ -54,53 +55,6 @@ async fn is_path_on_disk(disk: &Disk, path: &Path) -> Result<bool> {
             + disk.mount_point().to_string_lossy().to_string().as_ref(),
     );
     Ok(path.starts_with(a))
-}
-
-/// Guards the commit of a save operation.
-struct SaveOperationGuard {
-    src_path: PathBuf,
-    dst_path: PathBuf,
-    committed: bool,
-}
-
-impl SaveOperationGuard {
-    pub fn new(src_path: PathBuf, dst_path: PathBuf) -> Self {
-        Self {
-            src_path,
-            dst_path,
-            committed: false,
-        }
-    }
-}
-
-impl Drop for SaveOperationGuard {
-    /// Aborts the operation.
-    fn drop(&mut self) {
-        if !self.committed {
-            if let Err(e) = std::fs::remove_file(&self.src_path) {
-                tracing::warn!("failed to rollback save operation: {e}")
-            }
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl OperationGuard for SaveOperationGuard {
-    /// Commits a save operation.
-    ///
-    /// # Panics
-    /// All the following potential causes are checked by the repository, any
-    /// of them occurring constitute an unrecoverable error:
-    ///   - If the source file shouldn't exist
-    ///   - If the target path's parent directory doesn't exist.
-    ///   - If the target path is on a different disk.
-    ///   - If the target path is a directory (on windows)
-    async fn commit(&mut self) {
-        fs::rename(&self.src_path, &self.dst_path)
-            .await
-            .expect("renaming a temp blob on save commit shouldn't fail");
-        self.committed = true;
-    }
 }
 
 /// Represents a blob repository stored on disk.
@@ -163,7 +117,7 @@ impl Repository for DiskRepository {
             "stream size and size header were not equal"
         );
 
-        Ok(Box::new(SaveOperationGuard::new(tmp_path, file_path)))
+        Ok(Box::new(ops::SaveOperationGuard::new(tmp_path, file_path)))
     }
 
     #[tracing::instrument(name = "disk.write", skip(self, body))]
@@ -223,17 +177,19 @@ impl Repository for DiskRepository {
     }
 
     #[tracing::instrument(name = "disk.delete", skip(self))]
-    async fn delete(&self, blob_id: &str) -> Result<()> {
+    async fn delete(&self, blob_id: &str) -> Result<Box<dyn OperationGuard>> {
         let blob_path = self.get_path_for_blob(blob_id);
+        let tmp_path = blob_path.with_extension("deleted");
 
-        if blob_path.exists() {
-            fs::remove_file(&blob_path)
-                .await
-                .context("failed to delete file")?;
-            tracing::trace!(path=?blob_path, "file deleted");
-        }
+        ensure!(blob_path.exists(), "blob path does not exist");
 
-        Ok(())
+        fs::rename(&blob_path, &tmp_path)
+            .await
+            .context("failed to move file pending deletion")?;
+
+        Ok(Box::new(ops::DeleteOperationGuard::new(
+            blob_path, tmp_path,
+        )))
     }
 
     #[tracing::instrument(name = "disk.fsync", skip(self))]

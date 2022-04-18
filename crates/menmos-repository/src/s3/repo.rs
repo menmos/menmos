@@ -36,7 +36,7 @@ fn get_total_length(range_string: &str) -> Result<u64> {
 struct SaveOperationGuard {
     blob_id: String,
     cache: Arc<FileCache>,
-    comitted: bool,
+    committed: bool,
 }
 
 impl SaveOperationGuard {
@@ -44,16 +44,16 @@ impl SaveOperationGuard {
         Self {
             blob_id,
             cache,
-            comitted: false,
+            committed: false,
         }
     }
 }
 
 impl Drop for SaveOperationGuard {
     fn drop(&mut self) {
-        if !self.comitted {
+        if !self.committed {
             if let Err(e) = self.cache.invalidate(&self.blob_id) {
-                tracing::warn!("failed to rollback save operation: {e}")
+                panic!("failed to rollback save operation: {e}")
             }
         }
     }
@@ -75,13 +75,62 @@ impl OperationGuard for SaveOperationGuard {
             .fsync(&self.blob_id)
             .await
             .expect("fsync should not fail");
+
+        self.committed = true;
+    }
+}
+
+struct DeleteOperationGuard {
+    blob_id: String,
+    bucket: String,
+    client: Arc<Client>,
+    committed: bool,
+}
+
+impl DeleteOperationGuard {
+    fn new(blob_id: String, bucket: String, client: Arc<Client>) -> Self {
+        Self {
+            blob_id,
+            bucket,
+            client,
+            committed: false,
+        }
+    }
+}
+
+impl Drop for DeleteOperationGuard {
+    fn drop(&mut self) {
+        if !self.committed {
+            // FIXME(MEN-165): Remove the blob from the delete precommit structure
+            //                 once we have one.
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl OperationGuard for DeleteOperationGuard {
+    async fn commit(&mut self) {
+        // FIXME(MEN-165): We can't really pre-delete on S3 because moves are slow and expensive.
+        //                 What we'll do for now is try the delete in the commit phase and panic
+        //                 if it fails. In the future with MEN-165, we want to add a way of persisting
+        //                 the S3 operations that failed until they are applied successfully.
+        self.client
+            .delete_object()
+            .bucket(&self.bucket)
+            .key(self.blob_id.to_string())
+            .send()
+            .await
+            .context("failed to delete blob on s3")
+            .expect("S3 delete should not fail");
+
+        self.committed = true;
     }
 }
 
 pub struct S3Repository {
     bucket: String,
 
-    client: Client,
+    client: Arc<Client>,
     file_cache: Arc<FileCache>,
 }
 
@@ -97,7 +146,7 @@ impl S3Repository {
             .or_else(Region::new("us-east-1"));
 
         let shared_config = aws_config::from_env().region(region_provider).load().await;
-        let client = Client::new(&shared_config);
+        let client = Arc::new(Client::new(&shared_config));
 
         let file_cache = Arc::new(
             FileCache::new(cache_path, max_nb_of_cached_files, bucket, client.clone())
@@ -246,7 +295,7 @@ impl Repository for S3Repository {
     }
 
     #[tracing::instrument(name = "s3.delete", skip(self))]
-    async fn delete(&self, blob_id: &str) -> Result<()> {
+    async fn delete(&self, blob_id: &str) -> Result<Box<dyn OperationGuard>> {
         tokio::task::block_in_place(|| {
             self.file_cache
                 .invalidate(&blob_id)
@@ -254,17 +303,11 @@ impl Repository for S3Repository {
             Ok::<_, anyhow::Error>(())
         })?;
 
-        self.client
-            .delete_object()
-            .bucket(&self.bucket)
-            .key(blob_id.to_string())
-            .send()
-            .await
-            .context("failed to delete blob on s3")?;
-
-        tracing::debug!("s3 object delete complete");
-
-        Ok(())
+        Ok(Box::new(DeleteOperationGuard::new(
+            String::from(blob_id),
+            self.bucket.clone(),
+            self.client.clone(),
+        )))
     }
 
     #[tracing::instrument(name = "s3.fsync", skip(self))]

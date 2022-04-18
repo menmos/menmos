@@ -65,7 +65,7 @@ impl Repository for ConcurrentRepository {
         self.repo.get(blob_id, range).await
     }
 
-    async fn delete(&self, blob_id: &str) -> Result<()> {
+    async fn delete(&self, blob_id: &str) -> Result<Box<dyn OperationGuard>> {
         if self.read_only_blobs.contains(blob_id) {
             bail!("cannot delete blob '{blob_id}': blob is read-only");
         }

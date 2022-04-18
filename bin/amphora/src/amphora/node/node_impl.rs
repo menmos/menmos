@@ -188,7 +188,7 @@ impl StorageNode for Storage {
     /// 1. Start a transaction with `try_rollback`
     /// 2. Write the blob metadata in the local sled store.
     /// 3. Enqueue an operation in the transaction to revert the metadata mutation in case of failure.
-    /// 4. Consume and pre-commit the stream to the repository (which gives us back an [`repository::OperationGuard`])
+    /// 4. Consume and pre-commit the stream to the repository (which gives us back a [`repository::OperationGuard`])
     /// 5. Send the new blob metadata to the directory node
     /// 6. Finally, if everything went OK, commit the blob to the repository.
     /// 7. Release the shard lock and return.
@@ -366,6 +366,17 @@ impl StorageNode for Storage {
         .await
     }
 
+    /// Deletes a blob from this storage node.
+    ///
+    /// # Deletion Process
+    /// 0. Writelock the mutex shard corresponding to the blob.
+    /// 1. Check that the blob exists and that it is owned by the user making the request.
+    /// 2. Remove the blob metadata from the local sled store.
+    /// 3. Enqueue an operation in the transaction to revert the metadata mutation in case of failure.
+    /// 4. Pre-delete the blob in the repository (which gives us back a [`repository::OperationGuard`])
+    /// 5. Delete the metadata on the directory node.
+    /// 6. If everything went OK, commit the deletion.
+    /// 7. Release the shard lock and return.
     #[tracing::instrument(name = "node.delete", skip(self))]
     async fn delete(&self, blob_id: String, username: &str) -> Result<()> {
         let _guard = self.shard_lock.write(&blob_id).await;
@@ -392,35 +403,14 @@ impl StorageNode for Storage {
                 })
                 .await;
 
+            let mut delete_op = self.repo.delete(&blob_id).await?;
+
             // Delete the blob on the directory.
             self.directory
                 .delete_blob(&blob_id, &self.config.node.name)
                 .await?;
 
-            // Re-index the blob on the directory if the repo delete fails.
-
-            // FIXME TODO BEFORE PR: Similar to put() there is still a potential corruption issue here.
-            //        If the disk write were to fail at the same time as the network fails, we'd be left unable
-            //        to revert our metadata delete. Normally when we revert from disk we assume it won't fail,
-            //        but applying a revert step over the network is another can of worms.
-            //
-            //        The better way would be to "pre-delete" the file (by renaming it to something else or otherwise using a mask to mark it as deleted in a non-destructive way),
-            //        _then_ delete the file meta from the directory. If the directory fails, we undo the file deletion on disk and throw, and if it succeeds we commit the
-            //        deletion and return.
-            tx_state
-                .complete({
-                    let blob_id = blob_id.clone();
-                    let blob_info = blob_info.clone();
-                    let directory = self.directory.clone();
-                    let node_id = self.config.node.name.clone();
-                    Box::pin(async move {
-                        directory.index_blob(&blob_id, blob_info, &node_id).await?;
-                        Ok(())
-                    })
-                })
-                .await;
-
-            self.repo.delete(&blob_id).await?;
+            delete_op.commit().await;
 
             Ok(())
         })

@@ -1,6 +1,7 @@
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
+use std::sync::Arc;
 
 use anyhow::{anyhow, bail, ensure, Context, Result};
 
@@ -22,7 +23,7 @@ use tokio::io::AsyncWriteExt;
 
 pub struct FileCache {
     bucket: String,
-    client: Client,
+    client: Arc<Client>,
     file_path_cache: LruCache<String, PathBuf>,
     root_path: PathBuf,
 }
@@ -32,7 +33,7 @@ impl FileCache {
         directory: P,
         max_nb_of_files: usize,
         bucket: B,
-        client: Client,
+        client: Arc<Client>,
     ) -> Result<Self> {
         let root_path: PathBuf = directory.into();
 

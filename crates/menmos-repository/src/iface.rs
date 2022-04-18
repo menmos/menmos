@@ -45,7 +45,7 @@ pub trait Repository {
         range: Option<(Bound<u64>, Bound<u64>)>,
     ) -> Result<ChunkedStreamInfo>;
 
-    async fn delete(&self, blob_id: &str) -> Result<()>;
+    async fn delete(&self, blob_id: &str) -> Result<Box<dyn OperationGuard>>;
 
     async fn fsync(&self, id: String) -> Result<()>;
 
