@@ -391,11 +391,10 @@ impl StorageMappingStore for MockStorageStore {
         Ok(map.get(blob_id).cloned())
     }
 
-    fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()> {
+    fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<Option<String>> {
         let mut guard = self.m.lock();
         let map = &mut *guard;
-        map.insert(String::from(blob_id), node_id);
-        Ok(())
+        Ok(map.insert(String::from(blob_id), node_id))
     }
 
     fn delete_blob(&self, blob_id: &str) -> Result<Option<String>> {

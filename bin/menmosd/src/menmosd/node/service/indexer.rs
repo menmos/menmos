@@ -6,6 +6,8 @@ use async_trait::async_trait;
 
 use interface::{BlobInfo, BlobInfoRequest, StorageNodeInfo};
 
+use menmos_std::tx;
+
 use crate::node::{
     routing::NodeRouter,
     store::iface::{DynDocumentIDStore, DynMetadataStore, DynStorageMappingStore},
@@ -94,14 +96,44 @@ impl interface::BlobIndexer for IndexerService {
 
     #[tracing::instrument(name = "indexer.index_blob", skip(self, info))]
     async fn index_blob(&self, blob_id: &str, info: BlobInfo, storage_node_id: &str) -> Result<()> {
-        self.storage
-            .set_node_for_blob(blob_id, storage_node_id.to_string())?;
+        tx::try_rollback(move |tx_state| async move {
+            let old_node = self
+                .storage
+                .set_node_for_blob(blob_id, storage_node_id.to_string())?;
 
-        // FIXME: Sled transactions
-        let doc_idx = self.documents.insert(blob_id)?;
-        self.metadata.insert(doc_idx, &info)?;
+            if old_node != Some(String::from(storage_node_id)) {
+                // Revert the storage node change, if any.
+                tx_state
+                    .complete({
+                        let blob_id = String::from(blob_id);
+                        let storage = self.storage.clone();
+                        Box::pin(async move {
+                            if let Some(node) = old_node {
+                                storage.set_node_for_blob(&blob_id, node)?;
+                            }
+                            Ok(())
+                        })
+                    })
+                    .await;
+            }
 
-        Ok(())
+            let doc_idx = self.documents.insert(blob_id)?;
+
+            // Panicking here isn't ideal, but I feel it is a reasonable compromise.
+            // Contrary to the amphora index, the metadata index allows concurrent mutations,
+            // on the same key making it extremely difficult to revert an change should a later operation fail.
+            //
+            // In addition, the only real way metadata indexing might fail once we make it here
+            // is if there is a disk issue or a corruption in the underlying sled database.
+            // In both cases, we can't possibly expect to recover from this gracefully,
+            // so a panic is acceptable.
+            self.metadata
+                .insert(doc_idx, &info)
+                .expect("metadata indexing shouldn't fail");
+
+            Ok(())
+        })
+        .await
     }
 
     #[tracing::instrument(name = "indexer.delete_blob", skip(self))]
@@ -160,7 +192,9 @@ impl interface::BlobIndexer for IndexerService {
         // See [2, 2.1]
         if let Some(blob_idx) = self.documents.delete(blob_id)? {
             // See [3.1]
-            self.metadata.purge(blob_idx)?;
+            self.metadata
+                .purge(blob_idx)
+                .expect("metadata indexing shouldn't fail");
 
             ensure!(
                 node_id_maybe.is_some(),

@@ -6,7 +6,7 @@ use super::iface::Flush;
 
 pub trait StorageMappingStore: Flush {
     fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>>;
-    fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()>;
+    fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<Option<String>>;
     fn delete_blob(&self, blob_id: &str) -> Result<Option<String>>;
     fn clear(&self) -> Result<()>;
 }
@@ -44,10 +44,15 @@ impl StorageMappingStore for SledStorageMappingStore {
     }
 
     #[tracing::instrument(name = "storage.set_for_blob", level = "debug", skip(self))]
-    fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()> {
+    fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<Option<String>> {
         tokio::task::block_in_place(|| {
-            self.tree.insert(blob_id, node_id.as_bytes())?;
-            Ok(())
+            if let Some(old_ivec) = self.tree.insert(blob_id, node_id.as_bytes())? {
+                Ok(Some(
+                    String::from_utf8(old_ivec.to_vec()).expect("node ID is not UTF-8"),
+                ))
+            } else {
+                Ok(None)
+            }
         })
     }
 
