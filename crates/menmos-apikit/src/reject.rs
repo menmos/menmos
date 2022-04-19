@@ -13,10 +13,15 @@ const MESSAGE_INTERNAL_SERVER_ERROR: &str = "internal server error";
 #[derive(Serialize)]
 #[serde(untagged)]
 pub enum HTTPError {
-    BadRequest { error: String },
+    BadRequest {
+        error: String,
+    },
     Forbidden,
     NotFound,
-    InternalServerError { error: String },
+    InternalServerError {
+        error: String,
+        backtrace: Option<String>,
+    },
 }
 
 impl HTTPError {
@@ -26,9 +31,17 @@ impl HTTPError {
         }
     }
 
-    pub fn internal_server_error<S: ToString>(s: S) -> Self {
+    pub fn internal_server_error<E: Into<anyhow::Error>>(e: E) -> Self {
+        let err: anyhow::Error = e.into();
+        let bt = format!("{}", err.backtrace());
+
         Self::InternalServerError {
-            error: s.to_string(),
+            error: err.to_string(),
+            backtrace: if bt == "disabled backtrace" {
+                None
+            } else {
+                Some(bt)
+            },
         }
     }
 }
@@ -39,8 +52,15 @@ impl IntoResponse for HTTPError {
             Self::BadRequest { error } => reply::error(error, StatusCode::BAD_REQUEST),
             Self::Forbidden => reply::error(MESSAGE_FORBIDDEN, StatusCode::FORBIDDEN),
             Self::NotFound => reply::error(MESSAGE_NOT_FOUND, StatusCode::NOT_FOUND),
-            Self::InternalServerError { ref error } => {
-                tracing::error!("{error}");
+            Self::InternalServerError {
+                ref error,
+                ref backtrace,
+            } => {
+                if let Some(backtrace) = backtrace {
+                    tracing::error!("{error}\n{backtrace}");
+                } else {
+                    tracing::error!("{error}");
+                }
                 reply::error(
                     MESSAGE_INTERNAL_SERVER_ERROR,
                     StatusCode::INTERNAL_SERVER_ERROR,

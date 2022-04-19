@@ -24,11 +24,9 @@ bundle $MENMOS_WEBUI="branch=master" +args="":
 
 # Run all tests and validations
 test +args="":
-    cargo nextest run {{args}}
+    RUST_LIB_BACKTRACE=1 cargo nextest run {{args}}
 
 # -- Local Setup Workflows --
-# TODO: Add trace-level logging preset
-
 export WORKDIR := "./tmp"
 
 clean:
