@@ -80,6 +80,7 @@ impl Storage {
         Ok(s)
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn update_registration(&self) -> Result<()> {
         let redirect_info = get_redirect_info(
             self.config.redirect.subnet_mask,

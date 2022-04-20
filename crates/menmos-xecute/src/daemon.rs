@@ -8,7 +8,7 @@ use tracing::instrument;
 
 use crate::logging;
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION"); // TODO: Use the version of the binary instead of the crate version?
 const MINIMUM_WORKER_THREAD_COUNT: usize = 6;
 
 #[async_trait]
@@ -39,15 +39,20 @@ fn init_runtime() -> Result<runtime::Runtime> {
 }
 
 fn main_loop<D: Daemon>(
+    name: &str,
     cfg_path: Option<PathBuf>,
     log_config: Option<PathBuf>,
     mut daemon: D,
 ) -> Result<()> {
-    logging::init_logger(&log_config)?;
-    let cfg = daemon.load_config(&cfg_path)?;
-
     let rt = init_runtime()?;
     rt.block_on(async move {
+        if let Err(e) = logging::init_logger(name, &log_config) {
+            eprintln!("{e}");
+            exit(1);
+        }
+
+        let cfg = daemon.load_config(&cfg_path)?;
+
         daemon.start(cfg).await?;
         tokio::signal::ctrl_c().await?;
         daemon.stop().await?;
@@ -72,19 +77,19 @@ impl DaemonProcess {
                     .takes_value(true),
             )
             .arg(
-                Arg::new("log_config")
-                    .short('l')
-                    .long("log")
-                    .help("Sets the log config file")
+                Arg::new("xecute_config")
+                    .short('x')
+                    .long("xecute")
+                    .help("Sets the xecute config file")
                     .takes_value(true),
             )
             .get_matches();
 
         let cfg: Option<PathBuf> = matches.value_of_t("config").ok();
 
-        let log_config: Option<PathBuf> = matches.value_of_t("log_config").ok();
+        let log_config: Option<PathBuf> = matches.value_of_t("xecute_config").ok();
 
-        if let Err(e) = main_loop(cfg, log_config, daemon) {
+        if let Err(e) = main_loop(name, cfg, log_config, daemon) {
             tracing::error!("fatal: {}", e);
             exit(1);
         }

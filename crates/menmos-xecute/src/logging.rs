@@ -6,8 +6,11 @@ use config::Config;
 
 use serde::{Deserialize, Serialize};
 
+use tracing_subscriber::prelude::*;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use tracing_subscriber::{EnvFilter, Registry};
+
+use super::telemetry;
 
 const DEFAULT_TRACKED_CRATES: &[&str] = &[
     "menmosd",
@@ -57,11 +60,20 @@ fn default_json() -> bool {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub enum TracingConfig {
+    /// Default to the local jaeger collector.
+    None,
+    OTLP,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct LoggingConfig {
     pub level: LogStructure,
 
     #[serde(default = "default_json")]
     pub json: bool,
+
+    pub tracing: TracingConfig,
 }
 
 impl Default for LoggingConfig {
@@ -69,6 +81,7 @@ impl Default for LoggingConfig {
         Self {
             level: LogStructure::Preset(LogLevel::Normal),
             json: false,
+            tracing: TracingConfig::None,
         }
     }
 }
@@ -98,6 +111,7 @@ fn get_logging_config(path: &Option<PathBuf>) -> Result<LoggingConfig> {
     builder = builder
         .set_default("level", "normal")?
         .set_default("json", false)?
+        .set_default("tracing", "None")?
         .add_source(config::Environment::with_prefix("MENMOS_LOG"));
 
     if let Some(path) = path {
@@ -109,23 +123,24 @@ fn get_logging_config(path: &Option<PathBuf>) -> Result<LoggingConfig> {
     Ok(config)
 }
 
-pub fn init_logger(log_cfg_path: &Option<PathBuf>) -> Result<()> {
+pub fn init_logger(name: &str, log_cfg_path: &Option<PathBuf>) -> Result<()> {
     let cfg = get_logging_config(log_cfg_path)?;
 
+    // The env filter logs only
     let env_filter = cfg.get_filter();
 
+    let telemetry =
+        tracing_opentelemetry::layer().with_tracer(telemetry::init_tracer(name, &cfg.tracing)?);
+
+    let registry = Registry::default().with(env_filter).with(telemetry);
+
     if cfg.json {
-        FmtSubscriber::builder()
-            .with_env_filter(env_filter)
-            .json()
-            .finish()
+        registry
+            .with(tracing_subscriber::fmt::layer().json())
             .init();
     } else {
-        FmtSubscriber::builder()
-            .with_env_filter(env_filter)
-            .finish()
-            .init();
-    }
+        registry.with(tracing_subscriber::fmt::layer()).init();
+    };
 
     Ok(())
 }

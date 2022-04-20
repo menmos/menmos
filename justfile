@@ -34,8 +34,8 @@ clean:
 
 # Run menmosd using the local setup.
 menmosd loglevel="normal":
-    MENMOS_LOG_LEVEL="{{loglevel}}" cargo run -p menmosd -- --cfg {{WORKDIR}}/menmosd.toml
+    MENMOS_LOG_LEVEL="{{loglevel}}" cargo run -p menmosd -- --cfg {{WORKDIR}}/menmosd.toml --xecute tmp/xecute.json
 
 # Run amphora using the local setup.
 amphora loglevel="normal":
-    MENMOS_LOG_LEVEL="{{loglevel}}" cargo run -p amphora -- --cfg {{WORKDIR}}/amphora.toml
+    MENMOS_LOG_LEVEL="{{loglevel}}" cargo run -p amphora -- --cfg {{WORKDIR}}/amphora.toml --xecute tmp/xecute.json
