@@ -7,7 +7,7 @@ use interface::DynStorageNode;
 
 use menmos_auth::UserIdentity;
 
-#[tracing::instrument(skip(node))]
+#[tracing::instrument(name = "handler.delete", skip(node))]
 pub async fn delete(
     user: UserIdentity,
     Extension(node): Extension<DynStorageNode>,

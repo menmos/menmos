@@ -49,7 +49,7 @@ fn add_range_info_to_response(
     Ok(response)
 }
 
-#[tracing::instrument(level = "info", skip(node, range_header))]
+#[tracing::instrument(name = "handler.get", skip(node, range_header))]
 pub async fn get(
     user: UserIdentity,
     Extension(node): Extension<DynStorageNode>,

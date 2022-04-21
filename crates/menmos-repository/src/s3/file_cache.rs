@@ -42,7 +42,7 @@ impl FileCache {
         self.file_path_cache.get(blob_id.as_ref()).await
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "file_cache.invalidate", skip(self))]
     pub async fn invalidate(&self, blob_id: &str) -> Result<()> {
         let file_path = self.root_path.join(blob_id);
         if file_path.exists() {
@@ -56,7 +56,7 @@ impl FileCache {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "file_cache.download_blob", skip(self))]
     async fn download_blob(&self, blob_id: &str) -> Result<PathBuf> {
         match self
             .client
@@ -111,7 +111,7 @@ impl FileCache {
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "file_cache.get", skip(self))]
     pub async fn get(&self, blob_id: &str) -> Result<PathBuf> {
         if let Some(cache_hit) = self.contains(&blob_id).await {
             tracing::trace!("cache hit");

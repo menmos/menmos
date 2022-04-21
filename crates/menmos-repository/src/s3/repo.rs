@@ -59,7 +59,7 @@ impl S3Repository {
         })
     }
 
-    #[tracing::instrument(level = "trace", skip(self, buf_writer))]
+    #[tracing::instrument(name = "s3.flush_part", level = "trace", skip(self, buf_writer))]
     async fn flush_part(
         &self,
         running_size: usize,
@@ -89,7 +89,7 @@ impl S3Repository {
             .build())
     }
 
-    #[tracing::instrument(level = "trace", skip(self, stream))]
+    #[tracing::instrument(name = "s3.do_multipart", level = "trace", skip(self, stream))]
     async fn do_multipart(
         &self,
         id: String,
@@ -154,7 +154,7 @@ impl S3Repository {
 
 #[async_trait]
 impl Repository for S3Repository {
-    #[tracing::instrument(skip(self, stream))]
+    #[tracing::instrument(name = "s3.save", skip(self, stream))]
     async fn save(
         &self,
         id: String,
@@ -213,7 +213,7 @@ impl Repository for S3Repository {
         }
     }
 
-    #[tracing::instrument(skip(self, body))]
+    #[tracing::instrument(name = "s3.write", skip(self, body))]
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
         let file_path = self.file_cache.get(&id).await?;
         let range = util::bounds_to_range(range, 0, 0);
@@ -243,7 +243,7 @@ impl Repository for S3Repository {
         Ok(file_length)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "s3.get", skip(self))]
     async fn get(
         &self,
         blob_id: &str,
@@ -322,7 +322,7 @@ impl Repository for S3Repository {
         })
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "s3.delete", skip(self))]
     async fn delete(&self, blob_id: &str) -> Result<()> {
         self.file_cache
             .invalidate(blob_id)
@@ -342,7 +342,7 @@ impl Repository for S3Repository {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "s3.fsync", skip(self))]
     async fn fsync(&self, id: String) -> Result<()> {
         // FIXME: Trigger fsync asynchronously so it doesn't block the call.
         // FIXME: Trigger fsync periodically for cache keys, and every time on cache eviction.

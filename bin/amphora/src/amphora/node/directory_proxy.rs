@@ -74,7 +74,7 @@ impl DirectoryProxy {
         Ok(builder.headers(headers))
     }
 
-    #[tracing::instrument(skip(self, def, certificate_path))]
+    #[tracing::instrument(name = "proxy.register", skip(self, def, certificate_path))]
     pub async fn register_storage_node(
         &self,
         def: StorageNodeInfo,
@@ -121,7 +121,7 @@ impl DirectoryProxy {
         })
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "proxy.rebuild_complete", skip(self))]
     pub async fn rebuild_complete(&self, storage_node_id: &str) -> Result<()> {
         let url = self
             .directory_url
@@ -144,7 +144,7 @@ impl DirectoryProxy {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, blob_info))]
+    #[tracing::instrument(name = "proxy.index_blob", skip(self, blob_info))]
     pub async fn index_blob(
         &self,
         blob_id: &str,
@@ -173,7 +173,7 @@ impl DirectoryProxy {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "proxy.delete_blob", skip(self))]
     pub async fn delete_blob(&self, blob_id: &str, storage_node_id: &str) -> Result<()> {
         let url = self
             .directory_url

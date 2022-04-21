@@ -8,7 +8,7 @@ use interface::{BlobInfoRequest, BlobMetaRequest, DynStorageNode};
 
 use menmos_auth::UserIdentity;
 
-#[tracing::instrument(skip(node, meta_request))]
+#[tracing::instrument(name = "handler.update_meta", skip(node, meta_request))]
 pub async fn update_meta(
     user: UserIdentity,
     Extension(node): Extension<DynStorageNode>,

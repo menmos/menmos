@@ -10,7 +10,7 @@ use interface::DynStorageNode;
 
 use menmos_auth::UserIdentity;
 
-#[tracing::instrument(skip(node, body))]
+#[tracing::instrument(name = "handler.write", skip(node, body))]
 pub async fn write(
     user: UserIdentity,
     Extension(node): Extension<DynStorageNode>,
