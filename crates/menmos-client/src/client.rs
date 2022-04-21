@@ -11,7 +11,12 @@ use header::HeaderName;
 
 use interface::{BlobMeta, MetadataList, Query, QueryResponse, RoutingConfig};
 
-use hyper::{header, StatusCode};
+use hyper::{header, Method, StatusCode};
+
+use opentelemetry::propagation::TextMapPropagator;
+use opentelemetry::sdk::propagation::TraceContextPropagator;
+use opentelemetry::Context;
+use opentelemetry_http::{HeaderExtractor, HeaderInjector};
 
 use protocol::directory::{auth::*, blobmeta::*, routing::*, storage::*};
 use protocol::storage::PutResponse;
@@ -23,7 +28,10 @@ use reqwest::Body;
 use serde::de::DeserializeOwned;
 
 use snafu::prelude::*;
+
 use tokio_util::codec::{BytesCodec, FramedRead};
+
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use crate::{ClientBuilder, Meta, Parameters};
 
@@ -109,7 +117,7 @@ async fn extract<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> 
 
 struct RedirectResponse {
     pub location: String,
-    pub request_id: String,
+    pub context: Context,
 }
 
 /// The client, used for interacting witn a Menmos cluster.
@@ -118,6 +126,7 @@ pub struct Client {
     client: ReqwestClient,
     host: String,
     token: String,
+    propagator: TraceContextPropagator,
 }
 
 type Result<T> = std::result::Result<T, ClientError>;
@@ -159,23 +168,41 @@ impl Client {
             host: params.host,
             client,
             token,
+            propagator: TraceContextPropagator::new(),
         })
+    }
+
+    fn mkrequest(
+        &self,
+        method: Method,
+        url: &str,
+        context: Option<Context>,
+    ) -> reqwest::RequestBuilder {
+        //let req_id = uuid::Uuid::new_v4().to_string();
+        // TODO PR: Send the generated ID.
+        let builder = self.client.request(method, url).bearer_auth(&self.token);
+
+        let mut headers = reqwest::header::HeaderMap::new();
+
+        self.propagator.inject_context(
+            &context.unwrap_or_else(|| tracing::Span::current().context()),
+            &mut HeaderInjector(&mut headers),
+        );
+
+        builder.headers(headers)
     }
 
     async fn prepare_push_request<P: AsRef<Path>>(
         &self,
         url: &str,
-        request_id: &str,
+        context: Context,
         path: P,
         encoded_meta: &str,
         file_length: u64,
     ) -> Result<reqwest::Request> {
         let mut request_builder = self
-            .client
-            .post(url)
-            .bearer_auth(&self.token)
-            .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta)
-            .header(header::HeaderName::from_static("x-request-id"), request_id);
+            .mkrequest(Method::POST, url, Some(context))
+            .header(header::HeaderName::from_static("x-blob-meta"), encoded_meta);
 
         if path.as_ref().is_file() {
             let file = tokio::fs::File::open(path.as_ref()).await.unwrap();
@@ -207,10 +234,9 @@ impl Client {
             .get(header::LOCATION)
             .ok_or(ClientError::MissingRedirect)?;
 
-        let request_id = response
-            .headers()
-            .get("x-request-id")
-            .ok_or(ClientError::MissingRequestId)?;
+        let ctx = self
+            .propagator
+            .extract(&HeaderExtractor(response.headers()));
 
         let new_url = new_location
             .to_str()
@@ -219,7 +245,8 @@ impl Client {
 
         Ok(RedirectResponse {
             location: new_url.to_string(),
-            request_id: String::from_utf8(request_id.as_bytes().to_vec()).unwrap(), // We know request id is ASCII, so it is also unicode.
+            context: ctx,
+            //request_id: String::from_utf8(request_id.as_bytes().to_vec()).unwrap(), // We know request id is ASCII, so it is also unicode.
         })
     }
 
@@ -250,9 +277,7 @@ impl Client {
         let url = format!("{}/auth/register", self.host);
 
         let response = self
-            .client
-            .post(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::POST, &url, None)
             .json(&RegisterRequest {
                 username: username.to_string(),
                 password: password.to_string(),
@@ -273,26 +298,19 @@ impl Client {
         let meta_b64 = encode_metadata(meta)?;
 
         let redirect_req = self
-            .client
-            .post(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::POST, &url, None)
             .header(HeaderName::from_static("x-blob-meta"), meta_b64.clone())
             .header(HeaderName::from_static("x-blob-size"), 0_u64)
             .build()
             .context(RequestBuildSnafu)?;
 
-        let RedirectResponse {
-            location,
-            request_id,
-        } = self.request_with_redirect(redirect_req).await?;
+        let RedirectResponse { location, context } =
+            self.request_with_redirect(redirect_req).await?;
 
         let response = self
-            .client
-            .post(&location)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::POST, &location, Some(context))
             .header(HeaderName::from_static("x-blob-meta"), &meta_b64)
             .header(HeaderName::from_static("x-blob-size"), 0_u64)
-            .header(HeaderName::from_static("x-request-id"), &request_id)
             .send()
             .await
             .context(RequestExecutionSnafu)?;
@@ -326,9 +344,7 @@ impl Client {
             .len();
 
         let initial_redirect_request = self
-            .client
-            .post(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::POST, &url, None)
             .header(
                 header::HeaderName::from_static("x-blob-meta"),
                 meta_b64.clone(),
@@ -337,19 +353,11 @@ impl Client {
             .build()
             .context(RequestBuildSnafu)?;
 
-        let RedirectResponse {
-            location,
-            request_id,
-        } = self.request_with_redirect(initial_redirect_request).await?;
+        let RedirectResponse { location, context } =
+            self.request_with_redirect(initial_redirect_request).await?;
 
         let request = self
-            .prepare_push_request(
-                &location,
-                &request_id,
-                path.as_ref(),
-                &meta_b64,
-                file_length,
-            )
+            .prepare_push_request(&location, context, path.as_ref(), &meta_b64, file_length)
             .await?;
 
         let response = self
@@ -369,8 +377,7 @@ impl Client {
         let url = format!("{}/health", self.host);
 
         let response = self
-            .client
-            .get(&url)
+            .mkrequest(Method::GET, &url, None)
             .send()
             .await
             .context(RequestExecutionSnafu)?;
@@ -390,9 +397,7 @@ impl Client {
         let url = format!("{}/node/storage", self.host);
 
         let response = self
-            .client
-            .get(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::GET, &url, None)
             .send()
             .await
             .context(RequestExecutionSnafu)?;
@@ -433,9 +438,7 @@ impl Client {
         let url = format!("{}/metadata", &self.host);
 
         let response = self
-            .client
-            .get(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::GET, &url, None)
             .json(&ListMetadataRequest {
                 tags,
                 fields: meta_keys,
@@ -452,23 +455,15 @@ impl Client {
         let url = format!("{}/blob/{}/metadata", self.host, blob_id);
 
         let request = self
-            .client
-            .put(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::PUT, &url, None)
             .json(&meta)
             .build()
             .context(RequestBuildSnafu)?;
 
-        let RedirectResponse {
-            location,
-            request_id,
-        } = self.request_with_redirect(request).await?;
+        let RedirectResponse { location, context } = self.request_with_redirect(request).await?;
 
         let response = self
-            .client
-            .put(&location)
-            .bearer_auth(&self.token)
-            .header(HeaderName::from_static("x-request-id"), request_id)
+            .mkrequest(Method::PUT, &location, Some(context))
             .json(&meta)
             .send()
             .await
@@ -488,22 +483,14 @@ impl Client {
         let url = format!("{}/blob/{}/fsync", self.host, blob_id);
 
         let request = self
-            .client
-            .post(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::POST, &url, None)
             .build()
             .context(RequestBuildSnafu)?;
 
-        let RedirectResponse {
-            location,
-            request_id,
-        } = self.request_with_redirect(request).await?;
+        let RedirectResponse { location, context } = self.request_with_redirect(request).await?;
 
         let response = self
-            .client
-            .post(&location)
-            .bearer_auth(&self.token)
-            .header(HeaderName::from_static("x-request-id"), request_id)
+            .mkrequest(Method::POST, &location, Some(context))
             .send()
             .await
             .context(RequestBuildSnafu)?;
@@ -520,9 +507,7 @@ impl Client {
         let url = format!("{}/blob/{}", self.host, blob_id);
 
         let request = self
-            .client
-            .put(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::PUT, &url, None)
             .header(
                 header::RANGE,
                 &format!("bytes={}-{}", offset, offset + (buffer.len() - 1) as u64),
@@ -530,20 +515,14 @@ impl Client {
             .build()
             .context(RequestBuildSnafu)?;
 
-        let RedirectResponse {
-            location,
-            request_id,
-        } = self.request_with_redirect(request).await?;
+        let RedirectResponse { location, context } = self.request_with_redirect(request).await?;
 
         let response = self
-            .client
-            .put(&location)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::PUT, &location, Some(context))
             .header(
                 header::RANGE,
                 &format!("bytes={}-{}", offset, offset + (buffer.len() - 1) as u64),
             )
-            .header(HeaderName::from_static("x-request-id"), request_id)
             .body(buffer.clone())
             .send()
             .await
@@ -565,9 +544,7 @@ impl Client {
         let url = format!("{}/blob/{}/metadata", self.host, blob_id);
 
         let response = self
-            .client
-            .get(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::GET, &url, None)
             .send()
             .await
             .context(RequestExecutionSnafu)?;
@@ -581,22 +558,15 @@ impl Client {
         let url = format!("{}/blob/{}", self.host, blob_id);
 
         let redirect_request = self
-            .client
-            .get(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::GET, &url, None)
             .build()
             .context(RequestBuildSnafu)?;
 
-        let RedirectResponse {
-            location,
-            request_id,
-        } = self.request_with_redirect(redirect_request).await?;
+        let RedirectResponse { location, context } =
+            self.request_with_redirect(redirect_request).await?;
 
         let response = self
-            .client
-            .get(&location)
-            .bearer_auth(&self.token)
-            .header(HeaderName::from_static("x-request-id"), request_id)
+            .mkrequest(Method::GET, &location, Some(context))
             .send()
             .await
             .context(RequestExecutionSnafu)?;
@@ -623,24 +593,16 @@ impl Client {
         let url = format!("{}/blob/{}", self.host, blob_id);
 
         let request = self
-            .client
-            .get(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::GET, &url, None)
             .header(header::RANGE, &format!("bytes={}-{}", range.0, range.1))
             .build()
             .context(RequestBuildSnafu)?;
 
-        let RedirectResponse {
-            location,
-            request_id,
-        } = self.request_with_redirect(request).await?;
+        let RedirectResponse { location, context } = self.request_with_redirect(request).await?;
 
         let response = self
-            .client
-            .get(&location)
+            .mkrequest(Method::GET, &location, Some(context))
             .header(header::RANGE, &format!("bytes={}-{}", range.0, range.1))
-            .header(HeaderName::from_static("x-request-id"), request_id)
-            .bearer_auth(&self.token)
             .send()
             .await
             .context(RequestExecutionSnafu)?;
@@ -659,9 +621,7 @@ impl Client {
         let url = format!("{}/query", self.host);
 
         let response = self
-            .client
-            .post(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::POST, &url, None)
             .json(&query)
             .send()
             .await
@@ -674,22 +634,14 @@ impl Client {
         let url = format!("{}/blob/{}", self.host, blob_id);
 
         let request = self
-            .client
-            .delete(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::DELETE, &url, None)
             .build()
             .context(RequestBuildSnafu)?;
 
-        let RedirectResponse {
-            location,
-            request_id,
-        } = self.request_with_redirect(request).await?;
+        let RedirectResponse { location, context } = self.request_with_redirect(request).await?;
 
         let response = self
-            .client
-            .delete(&location)
-            .bearer_auth(&self.token)
-            .header(HeaderName::from_static("x-request-id"), request_id)
+            .mkrequest(Method::DELETE, &location, Some(context))
             .send()
             .await
             .context(RequestExecutionSnafu)?;
@@ -708,9 +660,7 @@ impl Client {
         let url = format!("{}/routing", self.host);
 
         let response = self
-            .client
-            .get(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::GET, &url, None)
             .send()
             .await
             .context(RequestExecutionSnafu)?;
@@ -724,9 +674,7 @@ impl Client {
         let url = format!("{}/routing", self.host);
 
         let response = self
-            .client
-            .put(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::PUT, &url, None)
             .json(&SetRoutingConfigRequest {
                 routing_config: routing_config.clone(),
             })
@@ -745,9 +693,7 @@ impl Client {
         let url = format!("{}/routing", self.host);
 
         let response = self
-            .client
-            .delete(&url)
-            .bearer_auth(&self.token)
+            .mkrequest(Method::DELETE, &url, None)
             .send()
             .await
             .context(RequestExecutionSnafu)?;

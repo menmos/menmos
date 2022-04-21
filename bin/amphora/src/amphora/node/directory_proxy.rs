@@ -2,14 +2,20 @@ use std::path::Path;
 
 use anyhow::{ensure, Result};
 
+use http::Method;
 use interface::{BlobInfo, CertificateInfo, StorageNodeInfo};
+
+use opentelemetry::global;
+use opentelemetry_http::HeaderInjector;
 
 use protocol::directory::storage::{MoveRequest, RegisterResponse};
 
-use reqwest::Url;
+use reqwest::{IntoUrl, Url};
 
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
+
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use super::constants;
 use crate::DirectoryHostConfig;
@@ -46,15 +52,39 @@ impl DirectoryProxy {
         )
     }
 
+    /// Build a request to the directory node and forward the current tracing context with it.
+    fn make_request<U: IntoUrl>(
+        &self,
+        id: &str,
+        method: Method,
+        url: U,
+    ) -> Result<reqwest::RequestBuilder> {
+        let token = self.get_token(id)?;
+        let builder = self.client.request(method, url).bearer_auth(token);
+
+        let mut headers = reqwest::header::HeaderMap::new();
+
+        global::get_text_map_propagator(|propagator| {
+            propagator.inject_context(
+                &tracing::Span::current().context(),
+                &mut HeaderInjector(&mut headers),
+            );
+        });
+
+        Ok(builder.headers(headers))
+    }
+
+    #[tracing::instrument(skip(self, def, certificate_path))]
     pub async fn register_storage_node(
         &self,
         def: StorageNodeInfo,
         certificate_path: &Path,
     ) -> Result<RegisterResponseWrapper> {
         let url = self.directory_url.join("node/storage")?;
-        let token = self.get_token(&def.id)?;
-
-        let req = self.client.put(url).bearer_auth(token).json(&def).build()?;
+        let req = self
+            .make_request(&def.id, Method::PUT, url)?
+            .json(&def)
+            .build()?;
 
         let resp = self.client.execute(req).await?;
 
@@ -91,45 +121,14 @@ impl DirectoryProxy {
         })
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn rebuild_complete(&self, storage_node_id: &str) -> Result<()> {
         let url = self
             .directory_url
             .join(&format!("rebuild/{}", storage_node_id))?;
 
-        let token = self.get_token(storage_node_id)?;
-
-        let req = self.client.delete(url).bearer_auth(token).build()?;
-
-        let resp = self.client.execute(req).await?;
-
-        ensure!(
-            resp.status().is_success(),
-            format!(
-                "request failed: {}",
-                String::from_utf8_lossy(resp.bytes().await?.as_ref())
-            )
-        );
-
-        Ok(())
-    }
-
-    pub async fn index_blob(
-        &self,
-        blob_id: &str,
-        blob_info: BlobInfo,
-        storage_node_id: &str,
-    ) -> Result<()> {
-        let url = self
-            .directory_url
-            .join(&format!("blob/{}/metadata", blob_id))?;
-
-        let token = self.get_token(storage_node_id)?;
-
         let req = self
-            .client
-            .post(url)
-            .json(&blob_info)
-            .bearer_auth(token)
+            .make_request(storage_node_id, Method::DELETE, url)?
             .build()?;
 
         let resp = self.client.execute(req).await?;
@@ -145,14 +144,44 @@ impl DirectoryProxy {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, blob_info))]
+    pub async fn index_blob(
+        &self,
+        blob_id: &str,
+        blob_info: BlobInfo,
+        storage_node_id: &str,
+    ) -> Result<()> {
+        let url = self
+            .directory_url
+            .join(&format!("blob/{}/metadata", blob_id))?;
+
+        let req = self
+            .make_request(storage_node_id, Method::POST, url)?
+            .json(&blob_info)
+            .build()?;
+
+        let resp = self.client.execute(req).await?;
+
+        ensure!(
+            resp.status().is_success(),
+            format!(
+                "request failed: {}",
+                String::from_utf8_lossy(resp.bytes().await?.as_ref())
+            )
+        );
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
     pub async fn delete_blob(&self, blob_id: &str, storage_node_id: &str) -> Result<()> {
         let url = self
             .directory_url
             .join(&format!("blob/{}/metadata", blob_id))?;
 
-        let token = self.get_token(storage_node_id)?;
-
-        let req = self.client.delete(url).bearer_auth(token).build()?;
+        let req = self
+            .make_request(storage_node_id, Method::DELETE, url)?
+            .build()?;
 
         let resp = self.client.execute(req).await?;
 

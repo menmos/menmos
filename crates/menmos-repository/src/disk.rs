@@ -83,7 +83,7 @@ impl DiskRepository {
 
 #[async_trait]
 impl Repository for DiskRepository {
-    #[tracing::instrument(skip(self, stream))]
+    #[tracing::instrument(name = "disk_save", skip(self, stream))]
     async fn save(
         &self,
         id: String,
@@ -107,7 +107,7 @@ impl Repository for DiskRepository {
         }
     }
 
-    #[tracing::instrument(skip(self, body))]
+    #[tracing::instrument(name = "disk_write", skip(self, body))]
     async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
         let file_path = self.get_path_for_blob(&id);
 
@@ -142,7 +142,7 @@ impl Repository for DiskRepository {
         Ok(new_length)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "disk_get", skip(self))]
     async fn get(
         &self,
         blob_id: &str,
@@ -163,7 +163,7 @@ impl Repository for DiskRepository {
             .context("failed to read byte range from file")
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "disk_delete", skip(self))]
     async fn delete(&self, blob_id: &str) -> Result<()> {
         let blob_path = self.get_path_for_blob(blob_id);
 
@@ -177,7 +177,7 @@ impl Repository for DiskRepository {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(name = "disk_fsync", skip(self))]
     async fn fsync(&self, _id: String) -> Result<()> {
         // Nothing to do for us.
         tracing::trace!("fsync on disk repository is a no-op");

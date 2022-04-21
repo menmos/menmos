@@ -39,7 +39,10 @@ fn get_request_from_move_info(
     })
 }
 
-#[tracing::instrument(skip(config, node, addr, info, certificate_info))]
+#[tracing::instrument(
+    name = "put_storage_node",
+    skip(config, node, addr, info, certificate_info)
+)]
 pub async fn put(
     identity: StorageNodeIdentity,
     Extension(certificate_info): Extension<Arc<Option<CertificateInfo>>>,

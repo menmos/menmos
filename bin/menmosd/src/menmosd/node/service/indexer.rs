@@ -75,6 +75,7 @@ impl interface::BlobIndexer for IndexerService {
         Ok(blob_info_maybe)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>> {
         // These next two lines could technically be in one line, but since its an async
         // function and index::storage() returns a ref to the storage provider, the borrow checker can't guarantee that there

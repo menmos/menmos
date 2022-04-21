@@ -16,6 +16,8 @@ hyper = "0.14"
 menmos-apikit = { version = "^0.2.6" }
 menmos-interface = { version = "^0.2.6" }
 menmos-protocol = { version = "^0.2.6" }
+opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
+opentelemetry-http = "0.6.0"
 reqwest = { version = "0.11", features = ["json", "stream"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -23,3 +25,5 @@ snafu = "0.7"
 tokio = { version = "1.18", features = ["full"] }
 tokio-util = { version = "0.7.1", features = ["codec"] }
 tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_debug"] }
+tracing-opentelemetry = "0.17.2"
+uuid = { version = "1.0", features = ["v4", "fast-rng"] }

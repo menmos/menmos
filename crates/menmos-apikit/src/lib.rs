@@ -3,3 +3,4 @@
 pub mod payload;
 pub mod reject;
 pub mod reply;
+pub mod middleware;

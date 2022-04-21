@@ -76,6 +76,8 @@ dependencies = [
  "menmos-repository",
  "menmos-std",
  "menmos-xecute",
+ "opentelemetry",
+ "opentelemetry-http",
  "parking_lot 0.12.0",
  "portpicker",
  "public-ip",
@@ -86,8 +88,11 @@ dependencies = [
  "tempfile",
  "time 0.3.9",
  "tokio",
+ "tower",
  "tower-http",
  "tracing",
+ "tracing-opentelemetry",
+ "uuid",
 ]
 
 [[package]]
@@ -1953,8 +1958,13 @@ version = "0.2.6"
 dependencies = [
  "anyhow",
  "axum",
+ "opentelemetry",
+ "opentelemetry-http",
  "serde 1.0.137",
+ "tower-http",
  "tracing",
+ "tracing-opentelemetry",
+ "uuid",
 ]
 
 [[package]]
@@ -1997,6 +2007,7 @@ dependencies = [
  "rood",
  "serde 1.0.137",
  "tokio",
+ "tracing",
  "walkdir",
 ]
 
@@ -2011,6 +2022,8 @@ dependencies = [
  "menmos-apikit",
  "menmos-interface",
  "menmos-protocol",
+ "opentelemetry",
+ "opentelemetry-http",
  "reqwest",
  "serde 1.0.137",
  "serde_json",
@@ -2018,6 +2031,8 @@ dependencies = [
  "tokio",
  "tokio-util 0.7.1",
  "tracing",
+ "tracing-opentelemetry",
+ "uuid",
 ]
 
 [[package]]
@@ -2080,6 +2095,7 @@ dependencies = [
  "parking_lot 0.12.0",
  "serde_json",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2159,6 +2175,8 @@ dependencies = [
  "menmos-std",
  "menmos-testing",
  "menmos-xecute",
+ "opentelemetry",
+ "opentelemetry-http",
  "parking_lot 0.12.0",
  "portpicker",
  "rapidquery",
@@ -2171,9 +2189,11 @@ dependencies = [
  "tempfile",
  "time 0.3.9",
  "tokio",
+ "tower",
  "tower-http",
  "tower-request-id",
  "tracing",
+ "tracing-opentelemetry",
  "uuid",
  "x509-parser",
 ]
@@ -2444,6 +2464,18 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
+]
+
+[[package]]
+name = "opentelemetry-http"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "449048140ee61e28f57abe6e9975eedc1f3a29855c7407bd6c12b18578863379"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "http",
+ "opentelemetry",
 ]
 
 [[package]]
@@ -4106,6 +4138,7 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -4447,6 +4480,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8cfcd319456c4d6ea10087ed423473267e1a071f3bc0aa89f80d60997843c6f0"
 dependencies = [
  "getrandom",
+ "rand 0.8.5",
  "serde 1.0.137",
 ]
 

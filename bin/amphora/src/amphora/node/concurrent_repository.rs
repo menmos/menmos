@@ -55,6 +55,7 @@ impl Repository for ConcurrentRepository {
         self.repo.write(id, range, body).await
     }
 
+    #[tracing::instrument(skip(self))]
     async fn get(
         &self,
         blob_id: &str,

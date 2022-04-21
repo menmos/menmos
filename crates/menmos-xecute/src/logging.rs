@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -27,6 +28,7 @@ const DEFAULT_TRACKED_CRATES: &[&str] = &[
     "repository",
     "menmos-std",
     "tower_http",
+    "axum",
 ];
 
 #[cfg(debug_assertions)]
@@ -55,23 +57,20 @@ pub enum LogStructure {
     Explicit(Vec<String>),
 }
 
-fn default_json() -> bool {
-    false
-}
-
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
 pub enum TracingConfig {
     /// Default to the local jaeger collector.
     None,
+    Jaeger {
+        host: Option<SocketAddr>,
+    },
     OTLP,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LoggingConfig {
     pub level: LogStructure,
-
-    #[serde(default = "default_json")]
-    pub json: bool,
 
     pub tracing: TracingConfig,
 }
@@ -80,7 +79,6 @@ impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
             level: LogStructure::Preset(LogLevel::Normal),
-            json: false,
             tracing: TracingConfig::None,
         }
     }
@@ -110,8 +108,7 @@ fn get_logging_config(path: &Option<PathBuf>) -> Result<LoggingConfig> {
     let mut builder = Config::builder();
     builder = builder
         .set_default("level", "normal")?
-        .set_default("json", false)?
-        .set_default("tracing", "None")?
+        .set_default("tracing.type", "none")?
         .add_source(config::Environment::with_prefix("MENMOS_LOG"));
 
     if let Some(path) = path {
@@ -129,18 +126,19 @@ pub fn init_logger(name: &str, log_cfg_path: &Option<PathBuf>) -> Result<()> {
     // The env filter logs only
     let env_filter = cfg.get_filter();
 
-    let telemetry =
-        tracing_opentelemetry::layer().with_tracer(telemetry::init_tracer(name, &cfg.tracing)?);
-
-    let registry = Registry::default().with(env_filter).with(telemetry);
-
-    if cfg.json {
-        registry
-            .with(tracing_subscriber::fmt::layer().json())
+    if let Some(tracer) = telemetry::init_tracer(name, &cfg.tracing)? {
+        let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+        Registry::default()
+            .with(env_filter)
+            .with(telemetry)
+            .with(tracing_subscriber::fmt::layer())
             .init();
     } else {
-        registry.with(tracing_subscriber::fmt::layer()).init();
-    };
+        Registry::default()
+            .with(env_filter)
+            .with(tracing_subscriber::fmt::layer())
+            .init();
+    }
 
     Ok(())
 }

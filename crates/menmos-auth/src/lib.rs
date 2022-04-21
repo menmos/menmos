@@ -44,6 +44,7 @@ pub struct EncryptionKey {
 /// let token = menmos_auth::make_token(encryption_key, &token_data)?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
+#[tracing::instrument(level = "trace", skip(key, data))]
 pub fn make_token<K: AsRef<str>, D: Serialize>(key: K, data: D) -> anyhow::Result<String> {
     let mut token = Branca::new(key.as_ref().as_bytes())?;
     token

@@ -1,62 +1,84 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use apikit::middleware::MakeRequestUuid;
+
 use axum::extract::Extension;
 use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
 use axum::http::Request;
-use axum::middleware::Next;
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use axum::Router;
 
-use headers::{HeaderName, HeaderValue};
+use headers::HeaderName;
 
 use hyper::Method;
 
 use interface::{CertificateInfo, DynDirectoryNode};
 
+use opentelemetry::global;
+use opentelemetry::sdk::propagation::TraceContextPropagator;
+use opentelemetry::trace::SpanKind;
+use opentelemetry_http::HeaderExtractor;
+
+use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::request_id::{PropagateRequestIdLayer, RequestId, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
-use tower_request_id::{RequestId, RequestIdLayer};
 
 use crate::Config;
 
 /// Wraps a router in a logging layer.
 fn wrap_trace_layer(router: Router) -> Router {
-    router.layer(
-        TraceLayer::new_for_http()
-            .make_span_with(|r: &Request<_>| {
-                // We get the request id from the extensions
-                let request_id = r
-                    .extensions()
-                    .get::<RequestId>()
-                    .map(ToString::to_string)
-                    .unwrap_or_else(|| "unknown".into());
-                // And then we put it along with other information into the `request` span
-                tracing::info_span!(
-                    "request",
-                    id = %request_id,
-                    method = %r.method(),
-                    uri = %r.uri().path(),
-                )
-            })
-            .on_request(|_r: &Request<_>, _s: &tracing::Span| {}) // We silence the on-request hook
-            .on_response(
-                |response: &Response, latency: Duration, _span: &tracing::Span| {
-                    tracing::info!(status = ?response.status(), elapsed = ?latency, "complete");
-                },
-            ),
-    )
-}
+    global::set_text_map_propagator(TraceContextPropagator::new());
 
-async fn redirect_request_id<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
-    let request_id = req.extensions().get::<RequestId>().unwrap().to_string(); // Mandatory.
+    let svc = ServiceBuilder::new()
+        .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|r: &Request<_>| {
+                    // Extract the opentelemetry trace context.
+                    let parent_cx = global::get_text_map_propagator(|propagator| {
+                        propagator.extract(&HeaderExtractor(r.headers()))
+                    });
 
-    let mut resp = next.run(req).await;
+                    let request_id = r
+                        .extensions()
+                        .get::<RequestId>()
+                        .and_then(|id| id.header_value().to_str().ok())
+                        .map(String::from)
+                        .unwrap_or_else(|| String::from("unknown"));
 
-    resp.headers_mut()
-        .insert("x-request-id", HeaderValue::from_str(&request_id).unwrap()); // We know our request IDs are ASCII, so this unwrap is safe.
+                    let s = tracing::info_span!(
+                        "request",
+                        http.method = %r.method(),
+                        http.url = %r.uri().path(),
+                        otel.kind = %SpanKind::Server,
+                        request.id = %request_id
+                    );
 
-    resp
+                    s.set_parent(parent_cx);
+                    s
+                })
+                .on_request(|_r: &Request<_>, _s: &tracing::Span| {}) // We silence the on-request hook
+                .on_response(
+                    |response: &Response, latency: Duration, _span: &tracing::Span| {
+                        tracing::info!(
+                            status = ?response.status(),
+                            elapsed = ?latency,
+                            "otel.status_code"=?response.status(),
+                            http.status_code=%response.status(),
+                            "complete");
+                    },
+                ),
+        )
+        .layer(axum::middleware::from_fn(
+            apikit::middleware::propagate_tracing_context,
+        ))
+        .layer(PropagateRequestIdLayer::x_request_id());
+
+    router.layer(svc)
 }
 
 /// Wraps a router with our extension layers.
@@ -73,7 +95,6 @@ fn wrap_extension_layers(
         }))
         .layer(Extension(config.clone()))
         .layer(Extension(node.clone()))
-        .layer(axum::middleware::from_fn(redirect_request_id))
 }
 
 fn wrap_cors_layer(router: Router) -> Router {
@@ -92,6 +113,7 @@ fn wrap_cors_layer(router: Router) -> Router {
             AUTHORIZATION,
             HeaderName::from_static("x-blob-meta"),
             HeaderName::from_static("x-blob-size"),
+            HeaderName::from_static("x-request-id"),
         ]);
 
     router.layer(cors)
@@ -105,8 +127,5 @@ pub fn wrap(
 ) -> Router {
     router = wrap_trace_layer(router);
     router = wrap_extension_layers(router, config, node, certificate_info);
-    router = wrap_cors_layer(router);
-
-    // Generate an ID for each request.
-    router.layer(RequestIdLayer)
+    wrap_cors_layer(router)
 }

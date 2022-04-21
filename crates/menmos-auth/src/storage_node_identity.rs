@@ -28,11 +28,11 @@ impl<B: Send> FromRequest<B> for StorageNodeIdentity {
         let tok_maybe = if let Ok(TypedHeader(headers::Authorization(bearer))) =
             TypedHeader::<Authorization<Bearer>>::from_request(req).await
         {
-            tracing::debug!("got a bearer token from authorization header");
+            tracing::trace!("got a bearer token from authorization header");
             Some(bearer.token().to_string())
         } else if let Ok(Query(q)) = Query::<Signature>::from_request(req).await {
             if q.signature.is_some() {
-                tracing::debug!("got a signature from query params");
+                tracing::trace!("got a signature from query params");
             }
             q.signature
         } else {

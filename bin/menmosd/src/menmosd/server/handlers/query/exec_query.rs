@@ -42,6 +42,7 @@ async fn get_blob_url<S: AsRef<str>>(
     Ok(uri)
 }
 
+#[tracing::instrument(skip(results, node, config, request_ip, identity), fields(len=results.count))]
 async fn fetch_urls(
     signed: bool,
     results: &mut QueryResponse,

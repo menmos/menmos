@@ -6,12 +6,23 @@ use opentelemetry::KeyValue;
 
 use crate::logging::TracingConfig;
 
-pub fn init_tracer(name: &str, cfg: &TracingConfig) -> Result<sdktrace::Tracer, TraceError> {
+pub fn init_tracer(
+    name: &str,
+    cfg: &TracingConfig,
+) -> Result<Option<sdktrace::Tracer>, TraceError> {
     match cfg {
         TracingConfig::None => {
-            opentelemetry_jaeger::new_pipeline() // We suppose jaeger in development mode (localhost)
-                .with_service_name(name)
-                .install_batch(opentelemetry::runtime::Tokio)
+            // We do nothing.
+            Ok(None)
+        }
+        TracingConfig::Jaeger { host } => {
+            let mut builder = opentelemetry_jaeger::new_pipeline().with_service_name(name);
+
+            if let Some(host) = host {
+                builder = builder.with_agent_endpoint(host);
+            }
+            builder.install_simple().map(Some)
+            //.install_batch(opentelemetry::runtime::Tokio) TODO BEFORE PR: Fix batch size and switch back to batching
         }
         TracingConfig::OTLP {} => opentelemetry_otlp::new_pipeline()
             .tracing()
@@ -19,6 +30,7 @@ pub fn init_tracer(name: &str, cfg: &TracingConfig) -> Result<sdktrace::Tracer, 
             .with_trace_config(sdktrace::config().with_resource(Resource::new(vec![
                 KeyValue::new("service.name", String::from(name)),
             ])))
-            .install_batch(opentelemetry::runtime::Tokio),
+            .install_batch(opentelemetry::runtime::Tokio)
+            .map(Some),
     }
 }
