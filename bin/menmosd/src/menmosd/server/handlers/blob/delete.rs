@@ -13,7 +13,7 @@ use interface::DynDirectoryNode;
 use crate::network::get_storage_node_address;
 use crate::Config;
 
-#[tracing::instrument(skip(node, config, addr))]
+#[tracing::instrument("handler.blob.delete", skip(node, config, addr))]
 pub async fn delete(
     user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

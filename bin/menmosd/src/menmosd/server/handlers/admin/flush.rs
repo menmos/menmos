@@ -7,7 +7,7 @@ use interface::DynDirectoryNode;
 
 use menmos_auth::UserIdentity;
 
-#[tracing::instrument(skip(node))]
+#[tracing::instrument(name = "handler.admin.flush", skip(node))]
 pub async fn flush(
     user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

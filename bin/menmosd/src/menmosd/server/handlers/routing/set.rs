@@ -10,7 +10,7 @@ use menmos_auth::UserIdentity;
 
 use protocol::directory::routing::SetRoutingConfigRequest;
 
-#[tracing::instrument(skip(node))]
+#[tracing::instrument("handler.routing.set", skip(node))]
 pub async fn set(
     user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

@@ -1,3 +1,6 @@
+# Set the batch size for opentelemetry exports
+export OTEL_BSP_MAX_EXPORT_BATCH_SIZE := "128"
+
 # Installs tools to work with menmos
 setup:
     cargo install cargo-nextest

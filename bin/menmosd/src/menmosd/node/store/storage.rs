@@ -33,6 +33,7 @@ impl Flush for SledStorageMappingStore {
 }
 
 impl StorageMappingStore for SledStorageMappingStore {
+    #[tracing::instrument(name = "storage.get_for_blob", level = "debug", skip(self))]
     fn get_node_for_blob(&self, blob_id: &str) -> Result<Option<String>> {
         tokio::task::block_in_place(|| {
             Ok(self
@@ -42,6 +43,7 @@ impl StorageMappingStore for SledStorageMappingStore {
         })
     }
 
+    #[tracing::instrument(name = "storage.set_for_blob", level = "debug", skip(self))]
     fn set_node_for_blob(&self, blob_id: &str, node_id: String) -> Result<()> {
         tokio::task::block_in_place(|| {
             self.tree.insert(blob_id, node_id.as_bytes())?;
@@ -49,6 +51,7 @@ impl StorageMappingStore for SledStorageMappingStore {
         })
     }
 
+    #[tracing::instrument(name = "storage.delete_blob", level = "debug", skip(self))]
     fn delete_blob(&self, blob_id: &str) -> Result<Option<String>> {
         tokio::task::block_in_place(|| {
             Ok(self
@@ -58,6 +61,7 @@ impl StorageMappingStore for SledStorageMappingStore {
         })
     }
 
+    #[tracing::instrument(name = "storage.clear", level = "debug", skip(self))]
     fn clear(&self) -> Result<()> {
         tokio::task::block_in_place(|| self.tree.clear())?;
         tracing::debug!("storage index destroyed");

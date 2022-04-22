@@ -43,7 +43,7 @@ pub struct BitvecTree {
 }
 
 impl BitvecTree {
-    #[tracing::instrument(name = "bv_tree_init", skip(db))]
+    #[tracing::instrument(name = "bv_tree.init", skip(db))]
     pub fn new(db: &sled::Db, name: &str) -> Result<Self> {
         let tree_name = format!("{}-bv-tree", name);
         let tree = db.open_tree(&tree_name)?;
@@ -57,21 +57,23 @@ impl BitvecTree {
         })
     }
 
-    #[tracing::instrument(level = "trace", skip(self, serialized_idx), fields(name = % self.name))]
+    #[tracing::instrument(name = "bv_tree.insert", level = "trace", skip(self, serialized_idx), fields(name = % self.name))]
     pub fn insert(&self, key: &str, serialized_idx: &[u8]) -> Result<()> {
         self.insert_bytes(key.to_lowercase().as_bytes(), serialized_idx)
     }
 
+    #[tracing::instrument(name = "bv_tree.insert_bytes", level = "trace", skip(self, key, serialized_idx), fields(name = % self.name))]
     pub fn insert_bytes<T: AsRef<[u8]>>(&self, key: T, serialized_idx: &[u8]) -> Result<()> {
         tokio::task::block_in_place(|| self.tree.merge(key.as_ref(), serialized_idx))?;
         Ok(())
     }
 
-    #[tracing::instrument(level = "trace", skip(self), fields(name = % self.name))]
+    #[tracing::instrument(name = "bv_tree.load", level = "trace", skip(self), fields(name = % self.name))]
     pub fn load(&self, key: &str) -> Result<BitVec> {
         self.load_bytes(key.to_lowercase().as_bytes())
     }
 
+    #[tracing::instrument(name = "bv_tree.load_bytes", level = "trace", skip(self, key), fields(name = % self.name))]
     pub fn load_bytes<T: AsRef<[u8]>>(&self, key: T) -> Result<BitVec> {
         let ivec_maybe = tokio::task::block_in_place(|| self.tree.get(key.as_ref()))?;
 
@@ -85,7 +87,7 @@ impl BitvecTree {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(self, key), fields(name = % self.name))]
+    #[tracing::instrument(name = "bv_tree.purge_key", level = "trace", skip(self, key), fields(name = % self.name))]
     pub fn purge_key<K: AsRef<[u8]>>(&self, key: K, idx: u32) -> Result<()> {
         tokio::task::block_in_place(|| {
             self.tree.update_and_fetch(key, |f| {
@@ -118,7 +120,7 @@ impl BitvecTree {
         Ok(())
     }
 
-    #[tracing::instrument(level = "trace", skip(self), fields(name = % self.name))]
+    #[tracing::instrument(name = "bv_tree.purge", level = "trace", skip(self), fields(name = % self.name))]
     pub fn purge(&self, idx: u32) -> Result<()> {
         tokio::task::block_in_place(|| {
             for res in self.tree.iter() {
@@ -129,6 +131,7 @@ impl BitvecTree {
         Ok(())
     }
 
+    #[tracing::instrument(name = "bv_tree.flush", skip(self))]
     pub async fn flush(&self) -> Result<()> {
         self.tree.flush_async().await?;
         Ok(())
@@ -142,6 +145,7 @@ impl BitvecTree {
         &self.tree
     }
 
+    #[tracing::instrument(name = "bv_tree.clear", skip(self))]
     pub fn clear(&self) -> Result<()> {
         tokio::task::block_in_place(|| self.tree.clear())?;
         tracing::trace!(name = %self.name, "cleared tree");

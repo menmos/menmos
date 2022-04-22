@@ -7,7 +7,7 @@ use interface::DynDirectoryNode;
 
 use menmos_auth::StorageNodeIdentity;
 
-#[tracing::instrument(skip(node))]
+#[tracing::instrument(name = "handler.admin.rebuild_complete", skip(node))]
 pub async fn rebuild_complete(
     identity: StorageNodeIdentity,
     Extension(node): Extension<DynDirectoryNode>,

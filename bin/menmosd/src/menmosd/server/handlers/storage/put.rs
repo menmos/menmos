@@ -40,7 +40,7 @@ fn get_request_from_move_info(
 }
 
 #[tracing::instrument(
-    name = "put_storage_node",
+    name = "handler.storage.put",
     skip(config, node, addr, info, certificate_info)
 )]
 pub async fn put(

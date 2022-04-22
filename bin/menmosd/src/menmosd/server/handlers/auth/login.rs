@@ -11,7 +11,7 @@ use menmos_auth::{EncryptionKey, UserIdentity};
 
 use protocol::directory::auth::{LoginRequest, LoginResponse};
 
-#[tracing::instrument(skip(node, key), fields(user = ? request.username))]
+#[tracing::instrument("handler.auth.login", skip(node, key), fields(user = ? request.username))]
 pub async fn login(
     Extension(node): Extension<Arc<dyn DirectoryNode + Send + Sync>>,
     Extension(EncryptionKey { key }): Extension<EncryptionKey>,

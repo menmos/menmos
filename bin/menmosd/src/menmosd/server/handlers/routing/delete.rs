@@ -7,7 +7,7 @@ use interface::DynDirectoryNode;
 
 use menmos_auth::UserIdentity;
 
-#[tracing::instrument(skip(node))]
+#[tracing::instrument("handler.routing.delete", skip(node))]
 pub async fn delete(
     user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

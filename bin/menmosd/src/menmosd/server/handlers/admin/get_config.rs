@@ -9,7 +9,7 @@ use menmos_auth::UserIdentity;
 
 use crate::Config;
 
-#[tracing::instrument(skip(config))]
+#[tracing::instrument(name = "handler.admin.get_config", skip(config))]
 pub async fn get_config(
     user: UserIdentity,
     Extension(config): Extension<Arc<Config>>,

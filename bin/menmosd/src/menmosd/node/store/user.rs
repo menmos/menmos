@@ -46,6 +46,7 @@ impl Flush for SledUserStore {
 }
 
 impl UserStore for SledUserStore {
+    #[tracing::instrument(name = "user.add", level = "debug", skip(self, password))]
     fn add_user(&self, username: &str, password: &str) -> Result<()> {
         let config = argon2::Config::default();
         let password_hash =
@@ -59,6 +60,7 @@ impl UserStore for SledUserStore {
         Ok(())
     }
 
+    #[tracing::instrument(name = "user.authenticate", level = "debug", skip(self, password))]
     fn authenticate(&self, username: &str, password: &str) -> Result<bool> {
         let hash_ivec = tokio::task::block_in_place(|| self.map.get(username.as_bytes()))?;
         if let Some(value) = hash_ivec {
@@ -69,6 +71,7 @@ impl UserStore for SledUserStore {
         }
     }
 
+    #[tracing::instrument(name = "user.has_user", level = "debug", skip(self))]
     fn has_user(&self, username: &str) -> Result<bool> {
         let user_exists =
             tokio::task::block_in_place(|| self.map.contains_key(username.as_bytes()))?;

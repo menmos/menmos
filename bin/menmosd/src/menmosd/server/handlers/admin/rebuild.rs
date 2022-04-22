@@ -7,7 +7,7 @@ use interface::DynDirectoryNode;
 
 use menmos_auth::UserIdentity;
 
-#[tracing::instrument(skip(node))]
+#[tracing::instrument(name = "handler.admin.rebuild", skip(node))]
 pub async fn rebuild(
     user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

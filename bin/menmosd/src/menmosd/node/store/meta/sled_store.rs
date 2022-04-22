@@ -106,7 +106,7 @@ impl MetadataStore for SledMetadataStore {
         }
     }
 
-    #[tracing::instrument(name = "insert", level = "debug", skip(self, info))]
+    #[tracing::instrument(name = "meta.insert", level = "debug", skip(self, info))]
     fn insert(&self, id: u32, info: &BlobInfo) -> Result<()> {
         let serialized_id = id.to_le_bytes();
 
@@ -138,27 +138,27 @@ impl MetadataStore for SledMetadataStore {
         Ok(())
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[tracing::instrument(name = "meta.load_user_mask", level = "debug", skip(self))]
     fn load_user_mask(&self, username: &str) -> Result<BitVec> {
         self.user_mask_map.load(username)
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[tracing::instrument(name = "meta.load_tag", level = "debug", skip(self))]
     fn load_tag(&self, tag: &str) -> Result<BitVec> {
         self.tag_map.load(tag)
     }
 
-    #[tracing::instrument(level = "debug", skip(self, k, v), fields(key=?k, value=?v))]
+    #[tracing::instrument(name = "meta.load_key_value", level = "debug", skip(self, k, v), fields(key=?k, value=?v))]
     fn load_key_value(&self, k: &str, v: &FieldValue) -> Result<BitVec> {
         self.field_index.load_field_value(k, v)
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[tracing::instrument(name = "meta.load_key", level = "debug", skip(self))]
     fn load_key(&self, k: &str) -> Result<BitVec> {
         self.field_index.load_field(k)
     }
 
-    #[tracing::instrument(level = "debug", skip(self, mask))]
+    #[tracing::instrument(name = "meta.list_all_tags", level = "debug", skip(self, mask))]
     fn list_all_tags(&self, mask: Option<&BitVec>) -> Result<HashMap<String, usize>> {
         let tree_len = tokio::task::block_in_place(|| self.tag_map.tree().len());
         let mut hsh = HashMap::with_capacity(tree_len);
@@ -187,7 +187,11 @@ impl MetadataStore for SledMetadataStore {
         Ok(hsh)
     }
 
-    #[tracing::instrument(level = "debug", skip(self, field_filter, mask))]
+    #[tracing::instrument(
+        name = "meta.list_kv_fields",
+        level = "debug",
+        skip(self, field_filter, mask)
+    )]
     fn list_all_kv_fields(
         &self,
         field_filter: &Option<Vec<String>>,
@@ -256,7 +260,7 @@ impl MetadataStore for SledMetadataStore {
         Ok(hsh)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
+    #[tracing::instrument(name = "meta.purge", level = "info", skip(self))]
     fn purge(&self, idx: u32) -> Result<()> {
         let serialized_idx = idx.to_le_bytes();
 

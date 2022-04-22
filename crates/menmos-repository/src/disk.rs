@@ -184,7 +184,7 @@ impl Repository for DiskRepository {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument("disk.available_space", skip(self))]
     async fn available_space(&self) -> Result<Option<u64>> {
         let mut sys = self.system.lock().await;
         sys.refresh_disks_list();

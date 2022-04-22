@@ -33,6 +33,7 @@ impl Flush for SledRoutingStore {
 }
 
 impl RoutingStore for SledRoutingStore {
+    #[tracing::instrument(name = "routing.get", level = "debug", skip(self))]
     fn get_routing_config(&self, username: &str) -> Result<Option<RoutingConfigState>> {
         let config_ivec_maybe =
             tokio::task::block_in_place(|| self.routing_keys.get(username.as_bytes()))?;
@@ -45,6 +46,7 @@ impl RoutingStore for SledRoutingStore {
         }
     }
 
+    #[tracing::instrument(name = "routing.set", level = "debug", skip(self, routing_key))]
     fn set_routing_config(&self, username: &str, routing_key: &RoutingConfigState) -> Result<()> {
         let tagged_state = TaggedRoutingConfigState::from(routing_key.clone());
         let encoded = bincode::serialize(&tagged_state)?;
@@ -57,6 +59,7 @@ impl RoutingStore for SledRoutingStore {
         Ok(())
     }
 
+    #[tracing::instrument(name = "routing.delete", level = "debug", skip(self))]
     fn delete_routing_config(&self, username: &str) -> Result<()> {
         tokio::task::block_in_place(|| self.routing_keys.remove(username.as_bytes()))?;
         Ok(())

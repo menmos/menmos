@@ -21,8 +21,9 @@ pub fn init_tracer(
             if let Some(host) = host {
                 builder = builder.with_agent_endpoint(host);
             }
-            builder.install_simple().map(Some)
-            //.install_batch(opentelemetry::runtime::Tokio) TODO BEFORE PR: Fix batch size and switch back to batching
+            builder
+                .install_batch(opentelemetry::runtime::Tokio)
+                .map(Some)
         }
         TracingConfig::OTLP {} => opentelemetry_otlp::new_pipeline()
             .tracing()

@@ -17,7 +17,7 @@ use protocol::header::{BlobMetaHeader, BlobSizeHeader};
 use crate::network::get_storage_node_address;
 use crate::Config;
 
-#[tracing::instrument(skip(node, config, meta, addr))]
+#[tracing::instrument("handler.blob.put", skip(node, config, meta, addr))]
 pub async fn put(
     user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

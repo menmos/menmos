@@ -9,7 +9,7 @@ use interface::{DynDirectoryNode, MetadataList};
 
 use protocol::directory::blobmeta::ListMetadataRequest;
 
-#[tracing::instrument(skip(node, req))]
+#[tracing::instrument("handler.meta.list", skip(node, req))]
 pub async fn list(
     user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

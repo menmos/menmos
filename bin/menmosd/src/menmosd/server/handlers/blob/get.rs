@@ -14,7 +14,7 @@ use crate::Config;
 
 use crate::network::get_storage_node_address;
 
-#[tracing::instrument(skip(node, config, addr))]
+#[tracing::instrument("handler.blob.get", skip(node, config, addr))]
 pub async fn get(
     _user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

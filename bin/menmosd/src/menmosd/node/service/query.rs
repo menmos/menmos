@@ -30,6 +30,7 @@ impl QueryService {
         }
     }
 
+    #[tracing::instrument(name = "query.load_document", skip(self))]
     fn load_document(&self, idx: u32) -> Result<Hit> {
         let doc = self.documents.lookup(idx)?;
         ensure!(doc.is_some(), "missing document");
@@ -44,7 +45,11 @@ impl QueryService {
         )) // TODO: This default string isn't super clean, but in the current architecture its guaranteed to be replaced before returning.
     }
 
-    #[tracing::instrument(level = "info", skip(self, query, username))]
+    #[tracing::instrument(
+        name = "query.get_bitvector",
+        level = "info",
+        skip(self, query, username)
+    )]
     fn get_resulting_bitvector(&self, query: &Query, username: &str) -> Result<BitVec> {
         Ok(query.expression.evaluate(self)? & self.metadata.load_user_mask(username)?)
     }
@@ -52,7 +57,7 @@ impl QueryService {
 
 #[async_trait]
 impl interface::QueryExecutor for QueryService {
-    #[tracing::instrument(skip(self, query, username))]
+    #[tracing::instrument(name = "query.query", skip(self, query, username))]
     async fn query(&self, query: &Query, username: &str) -> Result<QueryResponse> {
         let result_bitvector = self.get_resulting_bitvector(query, username)?;
         tracing::debug!(count=?result_bitvector.count_ones(), "loaded resulting bitvector");
@@ -82,7 +87,7 @@ impl interface::QueryExecutor for QueryService {
             // Compute facets on-the-fly
             // TODO: Facets could be made much faster via a structure at indexing time, this is a WIP.
             if query.facets {
-                let span = tracing::info_span!("facets");
+                let span = tracing::info_span!("query.facets");
                 span.in_scope(|| {
                     let mut tag_map = HashMap::new();
                     let mut kv_map = HashMap::new();
@@ -114,7 +119,7 @@ impl interface::QueryExecutor for QueryService {
             let end_point = (start_point + query.size).min(total);
 
             // Load _only_ the documents that will be returned by the query.
-            tracing::info_span!("load_documents").in_scope(|| {
+            tracing::info_span!("query.load_documents").in_scope(|| {
                 for idx in &indices[start_point..end_point] {
                     hits.push(self.load_document(*idx)?);
                 }
@@ -130,6 +135,7 @@ impl interface::QueryExecutor for QueryService {
         })
     }
 
+    #[tracing::instrument(name = "query.query_move_requests", skip(self, query, username))]
     async fn query_move_requests(
         &self,
         query: &Query,
@@ -164,6 +170,7 @@ impl interface::QueryExecutor for QueryService {
         Ok(move_requests)
     }
 
+    #[tracing::instrument(name = "query.list_metadata", skip(self, tags, meta_keys, username))]
     async fn list_metadata(
         &self,
         tags: Option<Vec<String>>,

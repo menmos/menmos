@@ -9,7 +9,7 @@ use menmos_auth::{EncryptionKey, UserIdentity};
 
 use protocol::directory::auth::{LoginResponse, RegisterRequest};
 
-#[tracing::instrument(skip(node, key), fields(user = ? request.username, caller = ? identity.username))]
+#[tracing::instrument("handler.auth.register", skip(node, key), fields(user = ? request.username, caller = ? identity.username))]
 pub async fn register(
     identity: menmos_auth::UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

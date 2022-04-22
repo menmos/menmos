@@ -7,7 +7,7 @@ use interface::DynDirectoryNode;
 
 use menmos_auth::StorageNodeIdentity;
 
-#[tracing::instrument(skip(node))]
+#[tracing::instrument("handler.meta.delete", skip(node))]
 pub async fn delete(
     identity: StorageNodeIdentity,
     Path(blob_id): Path<String>,

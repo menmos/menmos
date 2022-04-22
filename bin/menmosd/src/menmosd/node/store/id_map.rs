@@ -28,7 +28,7 @@ pub struct IDMap {
 }
 
 impl IDMap {
-    #[tracing::instrument(name = "id_map_init", skip(db))]
+    #[tracing::instrument(name = "id_map.init", skip(db))]
     pub fn new(db: &sled::Db, name: &str) -> Result<Self> {
         let fwd_map = db.open_tree(format!("idmap-{}-fwd", name))?;
         let rev_map = db.open_tree(format!("idmap-{}-rev", name))?;
@@ -51,6 +51,7 @@ impl IDMap {
     }
 
     /// Gets the ID associated with an item, assigning it if it doesn't exist.
+    #[tracing::instrument(name = "id_map.get_or_assign", level = "trace", skip(self, item))]
     pub fn get_or_assign<T: AsRef<[u8]>>(&self, item: T) -> Result<u32> {
         tokio::task::block_in_place(|| {
             if let Some(i) = self.fwd_map.get(item.as_ref()).unwrap() {
@@ -76,6 +77,7 @@ impl IDMap {
     }
 
     /// Get the ID corresponding to an item.
+    #[tracing::instrument(name = "id_map.get", level = "trace", skip(self, item))]
     pub fn get<T: AsRef<[u8]>>(&self, item: T) -> Result<Option<u32>> {
         tokio::task::block_in_place(|| {
             Ok(self
@@ -87,6 +89,7 @@ impl IDMap {
     }
 
     /// Lookup the item associated with an ID.
+    #[tracing::instrument(name = "id_map.lookup", level = "trace", skip(self))]
     pub fn lookup(&self, id: u32) -> Result<Option<IVec>> {
         tokio::task::block_in_place(|| {
             if let Some(i) = self.rev_map.get(id.to_be_bytes())? {
@@ -100,6 +103,7 @@ impl IDMap {
     /// Delete an item from the ID Map.
     ///
     /// Returns the ID of the item if it was in the map.
+    #[tracing::instrument(name = "id_map.delete", level = "trace", skip(self, item))]
     pub fn delete<T: AsRef<[u8]>>(&self, item: T) -> Result<Option<u32>> {
         tokio::task::block_in_place(|| {
             if let Some(ivec) = self.fwd_map.remove(item.as_ref())? {
@@ -133,6 +137,7 @@ impl IDMap {
             })
     }
 
+    #[tracing::instrument(name = "id_map.clear", skip(self))]
     pub fn clear(&self) -> Result<()> {
         tokio::task::block_in_place(|| {
             self.next_id.store(0, Ordering::SeqCst);
