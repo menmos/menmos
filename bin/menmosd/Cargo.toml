@@ -71,7 +71,7 @@ sled = { git = "https://github.com/spacejam/sled", branch = "main" }
 time = {version = "0.3.9", features = ["serde"]}
 tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_debug"] }
 tokio = { version = "1.16", features = ["full"] }
-uuid = { version = "0.8", features = ["serde", "v4"] }
+uuid = { version = "1.0", features = ["serde", "v4"] }
 x509-parser = "0.13"
 
 include_dir = { version = "0.7.2", optional = true }
