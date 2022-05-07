@@ -14,6 +14,6 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = {version = "1.0.57", features=["backtrace"]}
-axum = "0.5.3"
+axum = "0.5.4"
 serde = { version = "1", features = ["derive"] }
 tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_debug"] }
