@@ -353,13 +353,12 @@ impl Repository for S3Repository {
             tracing::trace!("flushing {} bytes", file_length);
 
             // TODO: Do this multipart?
-
             let _result = self
                 .client
                 .put_object()
                 .bucket(&self.bucket)
                 .key(&id)
-                .body(ByteStream::from_file(f).await?)
+                .body(ByteStream::read_from().file(f).build().await?)
                 .send()
                 .await
                 .context("s3 PutObject request failed")?;
