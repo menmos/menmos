@@ -84,7 +84,7 @@ impl BlobMetaRequest {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq, Ord, PartialOrd)]
 #[serde(untagged)]
 pub enum FieldValue {
     Str(String),
