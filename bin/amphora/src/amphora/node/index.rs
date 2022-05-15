@@ -31,6 +31,7 @@ impl Index {
         })
     }
 
+    #[tracing::instrument(name = "index.get", skip(self))]
     pub fn get(&self, blob_id: &str) -> Result<Option<BlobInfo>> {
         // TODO: Using block_in_place instead of spawn_blocking
         //       is fine as long as we don't want to run multiple operations concurrently in a
@@ -48,6 +49,7 @@ impl Index {
         })
     }
 
+    #[tracing::instrument(name = "index.get_all_keys", skip(self))]
     pub fn get_all_keys(&self) -> Result<Vec<String>> {
         tokio::task::block_in_place(|| {
             self.db
@@ -60,6 +62,7 @@ impl Index {
         })
     }
 
+    #[tracing::instrument(name = "index.insert", skip(self, info))]
     pub fn insert(&self, blob_id: &str, info: &BlobInfo) -> Result<()> {
         let tagged_info = TaggedBlobInfo::from(info.clone());
 
@@ -86,6 +89,7 @@ impl Index {
         Ok(())
     }
 
+    #[tracing::instrument(name = "index.remove", skip(self))]
     pub fn remove(&self, blob_id: &str) -> Result<()> {
         let old_ivec = tokio::task::block_in_place(|| self.db.remove(blob_id.as_bytes()))?;
 
@@ -96,6 +100,7 @@ impl Index {
         Ok(())
     }
 
+    #[tracing::instrument(name = "index.flush", skip(self))]
     pub async fn flush(&self) -> Result<()> {
         self.db.flush_async().await?;
         Ok(())

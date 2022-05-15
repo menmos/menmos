@@ -122,6 +122,7 @@ impl FieldsIndex {
         Ok(Some(bufwriter.into_inner().freeze()))
     }
 
+    #[tracing::instrument(name = "fields.purge_field_value", level = "trace", skip(self))]
     pub fn purge_field_value(
         &self,
         field: &str,
@@ -157,6 +158,7 @@ impl FieldsIndex {
         Ok(())
     }
 
+    #[tracing::instrument(name = "fields.insert", level = "trace", skip(self, serialized_docid))]
     pub fn insert(&self, field: &str, value: &FieldValue, serialized_docid: &[u8]) -> Result<()> {
         let field_key = self
             .build_field_key(field, value, true)?
@@ -165,6 +167,7 @@ impl FieldsIndex {
         self.field_map.insert_bytes(&field_key, serialized_docid)
     }
 
+    #[tracing::instrument(name = "fields.load_field_value", level = "trace", skip(self))]
     pub fn load_field_value(&self, field: &str, value: &FieldValue) -> Result<BitVec> {
         match self.build_field_key(field, value, false)? {
             Some(field_key) => self.field_map.load_bytes(&field_key),
@@ -178,6 +181,7 @@ impl FieldsIndex {
         }
     }
 
+    #[tracing::instrument(name = "fields.load_field", level = "trace", skip(self))]
     pub fn load_field(&self, field: &str) -> Result<BitVec> {
         let mut bv = BitVec::default();
 
@@ -221,6 +225,7 @@ impl FieldsIndex {
         })
     }
 
+    #[tracing::instrument(name = "fields.get_field_values", level = "trace", skip(self))]
     pub fn get_field_values(
         &self,
         field: &str,
@@ -247,10 +252,12 @@ impl FieldsIndex {
         ))
     }
 
+    #[tracing::instrument(name = "fields.purge", level = "trace", skip(self))]
     pub fn purge(&self, idx: u32) -> Result<()> {
         self.field_map.purge(idx)
     }
 
+    #[tracing::instrument(name = "fields.clear", level = "trace", skip(self))]
     pub fn clear(&self) -> Result<()> {
         self.field_map.clear()?;
         self.field_ids.clear()

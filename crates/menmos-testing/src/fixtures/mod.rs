@@ -18,7 +18,7 @@ static INIT: Once = Once::new();
 
 fn init_logger() {
     INIT.call_once(|| {
-        xecute::logging::init_logger(&None).unwrap();
+        xecute::logging::init_logger("menmos-test", &None).unwrap();
     });
 }
 

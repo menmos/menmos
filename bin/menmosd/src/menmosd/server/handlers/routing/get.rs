@@ -9,7 +9,7 @@ use menmos_auth::UserIdentity;
 
 use protocol::directory::routing::GetRoutingConfigResponse;
 
-#[tracing::instrument(skip(node))]
+#[tracing::instrument("handler.routing.get", skip(node))]
 pub async fn get(
     user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

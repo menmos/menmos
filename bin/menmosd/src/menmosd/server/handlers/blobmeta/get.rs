@@ -8,7 +8,7 @@ use protocol::directory::blobmeta::GetMetaResponse;
 
 use interface::DynDirectoryNode;
 
-#[tracing::instrument(skip(node))]
+#[tracing::instrument("handler.meta.get", skip(node))]
 pub async fn get(
     user: UserIdentity,
     Path(blob_id): Path<String>,

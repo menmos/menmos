@@ -17,7 +17,7 @@ use protocol::storage::PutResponse;
 
 use protocol::header::{BlobMetaHeader, BlobSizeHeader};
 
-#[tracing::instrument(skip(node, meta_request, body))]
+#[tracing::instrument(name = "handler.put", skip(node, meta_request, body))]
 pub async fn put(
     user: UserIdentity,
     Extension(node): Extension<DynStorageNode>,

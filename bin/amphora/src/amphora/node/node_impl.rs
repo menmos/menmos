@@ -80,6 +80,7 @@ impl Storage {
         Ok(s)
     }
 
+    #[tracing::instrument(name = "node.update_registration", skip(self), fields(otel.kind = "Client"))]
     pub async fn update_registration(&self) -> Result<()> {
         let redirect_info = get_redirect_info(
             self.config.redirect.subnet_mask,
@@ -179,6 +180,7 @@ impl Storage {
 
 #[async_trait]
 impl StorageNode for Storage {
+    #[tracing::instrument(name = "node.put", skip(self, info_request, stream))]
     async fn put(
         &self,
         id: String,
@@ -221,6 +223,7 @@ impl StorageNode for Storage {
         Ok(())
     }
 
+    #[tracing::instrument(name = "node.write", skip(self, body), fields(buf_size=?body.len()))]
     async fn write(
         &self,
         id: String,
@@ -253,6 +256,7 @@ impl StorageNode for Storage {
         Ok(())
     }
 
+    #[tracing::instrument(name = "node.get", skip(self))]
     async fn get(&self, blob_id: String, range: Option<(Bound<u64>, Bound<u64>)>) -> Result<Blob> {
         let _guard = self.shard_lock.read(&blob_id).await;
 
@@ -280,6 +284,7 @@ impl StorageNode for Storage {
         })
     }
 
+    #[tracing::instrument(name = "node.update_meta", skip(self, info_request))]
     async fn update_meta(&self, blob_id: String, info_request: BlobInfoRequest) -> Result<()> {
         let _guard = self.shard_lock.write(&blob_id).await;
 
@@ -305,6 +310,7 @@ impl StorageNode for Storage {
         Ok(())
     }
 
+    #[tracing::instrument(name = "node.delete", skip(self))]
     async fn delete(&self, blob_id: String, username: &str) -> Result<()> {
         let _guard = self.shard_lock.write(&blob_id).await;
 
@@ -327,6 +333,7 @@ impl StorageNode for Storage {
         (*guard).clone()
     }
 
+    #[tracing::instrument(name = "node.fsync", skip(self))]
     async fn fsync(&self, blob_id: String, username: &str) -> Result<()> {
         let _guard = self.shard_lock.write(&blob_id).await;
 
@@ -336,6 +343,7 @@ impl StorageNode for Storage {
         self.repo.fsync(blob_id).await
     }
 
+    #[tracing::instrument(name = "node.flush", skip(self))]
     async fn flush(&self) -> Result<()> {
         self.index.flush().await
     }

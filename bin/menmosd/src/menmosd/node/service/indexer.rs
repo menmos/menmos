@@ -40,6 +40,7 @@ impl IndexerService {
 
 #[async_trait]
 impl interface::BlobIndexer for IndexerService {
+    #[tracing::instrument(name = "indexer.pick_node", skip(self, info_request))]
     async fn pick_node_for_blob(
         &self,
         blob_id: &str,
@@ -59,6 +60,7 @@ impl interface::BlobIndexer for IndexerService {
             .await
     }
 
+    #[tracing::instrument(name = "indexer.get_blob_meta", skip(self))]
     async fn get_blob_meta(&self, blob_id: &str, username: &str) -> Result<Option<BlobInfo>> {
         let blob_idx_maybe = self.documents.get(blob_id)?;
         let blob_info_maybe = blob_idx_maybe
@@ -75,6 +77,7 @@ impl interface::BlobIndexer for IndexerService {
         Ok(blob_info_maybe)
     }
 
+    #[tracing::instrument(name = "indexer.get_blob_storage_node", skip(self))]
     async fn get_blob_storage_node(&self, blob_id: &str) -> Result<Option<StorageNodeInfo>> {
         // These next two lines could technically be in one line, but since its an async
         // function and index::storage() returns a ref to the storage provider, the borrow checker can't guarantee that there
@@ -89,6 +92,7 @@ impl interface::BlobIndexer for IndexerService {
         }
     }
 
+    #[tracing::instrument(name = "indexer.index_blob", skip(self, info))]
     async fn index_blob(&self, blob_id: &str, info: BlobInfo, storage_node_id: &str) -> Result<()> {
         self.storage
             .set_node_for_blob(blob_id, storage_node_id.to_string())?;
@@ -100,6 +104,7 @@ impl interface::BlobIndexer for IndexerService {
         Ok(())
     }
 
+    #[tracing::instrument(name = "indexer.delete_blob", skip(self))]
     async fn delete_blob(
         &self,
         blob_id: &str,
@@ -172,6 +177,7 @@ impl interface::BlobIndexer for IndexerService {
         }
     }
 
+    #[tracing::instrument(name = "indexer.clear", skip(self))]
     async fn clear(&self) -> Result<()> {
         self.metadata.clear()?;
         self.documents.clear()?;
@@ -179,6 +185,7 @@ impl interface::BlobIndexer for IndexerService {
         Ok(())
     }
 
+    #[tracing::instrument(name = "indexer.flush", skip(self))]
     async fn flush(&self) -> Result<()> {
         tokio::try_join!(
             self.metadata.flush(),

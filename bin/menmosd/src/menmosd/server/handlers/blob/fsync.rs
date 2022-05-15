@@ -13,7 +13,7 @@ use menmos_auth::UserIdentity;
 use crate::network::get_storage_node_address;
 use crate::Config;
 
-#[tracing::instrument(skip(node, config, addr))]
+#[tracing::instrument("handler.blob.fsync", skip(node, config, addr))]
 pub async fn fsync(
     _user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

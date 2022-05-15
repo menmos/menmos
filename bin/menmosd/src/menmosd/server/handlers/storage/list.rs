@@ -9,7 +9,7 @@ use interface::DynDirectoryNode;
 
 use protocol::directory::storage::ListStorageNodesResponse;
 
-#[tracing::instrument(skip(node))]
+#[tracing::instrument("handler.storage.list", skip(node))]
 pub async fn list(
     _user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

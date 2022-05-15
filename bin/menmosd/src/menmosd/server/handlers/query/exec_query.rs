@@ -42,6 +42,7 @@ async fn get_blob_url<S: AsRef<str>>(
     Ok(uri)
 }
 
+#[tracing::instrument(name = "handler.query.fetch_urls", skip(results, node, config, request_ip, identity), fields(len=results.count))]
 async fn fetch_urls(
     signed: bool,
     results: &mut QueryResponse,
@@ -79,7 +80,7 @@ async fn fetch_urls(
     Ok(())
 }
 
-#[tracing::instrument(skip(node, config, addr, query_request))]
+#[tracing::instrument(name = "handler.query", skip(node, config, addr, query_request))]
 pub async fn query(
     user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

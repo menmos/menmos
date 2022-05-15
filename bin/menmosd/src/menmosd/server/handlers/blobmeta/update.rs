@@ -14,7 +14,7 @@ use menmos_auth::UserIdentity;
 use crate::network::get_storage_node_address;
 use crate::Config;
 
-#[tracing::instrument(skip(node, _meta, config, addr))]
+#[tracing::instrument("handler.meta.update", skip(node, _meta, config, addr))]
 pub async fn update(
     _user: UserIdentity,
     Extension(node): Extension<DynDirectoryNode>,

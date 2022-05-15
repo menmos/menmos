@@ -1,3 +1,6 @@
+# Set the batch size for opentelemetry exports
+export OTEL_BSP_MAX_EXPORT_BATCH_SIZE := "128"
+
 # Installs tools to work with menmos
 setup:
     cargo install cargo-nextest
@@ -34,8 +37,8 @@ clean:
 
 # Run menmosd using the local setup.
 menmosd loglevel="normal":
-    MENMOS_LOG_LEVEL="{{loglevel}}" cargo run -p menmosd -- --cfg {{WORKDIR}}/menmosd.toml
+    MENMOS_LOG_LEVEL="{{loglevel}}" cargo run -p menmosd -- --cfg {{WORKDIR}}/menmosd.toml --xecute tmp/xecute.json
 
 # Run amphora using the local setup.
 amphora loglevel="normal":
-    MENMOS_LOG_LEVEL="{{loglevel}}" cargo run -p amphora -- --cfg {{WORKDIR}}/amphora.toml
+    MENMOS_LOG_LEVEL="{{loglevel}}" cargo run -p amphora -- --cfg {{WORKDIR}}/amphora.toml --xecute tmp/xecute.json

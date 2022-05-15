@@ -23,7 +23,8 @@ tempfile = "3.3"
 [dependencies]
 axum = "0.5.5"
 axum-server = { version = "0.4.0", features = ["tls-rustls"] }
-tower-http = { version = "0.3.3", features = ["trace"] }
+tower = "0.4.12"
+tower-http = { version = "0.3.3", features = ["trace", "request-id"] }
 hyper = "0.14.18"
 
 anyhow = "1"
@@ -46,6 +47,8 @@ menmos-protocol = { version = "^0.2.6" }
 menmos-repository = { version = "^0.2.6" }
 menmos-std = { version = "^0.2.6" }
 menmos-xecute = { version = "^0.2.6" }
+opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
+opentelemetry-http = "0.6.0"
 parking_lot = "0.12.0"
 public-ip = { git = "https://github.com/avitex/rust-public-ip", rev = "09c3c33" } # TODO: Update to v0.2
 reqwest = { version = "0.11", features = ["json"] }
@@ -55,3 +58,5 @@ sled = { git = "https://github.com/spacejam/sled", branch = "main" }
 time = {version = "0.3.9", features=["serde"]}
 tokio = { version = "1.18", features = ["full"] }
 tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_debug"] }
+tracing-opentelemetry = "0.17.2"
+uuid = { version = "1.0", features = ["v4", "fast-rng"] }

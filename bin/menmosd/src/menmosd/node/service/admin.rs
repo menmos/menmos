@@ -32,6 +32,7 @@ impl NodeAdminService {
 
 #[async_trait]
 impl interface::NodeAdminController for NodeAdminService {
+    #[tracing::instrument(name = "admin.register_storage_node", skip(self))]
     async fn register_storage_node(&self, def: StorageNodeInfo) -> Result<StorageNodeResponseData> {
         let rebuild_requested = {
             let rebuild_queue_guard = self.rebuild_queue.lock();
@@ -48,10 +49,12 @@ impl interface::NodeAdminController for NodeAdminService {
         Ok(StorageNodeResponseData { rebuild_requested })
     }
 
+    #[tracing::instrument(name = "admin.list_storage_nodes", skip(self))]
     async fn list_storage_nodes(&self) -> Result<Vec<StorageNodeInfo>> {
         Ok(self.router.list_nodes().await)
     }
 
+    #[tracing::instrument(name = "admin.start_rebuild", skip(self))]
     async fn start_rebuild(&self) -> Result<()> {
         let storage_nodes = self.router.list_nodes().await;
         tracing::info!(node_count = storage_nodes.len(), "starting rebuild");
@@ -65,6 +68,7 @@ impl interface::NodeAdminController for NodeAdminService {
         Ok(())
     }
 
+    #[tracing::instrument(name = "admin.rebuild_complete", skip(self))]
     async fn rebuild_complete(&self, storage_node_id: &str) -> Result<()> {
         let mut rebuild_queue_guard = self.rebuild_queue.lock();
         rebuild_queue_guard.retain(|item| item.id != storage_node_id);

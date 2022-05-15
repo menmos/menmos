@@ -8,7 +8,7 @@ use interface::{BlobInfo, DynDirectoryNode};
 
 use menmos_auth::StorageNodeIdentity;
 
-#[tracing::instrument(skip(node, blob_info))]
+#[tracing::instrument("handler.meta.create", skip(node, blob_info))]
 pub async fn create(
     identity: StorageNodeIdentity,
     Path(blob_id): Path<String>,

@@ -22,6 +22,7 @@ pub struct QueryCommand {
 }
 
 impl QueryCommand {
+    #[tracing::instrument(skip(self, cli, client))]
     pub async fn run(self, cli: OutputManager, client: Menmos) -> Result<()> {
         service::query::execute(cli, self.expression, self.from, self.size, self.all, client)
             .await?;
