@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::hash::Hash;
 
-use tokio::sync::Mutex;
+use parking_lot::Mutex;
 
 use super::Cache;
 
@@ -22,38 +22,38 @@ where
         }
     }
 
-    pub async fn insert(&self, key: K, value: V) -> (bool, Option<V>) {
-        let mut guard = self.cache.lock().await;
+    pub fn insert(&self, key: K, value: V) -> (bool, Option<V>) {
+        let mut guard = self.cache.lock();
         guard.insert(key, value)
     }
 
-    pub async fn batch_insert<I: Iterator<Item = (K, V)>>(&self, it: I) {
-        let mut guard = self.cache.lock().await;
+    pub fn batch_insert<I: Iterator<Item = (K, V)>>(&self, it: I) {
+        let mut guard = self.cache.lock();
         for (k, v) in it {
             guard.insert(k, v);
         }
     }
 
-    pub async fn get<Q: ?Sized>(&self, key: &Q) -> Option<V>
+    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<V>
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let mut guard = self.cache.lock().await;
+        let mut guard = self.cache.lock();
         guard.get(key).cloned()
     }
 
-    pub async fn invalidate<Q: ?Sized>(&self, key: &Q)
+    pub fn invalidate<Q: ?Sized>(&self, key: &Q)
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let mut guard = self.cache.lock().await;
+        let mut guard = self.cache.lock();
         guard.invalidate(key)
     }
 
-    pub async fn clear(&self) {
-        let mut guard = self.cache.lock().await;
+    pub fn clear(&self) {
+        let mut guard = self.cache.lock();
         guard.clear()
     }
 }

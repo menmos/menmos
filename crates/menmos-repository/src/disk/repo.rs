@@ -1,4 +1,4 @@
-use std::io::{self, SeekFrom};
+use std::io::{self};
 use std::ops::Bound;
 use std::path::{Path, PathBuf};
 
@@ -14,12 +14,13 @@ use futures::prelude::*;
 
 use sysinfo::{Disk, DiskExt, System, SystemExt};
 
-use tokio::fs::{self, OpenOptions};
-use tokio::io::{AsyncSeekExt, AsyncWriteExt};
+use tokio::fs;
 use tokio::sync::Mutex;
 
-use super::iface::Repository;
+use crate::iface::{OperationGuard, Repository};
 use crate::util;
+
+use super::ops;
 
 #[cfg(unix)]
 async fn is_path_on_disk(disk: &Disk, path: &Path) -> Result<bool> {
@@ -88,27 +89,43 @@ impl Repository for DiskRepository {
         &self,
         id: String,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
-    ) -> Result<u64> {
+        expected_size: u64,
+    ) -> Result<Box<dyn OperationGuard>> {
         let file_path = self.get_path_for_blob(&id);
-        tracing::trace!(path = ?file_path, "begin writing to file");
+        let tmp_path = file_path.with_extension("buf");
 
-        match betterstreams::fs::write_all(&file_path, stream)
+        tracing::trace!(path = ?tmp_path, "begin writing to file");
+
+        let blob_size = match betterstreams::fs::write_all(&tmp_path, stream, Some(expected_size))
             .await
             .context("failed to write stream to disk")
         {
             Ok(size) => Ok(size),
             Err(e) => {
-                fs::remove_file(&file_path)
+                // Clean up our temp file and throw.
+                fs::remove_file(&tmp_path)
                     .await
                     .context("failed to rollback file creation")?;
-                tracing::trace!(path=?file_path, "removed temporary file");
+                tracing::trace!(path=?tmp_path, "removed temporary file");
                 Err(e)
             }
-        }
+        }?;
+
+        ensure!(
+            blob_size == expected_size,
+            "stream size and size header were not equal"
+        );
+
+        Ok(Box::new(ops::SaveOperationGuard::new(tmp_path, file_path)))
     }
 
     #[tracing::instrument(name = "disk.write", skip(self, body))]
-    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
+    async fn write(
+        &self,
+        id: String,
+        range: (Bound<u64>, Bound<u64>),
+        body: Bytes,
+    ) -> Result<(u64, Box<dyn OperationGuard>)> {
         let file_path = self.get_path_for_blob(&id);
 
         let range = util::bounds_to_range(range, u64::MAX, 0);
@@ -124,22 +141,12 @@ impl Repository for DiskRepository {
 
         let new_length = (start + end).max(old_length);
 
-        tracing::trace!(old_length = old_length, new_length = new_length, offset = start, path = ?file_path, "begin writing to file");
+        tracing::trace!(old_length = old_length, new_length = new_length, offset = start, path = ?file_path, "opened write operation");
 
-        {
-            let mut f = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(&file_path)
-                .await?;
-            f.seek(SeekFrom::Start(start)).await?;
-            f.write_all(body.as_ref())
-                .await
-                .context("failed to write stream to file")?;
-        }
-
-        Ok(new_length)
+        Ok((
+            new_length,
+            Box::new(ops::WriteOperationGuard::new(body, file_path, start)),
+        ))
     }
 
     #[tracing::instrument(name = "disk.get", skip(self))]
@@ -164,17 +171,19 @@ impl Repository for DiskRepository {
     }
 
     #[tracing::instrument(name = "disk.delete", skip(self))]
-    async fn delete(&self, blob_id: &str) -> Result<()> {
+    async fn delete(&self, blob_id: &str) -> Result<Box<dyn OperationGuard>> {
         let blob_path = self.get_path_for_blob(blob_id);
+        let tmp_path = blob_path.with_extension("deleted");
 
-        if blob_path.exists() {
-            fs::remove_file(&blob_path)
-                .await
-                .context("failed to delete file")?;
-            tracing::trace!(path=?blob_path, "file deleted");
-        }
+        ensure!(blob_path.exists(), "blob path does not exist");
 
-        Ok(())
+        fs::rename(&blob_path, &tmp_path)
+            .await
+            .context("failed to move file pending deletion")?;
+
+        Ok(Box::new(ops::DeleteOperationGuard::new(
+            blob_path, tmp_path,
+        )))
     }
 
     #[tracing::instrument(name = "disk.fsync", skip(self))]

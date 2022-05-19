@@ -28,16 +28,30 @@ const DEFAULT_READ_BUF_SIZE: usize = 8_192;
 ///
 /// Runtime::new().unwrap().block_on(async {
 ///     let mystream: UnpinDynIoStream = { unimplemented!(); };
-///     fs::write_all("/home/user/myfile.txt", mystream).await.unwrap();
+///     fs::write_all("/home/user/myfile.txt", mystream, None).await.unwrap();
 /// });
 /// ```
-pub async fn write_all<P: AsRef<Path>>(path: P, stream: UnpinDynIoStream) -> Result<u64> {
+pub async fn write_all<P: AsRef<Path>>(
+    path: P,
+    stream: UnpinDynIoStream,
+    max_size: Option<u64>,
+) -> Result<u64> {
     let mut stream_pin = Box::pin(stream);
 
     let mut f = fs::File::create(path.as_ref()).await?;
 
+    let mut total_size: u64 = 0;
     while let Some(chunk) = stream_pin.next().await {
         let chunk_bytes = chunk?;
+        total_size += chunk_bytes.len() as u64;
+
+        if let Some(max) = max_size {
+            ensure!(
+                total_size <= max,
+                "early stop: stream is bigger than expected"
+            );
+        }
+
         f.write_all(chunk_bytes.as_ref()).await?;
     }
 

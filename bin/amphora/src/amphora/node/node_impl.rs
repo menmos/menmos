@@ -2,7 +2,7 @@ use std::io;
 use std::ops::Bound;
 use std::sync::Arc;
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, ensure, Result};
 
 use async_trait::async_trait;
 
@@ -13,6 +13,7 @@ use futures::{stream::empty, Stream};
 use interface::{Blob, BlobInfo, BlobInfoRequest, CertificateInfo, StorageNode, StorageNodeInfo};
 
 use menmos_std::sync::ShardedMutex;
+use menmos_std::tx;
 
 use parking_lot::Mutex;
 
@@ -180,6 +181,17 @@ impl Storage {
 
 #[async_trait]
 impl StorageNode for Storage {
+    /// Creates / overwrites a blob in this storage node.
+    ///
+    /// # Insertion process
+    /// 0. Writelock the mutex shard corresponding to the blob.
+    /// 1. Start a transaction with `try_rollback`
+    /// 2. Write the blob metadata in the local sled store.
+    /// 3. Enqueue an operation in the transaction to revert the metadata mutation in case of failure.
+    /// 4. Consume and pre-commit the stream to the repository (which gives us back a [`repository::OperationGuard`])
+    /// 5. Send the new blob metadata to the directory node
+    /// 6. Finally, if everything went OK, commit the blob to the repository.
+    /// 7. Release the shard lock and return.
     #[tracing::instrument(name = "node.put", skip(self, info_request, stream))]
     async fn put(
         &self,
@@ -189,38 +201,59 @@ impl StorageNode for Storage {
     ) -> Result<()> {
         let _guard = self.shard_lock.write(&id).await;
 
-        let actual_blob_size = if let Some(s) = stream {
-            self.repo.save(id.clone(), s).await?
-        } else {
-            0
-        };
+        tx::try_rollback(move |tx_state| async move {
+            let (created_at, modified_at, old_info) = if let Some(old_info) = self.index.get(&id)? {
+                (
+                    old_info.meta.created_at,
+                    old_info.meta.modified_at,
+                    Some(old_info),
+                )
+            } else {
+                let date = OffsetDateTime::now_utc();
+                (date, date, None)
+            };
 
-        // We have a mismatch between the actual size of the stream and the size declared by the user.
-        // Clean up & stop everything.
-        if actual_blob_size != info_request.size {
-            self.repo.delete(&id).await?;
-            bail!(
-                "size mismatch: broadcasted={} actual={}",
-                info_request.size,
-                actual_blob_size
-            );
-        }
+            let size = info_request.size;
+            let info = info_request.into_blob_info(created_at, modified_at);
+            self.index.insert(&id, &info)?;
 
-        let (created_at, modified_at) = if let Some(old_info) = self.index.get(&id)? {
-            (old_info.meta.created_at, old_info.meta.modified_at)
-        } else {
-            let date = OffsetDateTime::now_utc();
-            (date, date)
-        };
+            // Add the meta revert step.
+            tx_state
+                .complete({
+                    let id = id.clone();
+                    let old_info = old_info.clone();
+                    let index = self.index.clone();
+                    Box::pin(async move {
+                        if let Some(info) = old_info {
+                            // We did an update so we'll revert to the old one
+                            index.insert(&id, &info)?;
+                        } else {
+                            // We did an insert so we'll delete
+                            index.remove(&id)?;
+                        }
 
-        let info = info_request.into_blob_info(created_at, modified_at);
-        self.index.insert(&id, &info)?;
+                        Ok(())
+                    })
+                })
+                .await;
 
-        self.directory
-            .index_blob(&id, info, &self.config.node.name)
-            .await?;
+            let save_operation = if let Some(s) = stream {
+                Some(self.repo.save(id.clone(), s, size).await?)
+            } else {
+                None
+            };
 
-        Ok(())
+            self.directory
+                .index_blob(&id, info, &self.config.node.name)
+                .await?;
+
+            if let Some(mut op) = save_operation {
+                op.commit().await;
+            }
+
+            Ok(())
+        })
+        .await
     }
 
     #[tracing::instrument(name = "node.write", skip(self, body), fields(buf_size=?body.len()))]
@@ -236,24 +269,40 @@ impl StorageNode for Storage {
         // Privilege check.
         ensure!(self.is_blob_owned_by(&id, username)?, "forbidden");
 
-        // Write the diff
-        let new_blob_size = self.repo.write(id.clone(), range, body).await?;
-
         // Update the index.
-        if let Some(mut info) = self.index.get(&id)? {
-            info.meta.modified_at = OffsetDateTime::now_utc();
-            info.meta.size = new_blob_size;
-            self.index.insert(&id, &info)?;
+        if let Some(info) = self.index.get(&id)? {
+            tx::try_rollback(move |tx_state| async move {
+                let (new_blob_size, mut op_guard) =
+                    self.repo.write(id.clone(), range, body).await?;
 
-            // Update the meta on the directory.
-            self.directory
-                .index_blob(&id, info, &self.config.node.name)
-                .await?;
+                let mut new_info = info.clone();
+                new_info.meta.modified_at = OffsetDateTime::now_utc();
+                new_info.meta.size = new_blob_size;
+
+                self.index.insert(&id, &new_info)?;
+                tx_state
+                    .complete({
+                        let index = self.index.clone();
+                        let id = id.clone();
+                        Box::pin(async move {
+                            index.insert(&id, &info)?;
+                            Ok(())
+                        })
+                    })
+                    .await;
+
+                // Update the meta on the directory.
+                self.directory
+                    .index_blob(&id, new_info, &self.config.node.name)
+                    .await?;
+
+                op_guard.commit().await;
+                Ok(())
+            })
+            .await
         } else {
-            return Err(anyhow!("failed to update blob size"));
+            Err(anyhow!("blob meta did not exist"))
         }
-
-        Ok(())
     }
 
     #[tracing::instrument(name = "node.get", skip(self))]
@@ -294,22 +343,48 @@ impl StorageNode for Storage {
             "forbidden"
         );
 
-        if let Some(old_info) = self.index.get(&blob_id)? {
-            let mut info =
-                info_request.into_blob_info(old_info.meta.created_at, OffsetDateTime::now_utc());
-            info.meta.size = old_info.meta.size; // carry-over the old size because changing the metadata doesn't change the size
-            self.index.insert(&blob_id, &info)?;
+        tx::try_rollback(move |tx_state| async move {
+            if let Some(old_info) = self.index.get(&blob_id)? {
+                let mut info = info_request
+                    .into_blob_info(old_info.meta.created_at, OffsetDateTime::now_utc());
 
-            self.directory
-                .index_blob(&blob_id, info, &self.config.node.name)
-                .await?;
-        } else {
-            return Err(anyhow!("cannot update metadata for non-existent blob"));
-        }
+                info.meta.size = old_info.meta.size; // carry-over the old size because changing the metadata doesn't change the size
 
-        Ok(())
+                self.index.insert(&blob_id, &info)?;
+                tx_state
+                    .complete({
+                        let blob_id = blob_id.clone();
+                        let index = self.index.clone();
+                        Box::pin(async move {
+                            index.insert(&blob_id, &old_info)?;
+                            Ok(())
+                        })
+                    })
+                    .await;
+
+                self.directory
+                    .index_blob(&blob_id, info, &self.config.node.name)
+                    .await?;
+            } else {
+                return Err(anyhow!("cannot update metadata for non-existent blob"));
+            }
+
+            Ok(())
+        })
+        .await
     }
 
+    /// Deletes a blob from this storage node.
+    ///
+    /// # Deletion Process
+    /// 0. Writelock the mutex shard corresponding to the blob.
+    /// 1. Check that the blob exists and that it is owned by the user making the request.
+    /// 2. Remove the blob metadata from the local sled store.
+    /// 3. Enqueue an operation in the transaction to revert the metadata mutation in case of failure.
+    /// 4. Pre-delete the blob in the repository (which gives us back a [`repository::OperationGuard`])
+    /// 5. Delete the metadata on the directory node.
+    /// 6. If everything went OK, commit the deletion.
+    /// 7. Release the shard lock and return.
     #[tracing::instrument(name = "node.delete", skip(self))]
     async fn delete(&self, blob_id: String, username: &str) -> Result<()> {
         let _guard = self.shard_lock.write(&blob_id).await;
@@ -317,15 +392,37 @@ impl StorageNode for Storage {
         // Privilege check.
         ensure!(self.is_blob_owned_by(&blob_id, username)?, "forbidden");
 
-        self.index.remove(&blob_id)?;
-        self.repo.delete(&blob_id).await?;
+        tx::try_rollback(move |tx_state| async move {
+            let blob_info = self
+                .index
+                .remove(&blob_id)?
+                .ok_or_else(|| anyhow!("missing blob meta for {blob_id}"))?;
 
-        // Delete the blob on the directory.
-        self.directory
-            .delete_blob(&blob_id, &self.config.node.name)
-            .await?;
+            // Add step to rollback the index deletion
+            tx_state
+                .complete({
+                    let blob_id = blob_id.clone();
+                    let blob_info = blob_info.clone();
+                    let index = self.index.clone();
+                    Box::pin(async move {
+                        index.insert(&blob_id, &blob_info)?;
+                        Ok(())
+                    })
+                })
+                .await;
 
-        Ok(())
+            let mut delete_op = self.repo.delete(&blob_id).await?;
+
+            // Delete the blob on the directory.
+            self.directory
+                .delete_blob(&blob_id, &self.config.node.name)
+                .await?;
+
+            delete_op.commit().await;
+
+            Ok(())
+        })
+        .await
     }
 
     async fn get_certificates(&self) -> Option<CertificateInfo> {

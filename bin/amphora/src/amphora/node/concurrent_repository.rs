@@ -11,7 +11,7 @@ use futures::Stream;
 
 use menmos_std::collections::ConcurrentSet;
 
-use repository::{Repository, StreamInfo};
+use repository::{OperationGuard, Repository, StreamInfo};
 
 pub struct ConcurrentRepository {
     repo: Box<dyn Repository + Send + Sync>,
@@ -41,14 +41,20 @@ impl Repository for ConcurrentRepository {
         &self,
         id: String,
         stream: Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send + Sync + Unpin + 'static>,
-    ) -> Result<u64> {
+        expected_size: u64,
+    ) -> Result<Box<dyn OperationGuard>> {
         if self.read_only_blobs.contains(&id) {
             bail!("cannot save blob '{id}': blob is read-only");
         }
-        self.repo.save(id, stream).await
+        self.repo.save(id, stream, expected_size).await
     }
 
-    async fn write(&self, id: String, range: (Bound<u64>, Bound<u64>), body: Bytes) -> Result<u64> {
+    async fn write(
+        &self,
+        id: String,
+        range: (Bound<u64>, Bound<u64>),
+        body: Bytes,
+    ) -> Result<(u64, Box<dyn OperationGuard>)> {
         if self.read_only_blobs.contains(&id) {
             bail!("cannot write to blob '{id}': blob is read-only");
         }
@@ -64,7 +70,7 @@ impl Repository for ConcurrentRepository {
         self.repo.get(blob_id, range).await
     }
 
-    async fn delete(&self, blob_id: &str) -> Result<()> {
+    async fn delete(&self, blob_id: &str) -> Result<Box<dyn OperationGuard>> {
         if self.read_only_blobs.contains(blob_id) {
             bail!("cannot delete blob '{blob_id}': blob is read-only");
         }
