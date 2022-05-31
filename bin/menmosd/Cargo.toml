@@ -64,7 +64,7 @@ menmos-std = { version = "^0.2.6" }
 menmos-xecute = { version = "^0.2.6" }
 opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
 opentelemetry-http = "0.6.0"
-parking_lot = "0.12.0"
+parking_lot = "0.12.1"
 rapidquery = { version = "^0.2.6", features = ["bitvec_size"] }
 ring = "0.16"
 rust-argon2 = "1.0"
