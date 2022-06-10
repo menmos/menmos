@@ -14,7 +14,7 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = "1"
-async-trait = "0.1.53"
+async-trait = "0.1.56"
 aws-config = "0.12.0"
 aws-sdk-s3 = "0.12.0"
 aws-smithy-http = { version = "0.42.0", features = ["rt-tokio"] }
