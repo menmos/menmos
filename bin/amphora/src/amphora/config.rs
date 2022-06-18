@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 
-use config::{Config as ConfigLoader, Environment, File};
+use config::{builder::DefaultState, Config as ConfigLoader, ConfigBuilder, Environment, File};
 
 use serde::{Deserialize, Serialize};
 
@@ -99,8 +99,8 @@ pub struct Config {
 }
 
 impl Config {
-    fn default_loader() -> Result<ConfigLoader> {
-        let mut loader = ConfigLoader::new();
+    fn default_loader() -> Result<ConfigBuilder<DefaultState>> {
+        let mut loader = ConfigLoader::builder();
 
         let default_config_path = dirs::config_dir()
             .ok_or_else(|| anyhow!("cannot locate config directory"))?
@@ -114,52 +114,50 @@ impl Config {
 
         fs::create_dir_all(&data_dir)?;
 
-        loader.set_default("server.port", DEFAULT_SERVER_PORT)?;
-        loader.set_default("redirect.subnet_mask", DEFAULT_SUBNET_MASK)?;
-        loader.set_default(
-            "server.certificate_storage_path",
-            data_dir.join("storage_certs").to_string_lossy().to_string(),
-        )?;
-
-        loader.set_default(
-            "node.db_path",
-            data_dir.join("storage_db").to_string_lossy().to_string(),
-        )?;
-
-        loader.set_default("node.key_locks_max_memory", DEFAULT_KEY_LOCKS_MAX_MEMORY)?;
-        loader.set_default(
-            "node.key_locks_lifetime_seconds",
-            DEFAULT_KEY_LOCKS_LIFETIME_SECONDS,
-        )?;
-
-        loader.set_default(
-            "node.checkin_frequency_seconds",
-            DEFAULT_CHECKIN_FREQUENCY_SECONDS,
-        )?;
-        loader.set_default(
-            "node.move_request_buffer_size",
-            DEFAULT_MOVE_REQUEST_BUFFER_SIZE,
-        )?;
-
-        loader.merge(
-            File::from(default_config_path)
-                .required(false)
-                .format(config::FileFormat::Toml),
-        )?;
+        loader = loader
+            .set_default("server.port", DEFAULT_SERVER_PORT)?
+            .set_default("redirect.subnet_mask", DEFAULT_SUBNET_MASK)?
+            .set_default(
+                "server.certificate_storage_path",
+                data_dir.join("storage_certs").to_string_lossy().to_string(),
+            )?
+            .set_default(
+                "node.db_path",
+                data_dir.join("storage_db").to_string_lossy().to_string(),
+            )?
+            .set_default("node.key_locks_max_memory", DEFAULT_KEY_LOCKS_MAX_MEMORY)?
+            .set_default(
+                "node.key_locks_lifetime_seconds",
+                DEFAULT_KEY_LOCKS_LIFETIME_SECONDS,
+            )?
+            .set_default(
+                "node.checkin_frequency_seconds",
+                DEFAULT_CHECKIN_FREQUENCY_SECONDS,
+            )?
+            .set_default(
+                "node.move_request_buffer_size",
+                DEFAULT_MOVE_REQUEST_BUFFER_SIZE,
+            )?
+            .add_source(
+                File::from(default_config_path)
+                    .required(false)
+                    .format(config::FileFormat::Toml),
+            );
         Ok(loader)
     }
 
     pub fn from_toml_string<S: AsRef<str>>(cfg_str: S) -> Result<Self> {
         let mut loader = Config::default_loader()?;
 
-        loader.merge(File::from_str(cfg_str.as_ref(), config::FileFormat::Toml))?;
-        loader.merge(
-            Environment::with_prefix("MENMOS")
-                .separator("_")
-                .try_parsing(true),
-        )?;
+        loader = loader
+            .add_source(File::from_str(cfg_str.as_ref(), config::FileFormat::Toml))
+            .add_source(
+                Environment::with_prefix("MENMOS")
+                    .separator("_")
+                    .try_parsing(true),
+            );
 
-        let cfg: Config = loader.try_into()?;
+        let cfg: Config = loader.build()?.try_deserialize()?;
 
         println!(
             "Loaded configuration: \n{}",
@@ -173,16 +171,16 @@ impl Config {
         let mut loader = Config::default_loader()?;
 
         if let Some(cfg) = cfg_file {
-            loader.merge(File::from(cfg.as_ref()).required(false))?;
+            loader = loader.add_source(File::from(cfg.as_ref()).required(false));
         }
 
-        loader.merge(
+        loader = loader.add_source(
             Environment::with_prefix("MENMOS")
                 .separator("_")
                 .try_parsing(true),
-        )?;
+        );
 
-        let cfg: Config = loader.try_into()?;
+        let cfg: Config = loader.build()?.try_deserialize()?;
 
         Ok(cfg)
     }
