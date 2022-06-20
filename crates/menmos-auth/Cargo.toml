@@ -11,7 +11,7 @@ description = "Menmos API Kit"
 [dependencies]
 anyhow = "1.0.57"
 async-trait = "0.1.56"
-axum = { version = "0.5.7", features = ["headers"] }
+axum = { version = "0.5.9", features = ["headers"] }
 bincode = "1.3.3"
 branca = "0.10.1"
 menmos-apikit = { version = "^0.2.6" }
