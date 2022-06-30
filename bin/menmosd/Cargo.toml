@@ -76,6 +76,6 @@ tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_d
 tracing-opentelemetry = "0.17.3"
 tokio = { version = "1.18", features = ["full"] }
 uuid = { version = "1.1", features = ["v4", "fast-rng", "serde"] }
-x509-parser = "0.13"
+x509-parser = "0.14"
 
 include_dir = { version = "0.7.2", optional = true }
