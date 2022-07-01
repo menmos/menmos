@@ -318,7 +318,7 @@ impl Repository for S3Repository {
         let io_stream: DynIoStream = Box::from(
             result
                 .body
-                .map(|r| r.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))),
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string())),
         );
 
         Ok(StreamInfo {
