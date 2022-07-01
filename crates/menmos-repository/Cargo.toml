@@ -15,9 +15,9 @@ path = "src/lib.rs"
 [dependencies]
 anyhow = "1"
 async-trait = "0.1.56"
-aws-config = "0.14.0"
+aws-config = "0.15.0"
 aws-sdk-s3 = "0.15.0"
-aws-smithy-http = { version = "0.44.0", features = ["rt-tokio"] }
+aws-smithy-http = { version = "0.45.0", features = ["rt-tokio"] }
 bytes = "1"
 futures = "0.3"
 lfan = { version = "^0.2.6", features = ["async"] }
