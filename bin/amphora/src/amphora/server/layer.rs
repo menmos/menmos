@@ -1,9 +1,11 @@
+use axum::error_handling::HandleErrorLayer;
 use std::time::Duration;
 
 use axum::extract::Extension;
 use axum::http::Request;
 use axum::response::Response;
-use axum::Router;
+use axum::{BoxError, Router};
+use http::StatusCode;
 
 use interface::DynStorageNode;
 
@@ -61,8 +63,30 @@ pub fn wrap_trace_layer(router: Router) -> Router {
     router.layer(svc)
 }
 
+async fn handle_loadshed_error(err: BoxError) -> (StatusCode, String) {
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        format!("Too many requests: {}", err),
+    )
+}
+
 pub fn wrap(router: Router, node: DynStorageNode, config: &Config) -> Router {
+    // FIXME(pr): Set correct concurrency limits
     let router = router
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(handle_loadshed_error))
+                .layer(
+                    ServiceBuilder::new()
+                        .load_shed()
+                        .buffer(128) // TODO: Revise scaling this along with the concurrent call limit if appropriate.
+                        .rate_limit(
+                            config.server.max_concurrent_calls as u64,
+                            Duration::from_secs(1),
+                        )
+                        .into_inner(),
+                ),
+        )
         .layer(Extension(node))
         .layer(Extension(EncryptionKey {
             key: config.node.encryption_key.clone(),

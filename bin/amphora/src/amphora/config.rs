@@ -11,8 +11,10 @@ use serde::{Deserialize, Serialize};
 const DEFAULT_SUBNET_MASK: &str = "255.255.255.0";
 const DEFAULT_SERVER_PORT: i64 = 80;
 
-const DEFAULT_KEY_LOCKS_MAX_MEMORY: i64 = 500 * 1024; // 500kb of memory for the locks, plus whatever for the string IDs themselves.
-const DEFAULT_KEY_LOCKS_LIFETIME_SECONDS: i64 = 60 * 15; // 15 minutes.
+const DEFAULT_KEY_LOCKS_MAX_MEMORY: i64 = 500 * 1024;
+// 500kb of memory for the locks, plus whatever for the string IDs themselves.
+const DEFAULT_KEY_LOCKS_LIFETIME_SECONDS: i64 = 60 * 15;
+// 15 minutes.
 const DEFAULT_CHECKIN_FREQUENCY_SECONDS: i64 = 20;
 const DEFAULT_MOVE_REQUEST_BUFFER_SIZE: i64 = 50;
 
@@ -63,6 +65,7 @@ pub struct DirectoryHostConfig {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServerSetting {
     pub certificate_storage_path: PathBuf,
+    pub max_concurrent_calls: usize,
     pub port: u16,
 }
 
@@ -116,6 +119,7 @@ impl Config {
 
         loader = loader
             .set_default("server.port", DEFAULT_SERVER_PORT)?
+            .set_default("server.max_concurrent_calls", (num_cpus::get() * 2) as i32)?
             .set_default("redirect.subnet_mask", DEFAULT_SUBNET_MASK)?
             .set_default(
                 "server.certificate_storage_path",
