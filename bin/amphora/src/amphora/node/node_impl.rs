@@ -65,8 +65,7 @@ impl Storage {
 
         let transfer_manager = TransferManager::new(repo.clone(), index.clone(), config.clone());
 
-        // TODO: Tune this (and allow runtime tuning).
-        let shard_lock = ShardedMutex::new(10, 0.01);
+        let shard_lock = ShardedMutex::new(config.server.max_concurrent_calls, 0.001);
 
         let s = Self {
             config,

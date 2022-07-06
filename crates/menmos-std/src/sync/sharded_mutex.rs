@@ -48,13 +48,13 @@ impl ShardedMutex {
     }
 
     #[tracing::instrument(skip(self, key))]
-    pub async fn read<'a, H: Hash>(&'a self, key: &H) -> RwLockReadGuard<'a, ()> {
+    pub async fn read<H: Hash>(&self, key: &H) -> RwLockReadGuard<()> {
         let lock_id = self.get_lock_id(key);
         self.buf[lock_id].read().await
     }
 
     #[tracing::instrument(skip(self, key))]
-    pub async fn write<'a, H: Hash>(&'a self, key: &H) -> RwLockWriteGuard<'a, ()> {
+    pub async fn write<H: Hash>(&self, key: &H) -> RwLockWriteGuard<()> {
         let lock_id = self.get_lock_id(key);
         self.buf[lock_id].write().await
     }
