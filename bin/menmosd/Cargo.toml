@@ -38,7 +38,7 @@ axum-client-ip = { version = "0.2.0" }
 tower = "0.4.13"
 tower-http = { version = "0.3.4", features = ["trace", "cors"] }
 tower-request-id = "0.2.0"
-hyper = "0.14.19"
+hyper = "0.14.20"
 
 acme-lib = "0.8"
 anyhow = "1"
