@@ -27,7 +27,7 @@ tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_d
 walkdir = "2.3"
 
 [target.'cfg(target_family = "unix")'.dependencies]
-nix = "0.24.1"
+nix = "0.24.2"
 
 [dependencies.rood]
 version = "0.5"
