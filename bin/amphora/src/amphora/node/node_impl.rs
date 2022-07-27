@@ -20,7 +20,7 @@ use parking_lot::Mutex;
 use repository::{Repository, StreamInfo};
 
 use time::OffsetDateTime;
-use tokio::sync::Mutex as AsyncMutex;
+use tokio::{sync::Mutex as AsyncMutex, task::JoinHandle};
 
 use super::{
     directory_proxy::DirectoryProxy, index::Index, node_info::get_redirect_info, rebuild,
@@ -42,6 +42,8 @@ pub struct Storage {
     repo: Arc<ConcurrentRepository>,
 
     transfer_manager: Arc<AsyncMutex<Option<TransferManager>>>,
+
+    rebuild: Arc<AsyncMutex<Option<JoinHandle<()>>>>,
 
     shard_lock: ShardedMutex,
 }
@@ -74,6 +76,7 @@ impl Storage {
             repo,
             certificates,
             transfer_manager: Arc::new(AsyncMutex::new(Some(transfer_manager))),
+            rebuild: Arc::new(AsyncMutex::new(None)),
             shard_lock,
         };
 
@@ -134,8 +137,19 @@ impl Storage {
             panic!("invalid state: received a request but transfer manager is not running");
         }
 
+        let mut rebuild_guard = self.rebuild.lock().await;
+        let clear = if let Some(handle) = rebuild_guard.as_ref() {
+            handle.is_finished()
+        } else {
+            false
+        };
+
+        if clear {
+            *rebuild_guard = None;
+        }
+
         // Trigger the rebuild task.
-        if response.rebuild_requested {
+        if response.rebuild_requested && rebuild_guard.is_none() {
             let params = rebuild::Params {
                 storage_node_name: self.config.node.name.clone(),
                 directory_host_url: self.config.directory.url.clone(),
@@ -145,14 +159,14 @@ impl Storage {
             let proxy_cloned = self.directory.clone();
             let db_cloned = self.index.clone();
 
-            // TODO: Hold a join handle to this and refuse stopping the storage node until it completes.
-            tokio::task::spawn(async move {
+            // TODO: Refuse stopping the storage node until this completes.
+            *rebuild_guard = Some(tokio::task::spawn(async move {
                 if let Err(e) = rebuild::execute(params, proxy_cloned, db_cloned).await {
                     tracing::error!("rebuild failed: {}", e);
                 } else {
                     tracing::info!("rebuild complete");
                 }
-            });
+            }));
         }
         Ok(())
     }
