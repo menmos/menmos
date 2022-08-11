@@ -40,7 +40,7 @@ pub struct HttpsParameters {
     pub dns: DnsParameters,
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum LetsEncryptUrl {
     Production,

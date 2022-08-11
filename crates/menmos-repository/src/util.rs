@@ -12,7 +12,7 @@ pub fn bounds_to_range<R: RangeBounds<u64>>(
     };
 
     let end = match r.end_bound() {
-        Bound::Included(i) => (*i + 1),
+        Bound::Included(i) => *i + 1,
         Bound::Excluded(i) => *i,
         Bound::Unbounded => fallback_max,
     };

@@ -21,7 +21,7 @@ fn file_to_base64<P: AsRef<Path>>(path: P) -> Result<String> {
     Ok(base64::encode(fs::read(path.as_ref())?))
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CertificateInfo {
     pub certificate_b64: String,
@@ -41,7 +41,7 @@ impl CertificateInfo {
 }
 
 /// Metadata accepted when indexing a blob.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct BlobMetaRequest {
     /// The key/value pairs for this blob.
@@ -149,7 +149,7 @@ impl fmt::Display for FieldValue {
 }
 
 /// Metadata associated with a blob.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct BlobMeta {
     /// The key/value pairs for this blob.
@@ -219,7 +219,7 @@ impl BlobMeta {
 ///
 /// This is used to persist the metadata in the sled tree.
 /// bincode doesn't like untagged enums, so we have to make a tagged alternative.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct TaggedBlobMeta {
     /// The key/value pairs for this blob.
@@ -272,7 +272,7 @@ impl From<TaggedBlobMeta> for BlobMeta {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct BlobInfoRequest {
     pub meta_request: BlobMetaRequest,
@@ -295,14 +295,14 @@ impl BlobInfoRequest {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct BlobInfo {
     pub meta: BlobMeta,
     pub owner: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct TaggedBlobInfo {
     pub meta: TaggedBlobMeta,
