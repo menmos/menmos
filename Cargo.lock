@@ -97,7 +97,7 @@ dependencies = [
  "serde_json",
  "sled",
  "tempfile",
- "time 0.3.11",
+ "time 0.3.13",
  "tokio",
  "tower",
  "tower-http",
@@ -155,7 +155,7 @@ dependencies = [
  "num-traits",
  "rusticata-macros",
  "thiserror",
- "time 0.3.11",
+ "time 0.3.13",
 ]
 
 [[package]]
@@ -408,7 +408,7 @@ dependencies = [
  "percent-encoding",
  "regex",
  "ring",
- "time 0.3.11",
+ "time 0.3.13",
  "tracing",
 ]
 
@@ -523,7 +523,7 @@ dependencies = [
  "itoa",
  "num-integer",
  "ryu",
- "time 0.3.11",
+ "time 0.3.13",
 ]
 
 [[package]]
@@ -1974,7 +1974,7 @@ dependencies = [
  "branca",
  "menmos-apikit",
  "serde",
- "time 0.3.11",
+ "time 0.3.13",
  "tracing",
 ]
 
@@ -2045,7 +2045,7 @@ dependencies = [
  "rapidquery",
  "reqwest",
  "serde",
- "time 0.3.11",
+ "time 0.3.13",
 ]
 
 [[package]]
@@ -2185,7 +2185,7 @@ dependencies = [
  "serde_json",
  "sled",
  "tempfile",
- "time 0.3.11",
+ "time 0.3.13",
  "tokio",
  "tower",
  "tower-http",
@@ -3827,9 +3827,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.11"
+version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72c91f41dcb2f096c05f0873d667dceec1087ce5bcf984ec8ffb19acddbb3217"
+checksum = "db76ff9fa4b1458b3c7f077f3ff9887394058460d21e634355b273aaf11eea45"
 dependencies = [
  "itoa",
  "libc",
@@ -4240,7 +4240,7 @@ dependencies = [
  "radix_trie",
  "rand 0.8.5",
  "thiserror",
- "time 0.3.11",
+ "time 0.3.13",
  "tokio",
  "trust-dns-proto 0.20.4",
 ]
@@ -4761,7 +4761,7 @@ dependencies = [
  "oid-registry",
  "rusticata-macros",
  "thiserror",
- "time 0.3.11",
+ "time 0.3.13",
 ]
 
 [[package]]
