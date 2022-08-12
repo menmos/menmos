@@ -32,7 +32,7 @@ tempfile = "3.3"
 anyhow = "1"
 
 [dependencies]
-axum = "0.5.14"
+axum = "0.5.15"
 axum-server = { version = "0.4.2", features = ["tls-rustls"] }
 axum-client-ip = { version = "0.2.0" }
 tower = "0.4.13"
@@ -49,7 +49,7 @@ bitvec = { version = "1.0", features = ["serde"] }
 byteorder = "1.4.2"
 bytes = "1.2"
 clap = { version = "3.2.16", features = ["derive"] }
-config = { version = "0.13.1", features = ["toml"] }
+config = { version = "0.13.2", features = ["toml"] }
 dirs = "4"
 external-ip = "=4.1.0"
 futures = "0.3"
@@ -71,7 +71,7 @@ rust-argon2 = "1.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sled = { git = "https://github.com/spacejam/sled", branch = "main" }
-time = { version = "0.3.11", features = ["serde"] }
+time = { version = "0.3.13", features = ["serde"] }
 tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_debug"] }
 tracing-opentelemetry = "0.17.4"
 tokio = { version = "1.20", features = ["full"] }

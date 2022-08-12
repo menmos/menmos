@@ -40,7 +40,7 @@ impl FileMetadata {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UploadRequest {
     /// The path of the file to upload.
     pub path: PathBuf,

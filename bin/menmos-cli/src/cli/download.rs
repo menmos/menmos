@@ -62,10 +62,15 @@ impl DownloadCommand {
                         None => blob_id.clone(),
                     };
 
-                    let file_path = match &dst_dir {
+                    let mut file_path = match &dst_dir {
                         Some(d) => d.join(file_name),
                         None => PathBuf::from(file_name),
                     };
+
+                    if let Some(FieldValue::Str(extension)) = meta.fields.get("extension") {
+                        let extension = extension.clone();
+                        file_path.set_extension(extension);
+                    }
 
                     let mut f = fs::File::create(&file_path).await?;
 
