@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{BlobInfo, BlobInfoRequest, BlobMeta, ExpressionField, FieldValue, TaggedFieldValue};
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Hit {
     pub id: String,
@@ -26,7 +26,7 @@ impl Hit {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct FacetResponse {
     pub tags: HashMap<String, u64>,
@@ -34,7 +34,7 @@ pub struct FacetResponse {
 }
 
 /// The results of a query.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct QueryResponse {
     /// The number of hits returned with this response.
@@ -52,7 +52,7 @@ pub struct QueryResponse {
     pub facets: Option<FacetResponse>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum RedirectInfo {
     Automatic {
         public_address: IpAddr,
@@ -64,7 +64,7 @@ pub enum RedirectInfo {
     },
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct StorageNodeInfo {
     pub id: String,
@@ -75,13 +75,13 @@ pub struct StorageNodeInfo {
 }
 
 /// Data sent back to the storage node from the directory.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct StorageNodeResponseData {
     pub rebuild_requested: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct MetadataList {
     pub tags: HashMap<String, usize>,
@@ -174,7 +174,7 @@ impl Default for Query {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct RoutingConfig {
     /// The field name to use for routing.
@@ -204,7 +204,7 @@ impl RoutingConfig {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct TaggedRoutingConfig {
     /// The field name to use for routing.
@@ -240,20 +240,20 @@ impl From<TaggedRoutingConfig> for RoutingConfig {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DirtyState {
     Dirty,
     Clean,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct RoutingConfigState {
     pub routing_config: RoutingConfig,
     pub state: DirtyState,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct TaggedRoutingConfigState {
     pub routing_config: TaggedRoutingConfig,
@@ -278,7 +278,7 @@ impl From<TaggedRoutingConfigState> for RoutingConfigState {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct MoveInformation {
     pub blob_id: String,
@@ -286,7 +286,7 @@ pub struct MoveInformation {
     pub destination_node: StorageNodeInfo,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RoutingAlgorithm {
     RoundRobin,

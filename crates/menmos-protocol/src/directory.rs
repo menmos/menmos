@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 pub mod blobmeta {
     use super::*;
 
-    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct ListMetadataRequest {
         /// Optionally filters which tags to return (defaults to all).
@@ -21,7 +21,7 @@ pub mod blobmeta {
         pub fields: Option<Vec<String>>,
     }
 
-    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct GetMetaResponse {
         pub meta: Option<BlobMeta>,
@@ -33,13 +33,13 @@ pub mod routing {
 
     use super::*;
 
-    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct GetRoutingConfigResponse {
         pub routing_config: Option<RoutingConfig>,
     }
 
-    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct SetRoutingConfigRequest {
         pub routing_config: RoutingConfig,
@@ -49,20 +49,20 @@ pub mod routing {
 pub mod auth {
     use super::*;
 
-    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct LoginRequest {
         pub username: String,
         pub password: String,
     }
 
-    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct LoginResponse {
         pub token: String,
     }
 
-    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct RegisterRequest {
         pub username: String,
@@ -73,7 +73,7 @@ pub mod auth {
 pub mod storage {
     use super::*;
 
-    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct ListStorageNodesResponse {
         pub storage_nodes: Vec<StorageNodeInfo>,
