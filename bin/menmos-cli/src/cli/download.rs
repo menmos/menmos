@@ -56,11 +56,11 @@ impl DownloadCommand {
                     let stream = client.client().get_file(&blob_id).await?;
                     let mut stream_pin = Box::pin(stream);
 
-                    let file_name = match meta.fields.get("name") {
-                        Some(FieldValue::Str(name)) => name.clone(),
-                        Some(FieldValue::Numeric(i)) => format!("{i}"),
-                        None => blob_id.clone(),
-                    };
+                    let file_name = meta
+                        .fields
+                        .get("name")
+                        .map(|f| f.to_string())
+                        .unwrap_or_else(|| blob_id.clone());
 
                     let mut file_path = match &dst_dir {
                         Some(d) => d.join(file_name),

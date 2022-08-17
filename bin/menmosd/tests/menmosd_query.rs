@@ -259,4 +259,36 @@ async fn query_case_sensitivity() -> Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn query_sequence_fields() -> Result<()> {
+    let mut cluster = Menmos::new().await?;
+    cluster.add_amphora("alpha").await?;
+
+    let blob_a = cluster
+        .push_document("Document 1", Meta::new().with_field("seq", vec!["a", "b"]))
+        .await?;
+
+    let blob_b = cluster
+        .push_document("Document 2", Meta::new().with_field("seq", vec![1, 2]))
+        .await?;
+
+    // Can query a single value.
+    let res = cluster
+        .client
+        .query(Query::default().and_field("seq", "a"))
+        .await?;
+    assert_eq!(res.count, 1);
+    assert_eq!(res.hits.first().unwrap().id, blob_a);
+
+    // Can query a sequence of values.
+    let res = cluster
+        .client
+        .query(Query::default().and_field("seq", vec![1, 2]))
+        .await?;
+    assert_eq!(res.count, 1);
+    assert_eq!(res.hits.first().unwrap().id, blob_b);
+
+    Ok(())
+}
+
 // TODO: More advanced query tests.

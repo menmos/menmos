@@ -89,12 +89,14 @@ impl BlobMetaRequest {
 pub enum FieldValue {
     Str(String),
     Numeric(i64),
+    Sequence(Vec<FieldValue>),
 }
 
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 pub enum TaggedFieldValue {
     Str(String),
     Numeric(i64),
+    Sequence(Vec<TaggedFieldValue>),
 }
 
 impl From<FieldValue> for TaggedFieldValue {
@@ -102,6 +104,9 @@ impl From<FieldValue> for TaggedFieldValue {
         match v {
             FieldValue::Str(s) => TaggedFieldValue::Str(s),
             FieldValue::Numeric(i) => TaggedFieldValue::Numeric(i),
+            FieldValue::Sequence(seq) => {
+                TaggedFieldValue::Sequence(seq.into_iter().map(TaggedFieldValue::from).collect())
+            }
         }
     }
 }
@@ -111,6 +116,9 @@ impl From<TaggedFieldValue> for FieldValue {
         match v {
             TaggedFieldValue::Str(s) => FieldValue::Str(s),
             TaggedFieldValue::Numeric(i) => FieldValue::Numeric(i),
+            TaggedFieldValue::Sequence(seq) => {
+                FieldValue::Sequence(seq.into_iter().map(FieldValue::from).collect())
+            }
         }
     }
 }
@@ -139,11 +147,31 @@ impl From<i64> for FieldValue {
     }
 }
 
+impl<T> From<Vec<T>> for FieldValue
+where
+    T: Into<FieldValue>,
+{
+    fn from(v: Vec<T>) -> Self {
+        let v: Vec<FieldValue> = v.into_iter().map(Into::into).collect();
+        Self::Sequence(v)
+    }
+}
+
 impl fmt::Display for FieldValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Str(s) => write!(f, "\"{}\"", s),
             Self::Numeric(i) => write!(f, "{}", i),
+            Self::Sequence(seq) => {
+                write!(f, "[")?;
+                for (i, v) in seq.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", v)?;
+                }
+                write!(f, "]")
+            }
         }
     }
 }

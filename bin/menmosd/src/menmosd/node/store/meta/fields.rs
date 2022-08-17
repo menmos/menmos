@@ -1,3 +1,4 @@
+use core::panic;
 use std::io::{Read, Write};
 use std::mem;
 
@@ -102,6 +103,9 @@ impl FieldsIndex {
         let (type_id, value_slice) = match value {
             FieldValue::Str(s) => (TYPEID_STR, s.to_lowercase().as_bytes().to_vec()),
             FieldValue::Numeric(i) => (TYPEID_NUMERIC, i.to_be_bytes().to_vec()),
+            FieldValue::Sequence(_) => {
+                panic!("sequences should be stored using multiple field keys (one per sequence element)");
+            }
         };
 
         // Key format: [FieldID (4 bytes), TypeID (1 byte), FieldValue (N Bytes)]
@@ -130,28 +134,34 @@ impl FieldsIndex {
         for_idx: u32,
         try_recycling: bool,
     ) -> Result<()> {
-        let field_key = self
-            .build_field_key(field, value, false)?
-            .ok_or_else(|| anyhow!("field ID should exist for field {field}"))?;
+        if let FieldValue::Sequence(seq) = value {
+            for elem in seq {
+                self.purge_field_value(field, elem, for_idx, try_recycling)?;
+            }
+        } else {
+            let field_key = self
+                .build_field_key(field, value, false)?
+                .ok_or_else(|| anyhow!("field ID should exist for field {field}"))?;
 
-        self.field_map.purge_key(&field_key, for_idx)?;
-        tracing::trace!(key = %field, value = %value, index = for_idx, "purged field-value");
+            self.field_map.purge_key(&field_key, for_idx)?;
+            tracing::trace!(key = %field, value = %value, index = for_idx, "purged field-value");
 
-        // We can try recycling here because the caller indicated that the field value for this doc
-        // was _removed_, not modified. In that case, we need to check if the field is still in use,
-        // and recycle its ID if not.
-        if try_recycling {
-            let field_in_use = tokio::task::block_in_place(|| {
-                self.field_map
-                    .tree()
-                    .scan_prefix(&field_key[0..mem::size_of::<u32>()])
-                    .next()
-                    .is_some()
-            });
+            // We can try recycling here because the caller indicated that the field value for this doc
+            // was _removed_, not modified. In that case, we need to check if the field is still in use,
+            // and recycle its ID if not.
+            if try_recycling {
+                let field_in_use = tokio::task::block_in_place(|| {
+                    self.field_map
+                        .tree()
+                        .scan_prefix(&field_key[0..mem::size_of::<u32>()])
+                        .next()
+                        .is_some()
+                });
 
-            if !field_in_use {
-                // We can recycle the field.
-                self.field_ids.delete(field)?;
+                if !field_in_use {
+                    // We can recycle the field.
+                    self.field_ids.delete(field)?;
+                }
             }
         }
 
@@ -160,23 +170,55 @@ impl FieldsIndex {
 
     #[tracing::instrument(name = "fields.insert", level = "trace", skip(self, serialized_docid))]
     pub fn insert(&self, field: &str, value: &FieldValue, serialized_docid: &[u8]) -> Result<()> {
-        let field_key = self
-            .build_field_key(field, value, true)?
-            .ok_or_else(|| anyhow!("ID allocation for field {field} returned no ID"))?;
+        if let FieldValue::Sequence(seq) = value {
+            for v in seq {
+                self.insert(field, v, serialized_docid)?;
+            }
+            Ok(())
+        } else {
+            let field_key = self
+                .build_field_key(field, value, true)?
+                .ok_or_else(|| anyhow!("ID allocation for field {field} returned no ID"))?;
 
-        self.field_map.insert_bytes(&field_key, serialized_docid)
+            self.field_map.insert_bytes(&field_key, serialized_docid)
+        }
     }
 
     #[tracing::instrument(name = "fields.load_field_value", level = "trace", skip(self))]
     pub fn load_field_value(&self, field: &str, value: &FieldValue) -> Result<BitVec> {
-        match self.build_field_key(field, value, false)? {
-            Some(field_key) => self.field_map.load_bytes(&field_key),
-            None => {
-                tracing::debug!(
-                    field = field,
-                    "fieldID not found, returning empty bitvector"
-                );
-                Ok(BitVec::default())
+        if let FieldValue::Sequence(seq) = value {
+            // Load field value for a sequence is tricky. We need to load the bitvector for each sequence element,
+            // and then AND them together to get the bitvector of documents that contain all values.
+
+            if seq.is_empty() {
+                return Ok(BitVec::new());
+            }
+
+            let mut bv = self.load_field_value(field, &seq[0])?;
+            for v in seq[1..].iter() {
+                let bitvec_element = self.load_field_value(field, v)?;
+
+                let (biggest, smallest) = if bv.len() > bitvec_element.len() {
+                    (bv, bitvec_element)
+                } else {
+                    (bitvec_element, bv)
+                };
+
+                bv = biggest;
+                bv &= smallest;
+            }
+
+            Ok(bv)
+        } else {
+            match self.build_field_key(field, value, false)? {
+                Some(field_key) => self.field_map.load_bytes(&field_key),
+                None => {
+                    tracing::debug!(
+                        field = field,
+                        "fieldID not found, returning empty bitvector"
+                    );
+                    Ok(BitVec::default())
+                }
             }
         }
     }
@@ -417,6 +459,68 @@ mod tests {
 
         assert_eq!(seen_vals.len(), val_count);
         assert_eq!(val_count, 3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn insert_sequence_field() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("mysequence", &vec!["a", "b"].into(), &5_u32.to_le_bytes())?;
+        index.insert("mysequence", &vec!["a", "c"].into(), &2_u32.to_le_bytes())?;
+
+        let bv = index.load_field("mysequence")?;
+        assert_eq!(&bv, bits![0, 0, 1, 0, 0, 1]);
+
+        let bv = index.load_field_value("mysequence", &vec!["a", "b"].into())?;
+        assert_eq!(&bv, bits![0, 0, 0, 0, 0, 1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn list_sequence_field_values() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("mysequence", &vec!["a", "b"].into(), &5_u32.to_le_bytes())?;
+        index.insert("mysequence", &vec!["a", "c"].into(), &2_u32.to_le_bytes())?;
+        index.insert("mysequence", &vec![12, 13].into(), &1_u32.to_le_bytes())?;
+
+        let mut seen_vals = HashSet::new();
+        let mut val_count = 0;
+
+        for value in index.get_field_values("mysequence")?.unwrap() {
+            let ((field_name, field_value), bv) = value?;
+            assert_eq!(&field_name, "mysequence");
+
+            seen_vals.insert(field_value.clone());
+            val_count += 1;
+
+            match field_value {
+                FieldValue::Str(s) => match s.as_ref() {
+                    "a" => {
+                        assert_eq!(&bv, bits![0, 0, 1, 0, 0, 1]);
+                    }
+                    "b" => {
+                        assert_eq!(&bv, bits![0, 0, 0, 0, 0, 1]);
+                    }
+                    "c" => {
+                        assert_eq!(&bv, bits![0, 0, 1]);
+                    }
+                    _ => panic!("unexpected value"),
+                },
+                FieldValue::Numeric(12) | FieldValue::Numeric(13) => {
+                    assert_eq!(&bv, bits![0, 1]);
+                }
+                _ => panic!(),
+            }
+        }
+
+        assert_eq!(seen_vals.len(), val_count);
+        assert_eq!(val_count, 5);
 
         Ok(())
     }
