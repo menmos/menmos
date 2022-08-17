@@ -181,7 +181,28 @@ impl FieldsIndex {
     #[tracing::instrument(name = "fields.load_field_value", level = "trace", skip(self))]
     pub fn load_field_value(&self, field: &str, value: &FieldValue) -> Result<BitVec> {
         if let FieldValue::Sequence(seq) = value {
-            unimplemented!("sequences are not yet supported");
+            // Load field value for a sequence is tricky. We need to load the bitvector for each sequence element,
+            // and then AND them together to get the bitvector of documents that contain all values.
+
+            if seq.is_empty() {
+                return Ok(BitVec::new());
+            }
+
+            let mut bv = self.load_field_value(field, &seq[0])?;
+            for v in seq[1..].iter() {
+                let bitvec_element = self.load_field_value(field, v)?;
+
+                let (biggest, smallest) = if bv.len() > bitvec_element.len() {
+                    (bv, bitvec_element)
+                } else {
+                    (bitvec_element, bv)
+                };
+
+                bv = biggest;
+                bv &= smallest;
+            }
+
+            Ok(bv)
         } else {
             match self.build_field_key(field, value, false)? {
                 Some(field_key) => self.field_map.load_bytes(&field_key),
@@ -432,6 +453,68 @@ mod tests {
 
         assert_eq!(seen_vals.len(), val_count);
         assert_eq!(val_count, 3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn insert_sequence_field() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("mysequence", &vec!["a", "b"].into(), &5_u32.to_le_bytes())?;
+        index.insert("mysequence", &vec!["a", "c"].into(), &2_u32.to_le_bytes())?;
+
+        let bv = index.load_field("mysequence")?;
+        assert_eq!(&bv, bits![0, 0, 1, 0, 0, 1]);
+
+        let bv = index.load_field_value("mysequence", &vec!["a", "b"].into())?;
+        assert_eq!(&bv, bits![0, 0, 0, 0, 0, 1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn list_sequence_field_values() -> Result<()> {
+        let db = sled::Config::default().temporary(true).open().unwrap();
+        let index = FieldsIndex::new(&db).unwrap();
+
+        index.insert("mysequence", &vec!["a", "b"].into(), &5_u32.to_le_bytes())?;
+        index.insert("mysequence", &vec!["a", "c"].into(), &2_u32.to_le_bytes())?;
+        index.insert("mysequence", &vec![12, 13].into(), &1_u32.to_le_bytes())?;
+
+        let mut seen_vals = HashSet::new();
+        let mut val_count = 0;
+
+        for value in index.get_field_values("mysequence")?.unwrap() {
+            let ((field_name, field_value), bv) = value?;
+            assert_eq!(&field_name, "mysequence");
+
+            seen_vals.insert(field_value.clone());
+            val_count += 1;
+
+            match field_value {
+                FieldValue::Str(s) => match s.as_ref() {
+                    "a" => {
+                        assert_eq!(&bv, bits![0, 0, 1, 0, 0, 1]);
+                    }
+                    "b" => {
+                        assert_eq!(&bv, bits![0, 0, 0, 0, 0, 1]);
+                    }
+                    "c" => {
+                        assert_eq!(&bv, bits![0, 0, 1]);
+                    }
+                    _ => panic!("unexpected value"),
+                },
+                FieldValue::Numeric(12) | FieldValue::Numeric(13) => {
+                    assert_eq!(&bv, bits![0, 1]);
+                }
+                _ => panic!(),
+            }
+        }
+
+        assert_eq!(seen_vals.len(), val_count);
+        assert_eq!(val_count, 5);
 
         Ok(())
     }

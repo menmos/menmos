@@ -147,6 +147,16 @@ impl From<i64> for FieldValue {
     }
 }
 
+impl<T> From<Vec<T>> for FieldValue
+where
+    T: Into<FieldValue>,
+{
+    fn from(v: Vec<T>) -> Self {
+        let v: Vec<FieldValue> = v.into_iter().map(Into::into).collect();
+        Self::Sequence(v)
+    }
+}
+
 impl fmt::Display for FieldValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
