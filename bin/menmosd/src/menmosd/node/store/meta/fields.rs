@@ -134,28 +134,34 @@ impl FieldsIndex {
         for_idx: u32,
         try_recycling: bool,
     ) -> Result<()> {
-        let field_key = self
-            .build_field_key(field, value, false)?
-            .ok_or_else(|| anyhow!("field ID should exist for field {field}"))?;
+        if let FieldValue::Sequence(seq) = value {
+            for elem in seq {
+                self.purge_field_value(field, elem, for_idx, try_recycling)?;
+            }
+        } else {
+            let field_key = self
+                .build_field_key(field, value, false)?
+                .ok_or_else(|| anyhow!("field ID should exist for field {field}"))?;
 
-        self.field_map.purge_key(&field_key, for_idx)?;
-        tracing::trace!(key = %field, value = %value, index = for_idx, "purged field-value");
+            self.field_map.purge_key(&field_key, for_idx)?;
+            tracing::trace!(key = %field, value = %value, index = for_idx, "purged field-value");
 
-        // We can try recycling here because the caller indicated that the field value for this doc
-        // was _removed_, not modified. In that case, we need to check if the field is still in use,
-        // and recycle its ID if not.
-        if try_recycling {
-            let field_in_use = tokio::task::block_in_place(|| {
-                self.field_map
-                    .tree()
-                    .scan_prefix(&field_key[0..mem::size_of::<u32>()])
-                    .next()
-                    .is_some()
-            });
+            // We can try recycling here because the caller indicated that the field value for this doc
+            // was _removed_, not modified. In that case, we need to check if the field is still in use,
+            // and recycle its ID if not.
+            if try_recycling {
+                let field_in_use = tokio::task::block_in_place(|| {
+                    self.field_map
+                        .tree()
+                        .scan_prefix(&field_key[0..mem::size_of::<u32>()])
+                        .next()
+                        .is_some()
+                });
 
-            if !field_in_use {
-                // We can recycle the field.
-                self.field_ids.delete(field)?;
+                if !field_in_use {
+                    // We can recycle the field.
+                    self.field_ids.delete(field)?;
+                }
             }
         }
 
