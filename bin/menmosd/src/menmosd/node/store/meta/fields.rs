@@ -1,3 +1,4 @@
+use core::panic;
 use std::io::{Read, Write};
 use std::mem;
 
@@ -102,6 +103,9 @@ impl FieldsIndex {
         let (type_id, value_slice) = match value {
             FieldValue::Str(s) => (TYPEID_STR, s.to_lowercase().as_bytes().to_vec()),
             FieldValue::Numeric(i) => (TYPEID_NUMERIC, i.to_be_bytes().to_vec()),
+            FieldValue::Sequence(_) => {
+                panic!("sequences should be stored using using multiple field keys (one per sequence element)");
+            }
         };
 
         // Key format: [FieldID (4 bytes), TypeID (1 byte), FieldValue (N Bytes)]
@@ -160,23 +164,34 @@ impl FieldsIndex {
 
     #[tracing::instrument(name = "fields.insert", level = "trace", skip(self, serialized_docid))]
     pub fn insert(&self, field: &str, value: &FieldValue, serialized_docid: &[u8]) -> Result<()> {
-        let field_key = self
-            .build_field_key(field, value, true)?
-            .ok_or_else(|| anyhow!("ID allocation for field {field} returned no ID"))?;
+        if let FieldValue::Sequence(seq) = value {
+            for v in seq {
+                self.insert(field, v, serialized_docid)?;
+            }
+            Ok(())
+        } else {
+            let field_key = self
+                .build_field_key(field, value, true)?
+                .ok_or_else(|| anyhow!("ID allocation for field {field} returned no ID"))?;
 
-        self.field_map.insert_bytes(&field_key, serialized_docid)
+            self.field_map.insert_bytes(&field_key, serialized_docid)
+        }
     }
 
     #[tracing::instrument(name = "fields.load_field_value", level = "trace", skip(self))]
     pub fn load_field_value(&self, field: &str, value: &FieldValue) -> Result<BitVec> {
-        match self.build_field_key(field, value, false)? {
-            Some(field_key) => self.field_map.load_bytes(&field_key),
-            None => {
-                tracing::debug!(
-                    field = field,
-                    "fieldID not found, returning empty bitvector"
-                );
-                Ok(BitVec::default())
+        if let FieldValue::Sequence(seq) = value {
+            unimplemented!("sequences are not yet supported");
+        } else {
+            match self.build_field_key(field, value, false)? {
+                Some(field_key) => self.field_map.load_bytes(&field_key),
+                None => {
+                    tracing::debug!(
+                        field = field,
+                        "fieldID not found, returning empty bitvector"
+                    );
+                    Ok(BitVec::default())
+                }
             }
         }
     }
