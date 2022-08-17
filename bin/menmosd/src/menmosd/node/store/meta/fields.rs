@@ -104,7 +104,7 @@ impl FieldsIndex {
             FieldValue::Str(s) => (TYPEID_STR, s.to_lowercase().as_bytes().to_vec()),
             FieldValue::Numeric(i) => (TYPEID_NUMERIC, i.to_be_bytes().to_vec()),
             FieldValue::Sequence(_) => {
-                panic!("sequences should be stored using using multiple field keys (one per sequence element)");
+                panic!("sequences should be stored using multiple field keys (one per sequence element)");
             }
         };
 
