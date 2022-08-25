@@ -16,5 +16,5 @@ bincode = "1.3.3"
 branca = "0.10.1"
 menmos-apikit = { version = "^0.2.6" }
 serde = { version = "1.0.143", features = ["derive"] }
-time = "0.3.13"
+time = "0.3.14"
 tracing = { version = "0.1.36", features = ["max_level_trace", "release_max_level_debug"] }
