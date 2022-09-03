@@ -14,7 +14,7 @@ path = "src/lib.rs"
 [dev-dependencies]
 anyhow = "1"
 portpicker = "0.1"
-trust-dns-resolver = "0.21"
+trust-dns-resolver = "0.22"
 
 [dependencies]
 nom = { version = "7.1" }
