@@ -15,7 +15,7 @@ path = "src/lib.rs"
 [dependencies]
 anyhow = "1"
 base64 = "0.13.0"
-headers = "0.3.7"
+headers = "0.3.8"
 menmos-interface = { version = "^0.2.6" }
 once_cell = "1.14.0"
 rapidquery = { version = "^0.2.6", features = ["bitvec_size"] }
