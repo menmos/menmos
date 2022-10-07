@@ -1461,9 +1461,9 @@ dependencies = [
 
 [[package]]
 name = "headers"
-version = "0.3.7"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cff78e5788be1e0ab65b04d306b2ed5092c815ec97ec70f4ebd5aee158aa55d"
+checksum = "f3e372db8e5c0d213e0cd0b9be18be2aca3d44cf2fe30a9d46a65581cd454584"
 dependencies = [
  "base64",
  "bitflags",
@@ -1472,7 +1472,7 @@ dependencies = [
  "http",
  "httpdate",
  "mime",
- "sha-1 0.10.0",
+ "sha1 0.10.1",
 ]
 
 [[package]]
@@ -2631,7 +2631,7 @@ checksum = "54be6e404f5317079812fc8f9f5279de376d8856929e21c184ecf6bbd692a11d"
 dependencies = [
  "maplit",
  "pest",
- "sha-1 0.8.2",
+ "sha-1",
 ]
 
 [[package]]
@@ -3445,17 +3445,6 @@ dependencies = [
  "digest 0.8.1",
  "fake-simd",
  "opaque-debug",
-]
-
-[[package]]
-name = "sha-1"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "028f48d513f9678cda28f6e4064755b3fbb2af6acd672f2c209b62323f7aea0f"
-dependencies = [
- "cfg-if",
- "cpufeatures",
- "digest 0.10.3",
 ]
 
 [[package]]

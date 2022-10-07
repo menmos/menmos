@@ -18,7 +18,7 @@ base64 = "0.13"
 bytes = "1"
 async-trait = "0.1.57"
 futures = "0.3"
-headers = "0.3.7"
+headers = "0.3.8"
 nom = "7.1.1"
 rapidquery = { version = "^0.2.6", features = ["bitvec_size", "parse"] }
 reqwest = { version = "0.11", features = ["json", "stream"] }
