@@ -14,7 +14,7 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = { version = "1.0.65", features = ["backtrace"] }
-axum = "0.5.15"
+axum = "0.5.16"
 opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
 opentelemetry-http = "0.6.0"
 serde = { version = "1", features = ["derive"] }
