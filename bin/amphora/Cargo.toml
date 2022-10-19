@@ -57,6 +57,6 @@ sled = { git = "https://github.com/spacejam/sled", branch = "main" }
 time = { version = "0.3.15", features = ["serde"] }
 tokio = { version = "1.21", features = ["full"] }
 tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_debug"] }
-tracing-opentelemetry = "0.17.4"
+tracing-opentelemetry = "0.18.0"
 uuid = { version = "1.1", features = ["v4", "fast-rng"] }
 num_cpus = "1.13.1"
