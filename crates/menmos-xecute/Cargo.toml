@@ -19,7 +19,7 @@ clap = { version = "3.2.22", features = ["derive"] }
 config = "0.13.2"
 num_cpus = "1.13"
 opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
-opentelemetry-jaeger = { version = "0.16.0", features = ["rt-tokio"] }
+opentelemetry-jaeger = { version = "0.17.0", features = ["rt-tokio"] }
 opentelemetry-otlp = "0.10.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
