@@ -15,5 +15,5 @@ async = ["tokio"]
 [dependencies]
 linked-hash-map = "0.5"
 parking_lot = "0.12"
-tokio = {version = "1.21", features = ["sync"], optional = true}
+tokio = {version = "1.26", features = ["sync"], optional = true}
 tracing = {version = "0.1", features = ["max_level_trace", "release_max_level_debug"]}
