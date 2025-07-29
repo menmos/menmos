@@ -1,6 +1,7 @@
 [workspace]
+resolver = "2"
 members = [
-    "bin/amphora",
+    "bin/amphora", "bin/antidns",
     "bin/menmos-cli",
     "bin/menmosd",
     "crates/lfan",

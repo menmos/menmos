@@ -1,0 +1,16 @@
+[package]
+name = "antidns"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+menmos-antidns = { version = "^0.2.6" }
+menmos-xecute = { version = "^0.2.6" }
+
+tracing = { version = "0.1", features = [
+    "max_level_trace",
+    "release_max_level_debug",
+] }
+tracing-opentelemetry = "0.17.4"
+tokio = { version = "1.21", features = ["full"] }
+anyhow = "1.0.98"

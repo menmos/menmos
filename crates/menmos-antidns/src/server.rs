@@ -175,7 +175,10 @@ impl Server {
     async fn run(cfg: Config, mut stop_rx: mpsc::Receiver<()>, challenge: Arc<Mutex<String>>) {
         // Bind to the UDP socket.
         let socket = match UdpSocket::bind(cfg.listen).await {
-            Ok(s) => Arc::from(s),
+            Ok(s) => {
+                tracing::info!("binding to {}", cfg.listen);
+                Arc::from(s)
+            }
             Err(e) => {
                 tracing::error!("cannot bind to socket: {}", e);
                 return;
